@@ -53,7 +53,10 @@ val find_alternate : Signature.Public_key_hash.t -> t
     4.000.000.000 tz (if the list is too short); and add them to the
     global account state *)
 val generate_accounts :
-  ?initial_balances:int64 list -> int -> (t * Tez_repr.t) list
+  ?rng_state:Random.State.t ->
+  ?initial_balances:int64 list ->
+  int ->
+  (t * Tez_repr.t) list
 
 val commitment_secret : Blinded_public_key_hash.activation_code
 
