@@ -1,0 +1,27 @@
+(library
+ (name tezos_benchmark_alpha)
+ (public_name tezos-benchmark-alpha)
+ (libraries
+  tezos-base
+  tezos-protocol-alpha
+  tezos-protocol-alpha-parameters
+  tezos-micheline-rewriting
+  tezos-benchmark
+  tezos-benchmark-type-inference
+  hashcons
+  benchmark-utils
+  staTz)
+ (library_flags (:standard -linkall))
+ (flags (:standard -open Tezos_stdlib
+                   -open Tezos_error_monad
+                   -open Tezos_micheline
+                   -open Tezos_micheline_rewriting
+                   -open Tezos_benchmark
+                   -open Tezos_benchmark_type_inference
+                   -open Tezos_protocol_alpha
+                   -open Tezos_crypto)))
+
+(alias
+ (name runtest_lint)
+ (deps (glob_files *.ml{,i}))
+ (action (run %{lib:tezos-tooling:lint.sh} %{deps})))
