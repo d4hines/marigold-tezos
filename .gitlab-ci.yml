@@ -1655,6 +1655,11 @@ opam:tezos-shell:
   variables:
     package: tezos-shell
 
+opam:tezos-shell-benchmarks:
+  <<: *opam_definition
+  variables:
+    package: tezos-shell-benchmarks
+
 opam:tezos-shell-context:
   <<: *opam_definition
   variables:
