@@ -1,5 +1,4 @@
 ---
-
 include:
   - .gitlab/ci/sanity.yml
   - .gitlab/ci/build.yml
