@@ -524,6 +524,7 @@ let detect_script_failure : type kind. kind operation_metadata -> _ =
 
 let may_patch_limits (type kind) (cctxt : #Protocol_client_context.full)
     ~fee_parameter ~chain ~block ?branch ?(compute_fee = false)
+    ~unspecified_gas_limit ~unspecified_storage_limit
     (contents : kind contents_list) : kind contents_list tzresult Lwt.t =
   Alpha_services.Constants.all cctxt (chain, block)
   >>=? fun { parametric =
@@ -534,11 +535,11 @@ let may_patch_limits (type kind) (cctxt : #Protocol_client_context.full)
                  _ };
              _ } ->
   let user_gas_limit_needs_patching user_gas_limit =
-    Gas.Arith.(user_gas_limit < zero)
+    unspecified_gas_limit
     || Gas.Arith.(hard_gas_limit_per_operation <= user_gas_limit)
   in
   let user_storage_limit_needs_patching user_storage_limit =
-    user_storage_limit < Z.zero || storage_limit <= user_storage_limit
+    unspecified_storage_limit || storage_limit <= user_storage_limit
   in
   let may_need_patching_single :
       type kind. kind contents -> kind contents option = function
@@ -737,7 +738,8 @@ let may_patch_limits (type kind) (cctxt : #Protocol_client_context.full)
 
 let inject_operation (type kind) cctxt ~chain ~block ?confirmations
     ?(dry_run = false) ?branch ?src_sk ?verbose_signing ~fee_parameter
-    ?compute_fee (contents : kind contents_list) =
+    ?compute_fee ~unspecified_gas_limit ~unspecified_storage_limit
+    (contents : kind contents_list) =
   Tezos_client_base.Client_confirmations.wait_for_bootstrapped cctxt
   >>=? fun () ->
   may_patch_limits
@@ -747,6 +749,8 @@ let inject_operation (type kind) cctxt ~chain ~block ?confirmations
     ?branch
     ~fee_parameter
     ?compute_fee
+    ~unspecified_gas_limit
+    ~unspecified_storage_limit
     contents
   >>=? fun contents ->
   preapply
@@ -874,9 +878,8 @@ let prepare_manager_operation ?fee ?gas_limit ?storage_limit operation =
   Manager_info {fee; gas_limit; storage_limit; operation}
 
 let inject_manager_operation cctxt ~chain ~block ?branch ?confirmations
-    ?dry_run ?verbose_signing ~source ~src_pk ~src_sk ?fee
-    ?(gas_limit = Gas.Arith.integral Z.minus_one)
-    ?(storage_limit = Z.of_int (-1)) ?counter ~fee_parameter (type kind)
+    ?dry_run ?verbose_signing ~source ~src_pk ~src_sk ?fee ?gas_limit
+    ?storage_limit ?counter ~fee_parameter (type kind)
     (operations : kind annotated_manager_operation_list) :
     ( Operation_hash.t
     * kind Kind.manager contents_list
@@ -917,6 +920,20 @@ let inject_manager_operation cctxt ~chain ~block ?branch ?confirmations
     let storage_limit = Option.value ~default:storage_limit s in
     Manager_operation
       {source; fee; counter; gas_limit; storage_limit; operation}
+  in
+  let (gas_limit, unspecified_gas_limit) =
+    match gas_limit with
+    | None ->
+        (Gas.Arith.zero, true)
+    | Some gas ->
+        (gas, false)
+  in
+  let (storage_limit, unspecified_storage_limit) =
+    match storage_limit with
+    | None ->
+        (Z.zero, true)
+    | Some bytes ->
+        (bytes, false)
   in
   let rec build_contents :
       type kind.
@@ -972,6 +989,8 @@ let inject_manager_operation cctxt ~chain ~block ?branch ?confirmations
         ?verbose_signing
         ?branch
         ~src_sk
+        ~unspecified_gas_limit
+        ~unspecified_storage_limit
         contents
       >>=? fun (oph, op, result) ->
       match pack_contents_list op result with
@@ -995,4 +1014,6 @@ let inject_manager_operation cctxt ~chain ~block ?branch ?confirmations
         ~fee_parameter
         ?branch
         ~src_sk
+        ~unspecified_gas_limit
+        ~unspecified_storage_limit
         contents
