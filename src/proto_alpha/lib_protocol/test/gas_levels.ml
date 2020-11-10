@@ -101,15 +101,18 @@ let operation_gas_level context =
    operation gas level and the block gas level. Hence, we check that
    in both situations, the gas levels are correctly reported.
 
-*)
+ *)
+
+(* This value is supposed to be larger than the block gas level limit. *)
+let opg = max_int / 10000
+
 let monitor_operation_gas_level = monitor 100 operation_gas_level 90
 
-let monitor_operation_gas_level' =
-  monitor max_int operation_gas_level (max_int - 10)
+let monitor_operation_gas_level' = monitor opg operation_gas_level (opg - 10)
 
 let monitor_block_gas_level = monitor 100 block_gas_level 10399990
 
-let monitor_block_gas_level' = monitor max_int block_gas_level 10399990
+let monitor_block_gas_level' = monitor opg block_gas_level 10399990
 
 let quick (what, how) = tztest what `Quick how
 

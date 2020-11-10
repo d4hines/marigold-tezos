@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2020 Nomadic Labs <contact@nomadic-labs.com>                *)
+(* Copyright (c) 2020 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,74 +23,48 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type fp_tag (* Tag for fixed point computations *)
+type t = int
 
-type integral_tag (* Tag for integral computations *)
+include (Compare.Int : module type of Compare.Int with type t := int)
 
-module type Safe = sig
-  type 'a t
+let saturated = max_int
 
-  type fp = fp_tag t
+let of_int t = if t < 0 then 0 else t
 
-  type integral = integral_tag t
+let of_z z = try of_int (Z.to_int z) with _ -> saturated
 
-  val integral : Z.t -> integral
+let to_z x = Z.of_int x
 
-  val integral_of_int : int -> integral
+let zero = 0
 
-  val integral_to_z : integral -> Z.t
+let small_enough z = z land 0x7fffffff00000000 = 0
 
-  val zero : 'a t
+let mul x y =
+  (* assert (x >= 0 && y >= 0); *)
+  match x with
+  | 0 ->
+      0
+  | x ->
+      if small_enough x && small_enough y then x * y
+      else if Compare.Int.(y > saturated / x) then saturated
+      else x * y
 
-  val add : 'a t -> 'a t -> 'a t
+let add x y =
+  let z = x + y in
+  if z < 0 then saturated else z
 
-  val sub : 'a t -> 'a t -> 'a t
+let sub x y =
+  let s = x - y in
+  if Compare.Int.(s < 0) then 0 else s
 
-  val ceil : fp -> integral
+let sub_opt x y =
+  let s = x - y in
+  if Compare.Int.(s < 0) then None else Some s
 
-  val floor : fp -> integral
+let erem x y = x mod y
 
-  val fp : 'a t -> fp
+let ediv x y = (x / y, erem x y)
 
-  val ( = ) : 'a t -> 'b t -> bool
+let encoding = Data_encoding.(conv to_z of_z z)
 
-  val ( <> ) : 'a t -> 'b t -> bool
-
-  val ( < ) : 'a t -> 'b t -> bool
-
-  val ( <= ) : 'a t -> 'b t -> bool
-
-  val ( >= ) : 'a t -> 'b t -> bool
-
-  val ( > ) : 'a t -> 'b t -> bool
-
-  val compare : 'a t -> 'b t -> int
-
-  val equal : 'a t -> 'b t -> bool
-
-  val max : 'a t -> 'a t -> 'a t
-
-  val min : 'a t -> 'a t -> 'a t
-
-  val pp : Format.formatter -> 'a t -> unit
-
-  val pp_integral : Format.formatter -> integral -> unit
-
-  val n_fp_encoding : fp Data_encoding.t
-
-  val n_integral_encoding : integral Data_encoding.t
-
-  val z_fp_encoding : fp Data_encoding.t
-
-  val z_integral_encoding : integral Data_encoding.t
-end
-
-module type Full = sig
-  include Safe
-
-  val unsafe_fp : Z.t -> fp
-end
-
-module type Decimals = sig
-  val decimals : int
-end
+let pp fmt x = Format.fprintf fmt "%d" x
