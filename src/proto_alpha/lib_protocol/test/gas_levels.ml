@@ -81,8 +81,7 @@ let monitor initial_operation_level gas_level expectation () =
   fail_unless
     ( match consume_gas context (Z.of_int 10000) (* in milligas. *) with
     | Ok context ->
-        let remaining = gas_level context in
-        remaining = integral_of_int expectation
+        gas_level context = integral_of_int expectation
     | _ ->
         false )
     (err "Monitor operation gas at each gas consumption")
@@ -104,8 +103,13 @@ let operation_gas_level context =
 *)
 let monitor_operation_gas_level = monitor 100 operation_gas_level 90
 
+let large_operation_gas_level = 1_000_000
+
 let monitor_operation_gas_level' =
-  monitor max_int operation_gas_level (max_int - 10)
+  monitor
+    large_operation_gas_level
+    operation_gas_level
+    (large_operation_gas_level - 10)
 
 let monitor_block_gas_level = monitor 100 block_gas_level 10399990
 
