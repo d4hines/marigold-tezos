@@ -26,6 +26,7 @@
 open Test
 open Protocol
 open Raw_context
+module S = Saturation_repr
 
 exception Gas_levels_test_error of string
 
@@ -50,7 +51,7 @@ let detect_gas_exhaustion_in_fresh_context () =
   dummy_context ()
   >>=? fun context ->
   fail_unless
-    (consume_gas context (Z.of_int max_int) |> succeed)
+    (consume_gas context (S.of_int max_int) |> succeed)
     (err "In a fresh context, gas consumption is unlimited.")
 
 let make_context initial_operation_gas =
@@ -64,14 +65,14 @@ let detect_gas_exhaustion_when_operation_gas_hits_zero () =
   make_context 10
   >>=? fun context ->
   fail_unless
-    (consume_gas context (Z.of_int max_int) |> failed)
+    (consume_gas context (S.of_int max_int) |> failed)
     (err "Fail when consuming more than the remaining operation gas.")
 
 let detect_gas_exhaustion_when_block_gas_hits_zero () =
   make_context max_int
   >>=? fun context ->
   fail_unless
-    (consume_gas context (Z.of_int max_int) |> failed)
+    (consume_gas context (S.of_int max_int) |> failed)
     (err "Fail when consuming more than the remaining block gas.")
 
 let monitor initial_operation_level gas_level expectation () =
@@ -79,7 +80,7 @@ let monitor initial_operation_level gas_level expectation () =
   make_context initial_operation_level
   >>=? fun context ->
   fail_unless
-    ( match consume_gas context (Z.of_int 10000) (* in milligas. *) with
+    ( match consume_gas context (S.of_int 10000) (* in milligas. *) with
     | Ok context ->
         let remaining = gas_level context in
         remaining = integral_of_int expectation

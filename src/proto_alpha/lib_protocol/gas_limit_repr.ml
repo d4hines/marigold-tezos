@@ -112,7 +112,9 @@ end
 
 type t = Unaccounted | Limited of {remaining : Arith.fp}
 
-type cost = Z.t
+module S = Saturation_repr
+
+type cost = S.t
 
 let encoding =
   let open Data_encoding in
@@ -136,44 +138,44 @@ let pp ppf = function
   | Limited {remaining} ->
       Format.fprintf ppf "%a units remaining" Arith.pp remaining
 
-let cost_encoding = Data_encoding.z
+let cost_encoding = S.z_encoding
 
-let pp_cost fmt z = Z.pp_print fmt z
+let pp_cost fmt z = S.pp fmt z
 
-let allocation_weight = Z.of_int (scaling_factor * 2)
+let allocation_weight = S.of_int (scaling_factor * 2)
 
-let step_weight = Z.of_int scaling_factor
+let step_weight = S.of_int scaling_factor
 
-let read_base_weight = Z.of_int (scaling_factor * 100)
+let read_base_weight = S.of_int (scaling_factor * 100)
 
-let write_base_weight = Z.of_int (scaling_factor * 160)
+let write_base_weight = S.of_int (scaling_factor * 160)
 
-let byte_read_weight = Z.of_int (scaling_factor * 10)
+let byte_read_weight = S.of_int (scaling_factor * 10)
 
-let byte_written_weight = Z.of_int (scaling_factor * 15)
+let byte_written_weight = S.of_int (scaling_factor * 15)
 
-let cost_to_milligas (cost : cost) : Arith.fp = Arith.unsafe_fp cost
+let cost_to_milligas (cost : cost) : Arith.fp = cost
 
 let raw_consume gas_counter cost =
   let gas = cost_to_milligas cost in
   Arith.sub_opt gas_counter gas
 
-let alloc_cost n = Z.mul allocation_weight (Z.succ n)
+let alloc_cost n = S.mul allocation_weight S.(add n (of_int 1))
 
-let alloc_bytes_cost n = alloc_cost (Z.of_int ((n + 7) / 8))
+let alloc_bytes_cost n = alloc_cost (S.of_int ((n + 7) / 8))
 
 let atomic_step_cost n = n
 
-let step_cost n = Z.mul step_weight n
+let step_cost n = S.mul step_weight n
 
-let free = Z.zero
+let free = S.zero
 
-let read_bytes_cost n = Z.add read_base_weight (Z.mul byte_read_weight n)
+let read_bytes_cost n = S.add read_base_weight (S.mul byte_read_weight n)
 
-let write_bytes_cost n = Z.add write_base_weight (Z.mul byte_written_weight n)
+let write_bytes_cost n = S.add write_base_weight (S.mul byte_written_weight n)
 
-let ( +@ ) x y = Z.add x y
+let ( +@ ) x y = S.add x y
 
-let ( *@ ) x y = Z.mul x y
+let ( *@ ) x y = S.mul x y
 
-let alloc_mbytes_cost n = alloc_cost (Z.of_int 12) +@ alloc_bytes_cost n
+let alloc_mbytes_cost n = alloc_cost (S.of_int 12) +@ alloc_bytes_cost n
