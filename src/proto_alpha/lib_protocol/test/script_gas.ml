@@ -24,6 +24,7 @@
 (*****************************************************************************)
 
 open Protocol
+module S = Saturation_repr
 
 (* This file contains unit tests pertaining to the computation of
    serialization and deserialization gas of Michelson terms. *)
@@ -99,14 +100,14 @@ module Tested_terms () = struct
 
   let check_correctness () =
     Error_monad.iter2_p
-      (fun min full ->
-        if Z.leq min full then return_unit
+      (fun smin full ->
+        if S.(smin <= full) then return_unit
         else
           failwith
             "Script_repr: inconsistent costs %a vs %a@."
-            Z.pp_print
-            min
-            Z.pp_print
+            S.pp
+            smin
+            S.pp
             full)
       minimal_costs
       full_costs
