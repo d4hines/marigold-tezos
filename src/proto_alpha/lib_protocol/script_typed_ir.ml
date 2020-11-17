@@ -429,7 +429,7 @@ and ('bef, 'aft) instr =
       * ('fbef, 'faft) descr
       -> ('bef, 'aft) instr
   | Dropn :
-      int * ('rest, 'rest, 'bef, _) stack_prefix_preservation_witness
+      int * ('rest, 'rest, 'bef, 'bef) stack_prefix_preservation_witness
       -> ('bef, 'rest) instr
   | ChainId : ('rest, Chain_id.t * 'rest) instr
   | Never : (never * 'rest, 'aft) instr
@@ -525,19 +525,33 @@ and ('value, 'before, 'after) comb_set_gadt_witness =
       ('value, 'before, 'after) comb_set_gadt_witness
       -> ('value, 'a * 'before, 'a * 'after) comb_set_gadt_witness
 
-and ('before, 'after) dup_n_gadt_witness =
+(*
+
+   [dup_n_gadt_witness ('s, 't)] ensures that the n-th element of ['s]
+   is of type ['t].
+
+   This relational predicate is defined by induction on [n].
+
+*)
+and (_, _) dup_n_gadt_witness =
   | Dup_n_zero : ('a * 'rest, 'a) dup_n_gadt_witness
   | Dup_n_succ :
-      ('before, 'b) dup_n_gadt_witness
-      -> ('a * 'before, 'b) dup_n_gadt_witness
+      ('stack, 'b) dup_n_gadt_witness
+      -> ('a * 'stack, 'b) dup_n_gadt_witness
 
-(* Type witness for operations that work deep in the stack ignoring
+(*
+
+   Type witness for operations that work deep in the stack ignoring
    (and preserving) a prefix.
 
    The two right parameters are the shape of the stack with the (same)
-   prefix before and after the transformation. The two left
-   parameters are the shape of the stack without the prefix before and
-   after. The inductive definition makes it so by construction. *)
+   prefix before and after the transformation. The two left parameters
+   are the shape of the stack without the prefix before and after.
+
+   This relational predicate is defined by induction on the common
+   prefix of the two topmost stacks.
+
+*)
 and ('bef, 'aft, 'bef_suffix, 'aft_suffix) stack_prefix_preservation_witness =
   | Prefix :
       ('fbef, 'faft, 'bef, 'aft) stack_prefix_preservation_witness
