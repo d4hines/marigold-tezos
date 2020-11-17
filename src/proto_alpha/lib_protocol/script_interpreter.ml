@@ -27,6 +27,7 @@
 open Alpha_context
 open Script
 open Script_typed_ir
+open Script_typed_cps_ir
 open Script_ir_translator
 module S = Saturation_repr
 
