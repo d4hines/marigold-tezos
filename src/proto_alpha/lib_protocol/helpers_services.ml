@@ -271,13 +271,14 @@ module Scripts = struct
     module Trace_logger () : Script_interpreter.STEP_LOGGER = struct
       let log : log_element list ref = ref []
 
-      let log_interp ctxt (descr : (_, _) Script_typed_ir.descr) stack =
-        log := Log (ctxt, descr.loc, stack, descr.bef) :: !log
+      let save _ ctxt loc stack_ty stack =
+        log := Log (ctxt, loc, stack, stack_ty) :: !log
 
-      let log_entry _ctxt _descr _stack = ()
+      let log_interp = save
 
-      let log_exit ctxt (descr : (_, _) Script_typed_ir.descr) stack =
-        log := Log (ctxt, descr.loc, stack, descr.aft) :: !log
+      let log_entry _ _ctxt _loc _stack_ty _stack = ()
+
+      let log_exit = save
 
       let get_log () =
         map_s
