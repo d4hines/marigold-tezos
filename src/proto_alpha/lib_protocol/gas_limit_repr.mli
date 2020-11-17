@@ -23,7 +23,9 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module Arith : Fixed_point_repr.Full
+open Saturation_repr
+
+module Arith : Fixed_point_repr.Full with type 'a t = 'a Saturation_repr.t
 
 type t = Unaccounted | Limited of {remaining : Arith.fp}
 

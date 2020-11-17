@@ -2326,7 +2326,7 @@ type _ dipn_proof_argument =
 
 type _ dropn_proof_argument =
   | Dropn_proof_argument :
-      ( ('rest, 'rest, 'bef, 'aft) stack_prefix_preservation_witness
+      ( ('rest, 'rest, 'bef, 'bef) stack_prefix_preservation_witness
       * 'rest stack_ty
       * 'aft stack_ty )
       -> 'bef dropn_proof_argument

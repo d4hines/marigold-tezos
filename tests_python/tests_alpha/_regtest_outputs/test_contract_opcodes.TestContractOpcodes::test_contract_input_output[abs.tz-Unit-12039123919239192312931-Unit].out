@@ -7,34 +7,46 @@ emitted operations
 big_map diff
   
 trace
-  - location: 6 (remaining gas: 1039987.125 units remaining)
+  - location: 7 (remaining gas: 1039987.125 units remaining)
     [ (Pair 12039123919239192312931 Unit)  	 ]
-  - location: 7 (remaining gas: 1039986.985 units remaining)
-    [ 12039123919239192312931  	@parameter ]
-  - location: 8 (remaining gas: 1039986.845 units remaining)
+  - location: 7 (remaining gas: 1039987.045 units remaining)
     [ 12039123919239192312931  	@parameter
-      12039123919239192312931  	@parameter ]
-  - location: 9 (remaining gas: 1039986.705 units remaining)
-    [ -12039123919239192312931  	
-      12039123919239192312931  	@parameter ]
-  - location: 10 (remaining gas: 1039986.565 units remaining)
-    [ 12039123919239192312931  	
-      12039123919239192312931  	@parameter ]
-  - location: 11 (remaining gas: 1039986.355 units remaining)
-    [ 0  	 ]
-  - location: 13 (remaining gas: 1039986.155 units remaining)
-    [ True  	 ]
-  - location: 15 (remaining gas: 1039985.965 units remaining)
-    [  ]
-  - location: -1 (remaining gas: 1039985.895 units remaining)
-    [  ]
-  - location: 20 (remaining gas: 1039985.755 units remaining)
-    [ Unit  	 ]
-  - location: 21 (remaining gas: 1039985.615 units remaining)
-    [ {}  	
       Unit  	 ]
-  - location: 23 (remaining gas: 1039985.475 units remaining)
-    [ (Pair {} Unit)  	 ]
-  - location: -1 (remaining gas: 1039985.405 units remaining)
-    [ (Pair {} Unit)  	 ]
+  - location: 8 (remaining gas: 1039986.965 units remaining)
+    [ 12039123919239192312931  	@parameter
+      12039123919239192312931  	@parameter
+      Unit  	 ]
+  - location: 9 (remaining gas: 1039986.885 units remaining)
+    [ -12039123919239192312931  	
+      12039123919239192312931  	@parameter
+      Unit  	 ]
+  - location: 10 (remaining gas: 1039986.805 units remaining)
+    [ 12039123919239192312931  	
+      12039123919239192312931  	@parameter
+      Unit  	 ]
+  - location: 11 (remaining gas: 1039986.655 units remaining)
+    [ 0  	
+      Unit  	 ]
+  - location: 13 (remaining gas: 1039986.575 units remaining)
+    [ True  	
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039986.515 units remaining)
+    [ Unit  	 ]
+  - location: 15 (remaining gas: 1039986.445 units remaining)
+    [ Unit  	 ]
+  - location: -1 (remaining gas: 1039986.375 units remaining)
+    [ Unit  	 ]
+  - location: 20 (remaining gas: 1039986.295 units remaining)
+    [ Unit  	
+      Unit  	 ]
+  - location: 21 (remaining gas: 1039986.215 units remaining)
+    [ {}  	
+      Unit  	
+      Unit  	 ]
+  - location: 23 (remaining gas: 1039986.135 units remaining)
+    [ (Pair {} Unit)  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039986.065 units remaining)
+    [ (Pair {} Unit)  	
+      Unit  	 ]
 

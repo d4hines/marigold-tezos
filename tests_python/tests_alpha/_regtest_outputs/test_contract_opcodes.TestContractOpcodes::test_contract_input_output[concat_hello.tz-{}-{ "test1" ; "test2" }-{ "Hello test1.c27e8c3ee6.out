@@ -7,31 +7,39 @@ emitted operations
 big_map diff
   
 trace
-  - location: 8 (remaining gas: 1039991.678 units remaining)
+  - location: 9 (remaining gas: 1039991.678 units remaining)
     [ (Pair { "test1" ; "test2" } {})  	 ]
-  - location: 9 (remaining gas: 1039991.538 units remaining)
-    [ { "test1" ; "test2" }  	@parameter ]
-  - location: 12 (remaining gas: 1039990.814 units remaining)
+  - location: 9 (remaining gas: 1039991.598 units remaining)
+    [ { "test1" ; "test2" }  	@parameter
+      Unit  	 ]
+  - location: 12 (remaining gas: 1039990.994 units remaining)
     [ "Hello "  	@hello
-      "test1"  	@parameter.elt ]
-  - location: 15 (remaining gas: 1039990.674 units remaining)
-    [ "Hello test1"  	 ]
-  - location: -1 (remaining gas: 1039990.604 units remaining)
-    [ "Hello test1"  	 ]
-  - location: 12 (remaining gas: 1039990.464 units remaining)
+      "test1"  	@parameter.elt
+      Unit  	 ]
+  - location: 15 (remaining gas: 1039990.914 units remaining)
+    [ "Hello test1"  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039990.844 units remaining)
+    [ "Hello test1"  	
+      Unit  	 ]
+  - location: 12 (remaining gas: 1039990.764 units remaining)
     [ "Hello "  	@hello
-      "test2"  	@parameter.elt ]
-  - location: 15 (remaining gas: 1039990.324 units remaining)
-    [ "Hello test2"  	 ]
-  - location: -1 (remaining gas: 1039990.254 units remaining)
-    [ "Hello test2"  	 ]
-  - location: 10 (remaining gas: 1039990.254 units remaining)
-    [ { "Hello test1" ; "Hello test2" }  	 ]
-  - location: 16 (remaining gas: 1039990.114 units remaining)
+      "test2"  	@parameter.elt
+      Unit  	 ]
+  - location: 15 (remaining gas: 1039990.684 units remaining)
+    [ "Hello test2"  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039990.614 units remaining)
+    [ "Hello test2"  	
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039990.534 units remaining)
     [ {}  	
-      { "Hello test1" ; "Hello test2" }  	 ]
-  - location: 18 (remaining gas: 1039989.974 units remaining)
-    [ (Pair {} { "Hello test1" ; "Hello test2" })  	 ]
-  - location: -1 (remaining gas: 1039989.904 units remaining)
-    [ (Pair {} { "Hello test1" ; "Hello test2" })  	 ]
+      { "Hello test1" ; "Hello test2" }  	
+      Unit  	 ]
+  - location: 18 (remaining gas: 1039990.454 units remaining)
+    [ (Pair {} { "Hello test1" ; "Hello test2" })  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039990.384 units remaining)
+    [ (Pair {} { "Hello test1" ; "Hello test2" })  	
+      Unit  	 ]
 
