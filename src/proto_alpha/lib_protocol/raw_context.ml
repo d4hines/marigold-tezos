@@ -435,6 +435,10 @@ let is_gas_unlimited ctxt =
 let is_counting_block_gas ctxt =
   match gas_counter_status ctxt with Count_block_gas _ -> true | _ -> false
 
+let gas_exhausted_error ctxt =
+  if is_counting_block_gas ctxt then error Block_quota_exceeded
+  else error Operation_quota_exceeded
+
 let consume_gas ctxt cost =
   if is_gas_unlimited ctxt then ok ctxt
   else
@@ -442,8 +446,7 @@ let consume_gas ctxt cost =
     | Some gas_counter ->
         Ok (update_gas_counter ctxt gas_counter)
     | None ->
-        if is_counting_block_gas ctxt then error Block_quota_exceeded
-        else error Operation_quota_exceeded
+        gas_exhausted_error ctxt
 
 let check_enough_gas ctxt cost = consume_gas ctxt cost >>? fun _ -> ok_unit
 

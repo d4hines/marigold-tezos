@@ -7,35 +7,45 @@ emitted operations
 big_map diff
   
 trace
-  - location: 8 (remaining gas: 1039990.414 units remaining)
+  - location: 9 (remaining gas: 1039990.414 units remaining)
     [ (Pair { "c" ; "b" ; "a" } { "" })  	 ]
-  - location: 9 (remaining gas: 1039990.274 units remaining)
-    [ { "c" ; "b" ; "a" }  	@parameter ]
-  - location: 10 (remaining gas: 1039990.134 units remaining)
-    [ {}  	
-      { "c" ; "b" ; "a" }  	@parameter ]
-  - location: 12 (remaining gas: 1039990.004 units remaining)
+  - location: 9 (remaining gas: 1039990.334 units remaining)
     [ { "c" ; "b" ; "a" }  	@parameter
-      {}  	 ]
-  - location: 15 (remaining gas: 1039989.283 units remaining)
-    [ { "c" }  	 ]
-  - location: 14 (remaining gas: 1039989.213 units remaining)
-    [ { "c" }  	 ]
-  - location: 15 (remaining gas: 1039989.073 units remaining)
-    [ { "b" ; "c" }  	 ]
-  - location: 14 (remaining gas: 1039989.003 units remaining)
-    [ { "b" ; "c" }  	 ]
-  - location: 15 (remaining gas: 1039988.863 units remaining)
-    [ { "a" ; "b" ; "c" }  	 ]
-  - location: 14 (remaining gas: 1039988.793 units remaining)
-    [ { "a" ; "b" ; "c" }  	 ]
-  - location: 13 (remaining gas: 1039988.793 units remaining)
-    [ { "a" ; "b" ; "c" }  	 ]
-  - location: 16 (remaining gas: 1039988.653 units remaining)
+      Unit  	 ]
+  - location: 10 (remaining gas: 1039990.254 units remaining)
     [ {}  	
-      { "a" ; "b" ; "c" }  	 ]
-  - location: 18 (remaining gas: 1039988.513 units remaining)
-    [ (Pair {} { "a" ; "b" ; "c" })  	 ]
-  - location: -1 (remaining gas: 1039988.443 units remaining)
-    [ (Pair {} { "a" ; "b" ; "c" })  	 ]
+      { "c" ; "b" ; "a" }  	@parameter
+      Unit  	 ]
+  - location: 12 (remaining gas: 1039990.184 units remaining)
+    [ { "c" ; "b" ; "a" }  	@parameter
+      {}  	
+      Unit  	 ]
+  - location: 15 (remaining gas: 1039989.583 units remaining)
+    [ { "c" }  	
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039989.513 units remaining)
+    [ { "c" }  	
+      Unit  	 ]
+  - location: 15 (remaining gas: 1039989.433 units remaining)
+    [ { "b" ; "c" }  	
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039989.363 units remaining)
+    [ { "b" ; "c" }  	
+      Unit  	 ]
+  - location: 15 (remaining gas: 1039989.283 units remaining)
+    [ { "a" ; "b" ; "c" }  	
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039989.213 units remaining)
+    [ { "a" ; "b" ; "c" }  	
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039989.133 units remaining)
+    [ {}  	
+      { "a" ; "b" ; "c" }  	
+      Unit  	 ]
+  - location: 18 (remaining gas: 1039989.053 units remaining)
+    [ (Pair {} { "a" ; "b" ; "c" })  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039988.983 units remaining)
+    [ (Pair {} { "a" ; "b" ; "c" })  	
+      Unit  	 ]
 
