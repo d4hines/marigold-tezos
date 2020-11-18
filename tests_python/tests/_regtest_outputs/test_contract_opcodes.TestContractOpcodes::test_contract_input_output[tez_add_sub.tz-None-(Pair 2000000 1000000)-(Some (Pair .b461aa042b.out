@@ -1,0 +1,110 @@
+tests/test_contract_opcodes.py::TestContractOpcodes::test_contract_input_output[tez_add_sub.tz-None-(Pair 2000000 1000000)-(Some (Pair 3000000 1000000))]
+
+storage
+  (Some (Pair 3000000 1000000))
+emitted operations
+  
+big_map diff
+  
+trace
+  - location: 11 (remaining gas: 1039981.110 units remaining)
+    [ (Pair (Pair 2000000 1000000) None)  	 ]
+  - location: 12 (remaining gas: 1039981.030 units remaining)
+    [ (Pair 2000000 1000000)  	@parameter
+      Unit  	 ]
+  - location: 13 (remaining gas: 1039980.950 units remaining)
+    [ (Pair 2000000 1000000)  	@parameter
+      (Pair 2000000 1000000)  	@parameter
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039980.870 units remaining)
+    [ (Pair 2000000 1000000)  	@parameter
+      (Pair 2000000 1000000)  	@parameter
+      (Pair 2000000 1000000)  	@parameter
+      Unit  	 ]
+  - location: 15 (remaining gas: 1039980.790 units remaining)
+    [ 2000000  	
+      (Pair 2000000 1000000)  	@parameter
+      (Pair 2000000 1000000)  	@parameter
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039980.690 units remaining)
+    [ (Pair 2000000 1000000)  	@parameter
+      (Pair 2000000 1000000)  	@parameter
+      Unit  	 ]
+  - location: 18 (remaining gas: 1039980.610 units remaining)
+    [ 1000000  	
+      (Pair 2000000 1000000)  	@parameter
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039980.540 units remaining)
+    [ 1000000  	
+      (Pair 2000000 1000000)  	@parameter
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039980.540 units remaining)
+    [ 1000000  	
+      (Pair 2000000 1000000)  	@parameter
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039980.460 units remaining)
+    [ 2000000  	
+      1000000  	
+      (Pair 2000000 1000000)  	@parameter
+      Unit  	 ]
+  - location: 19 (remaining gas: 1039980.360 units remaining)
+    [ 3000000  	
+      (Pair 2000000 1000000)  	@parameter
+      Unit  	 ]
+  - location: 20 (remaining gas: 1039980.260 units remaining)
+    [ (Pair 2000000 1000000)  	@parameter
+      Unit  	 ]
+  - location: 22 (remaining gas: 1039980.180 units remaining)
+    [ (Pair 2000000 1000000)  	@parameter
+      (Pair 2000000 1000000)  	@parameter
+      Unit  	 ]
+  - location: 23 (remaining gas: 1039980.100 units remaining)
+    [ 2000000  	
+      (Pair 2000000 1000000)  	@parameter
+      Unit  	 ]
+  - location: 24 (remaining gas: 1039980 units remaining)
+    [ (Pair 2000000 1000000)  	@parameter
+      Unit  	 ]
+  - location: 26 (remaining gas: 1039979.920 units remaining)
+    [ 1000000  	
+      Unit  	 ]
+  - location: 25 (remaining gas: 1039979.850 units remaining)
+    [ 1000000  	
+      Unit  	 ]
+  - location: 25 (remaining gas: 1039979.850 units remaining)
+    [ 1000000  	
+      Unit  	 ]
+  - location: 25 (remaining gas: 1039979.770 units remaining)
+    [ 2000000  	
+      1000000  	
+      Unit  	 ]
+  - location: 27 (remaining gas: 1039979.690 units remaining)
+    [ 1000000  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039979.620 units remaining)
+    [ 1000000  	
+      Unit  	 ]
+  - location: 21 (remaining gas: 1039979.620 units remaining)
+    [ 1000000  	
+      Unit  	 ]
+  - location: 21 (remaining gas: 1039979.540 units remaining)
+    [ 3000000  	
+      1000000  	
+      Unit  	 ]
+  - location: 28 (remaining gas: 1039979.460 units remaining)
+    [ (Pair 3000000 1000000)  	
+      Unit  	 ]
+  - location: 29 (remaining gas: 1039979.380 units remaining)
+    [ (Some (Pair 3000000 1000000))  	
+      Unit  	 ]
+  - location: 30 (remaining gas: 1039979.300 units remaining)
+    [ {}  	
+      (Some (Pair 3000000 1000000))  	
+      Unit  	 ]
+  - location: 32 (remaining gas: 1039979.220 units remaining)
+    [ (Pair {} (Some (Pair 3000000 1000000)))  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039979.150 units remaining)
+    [ (Pair {} (Some (Pair 3000000 1000000)))  	
+      Unit  	 ]
+

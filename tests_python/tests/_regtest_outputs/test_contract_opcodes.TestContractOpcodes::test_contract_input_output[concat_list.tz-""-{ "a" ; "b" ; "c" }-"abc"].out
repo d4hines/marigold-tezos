@@ -1,0 +1,171 @@
+tests/test_contract_opcodes.py::TestContractOpcodes::test_contract_input_output[concat_list.tz-""-{ "a" ; "b" ; "c" }-"abc"]
+
+storage
+  "abc"
+emitted operations
+  
+big_map diff
+  
+trace
+  - location: 7 (remaining gas: 1039986.030 units remaining)
+    [ (Pair { "a" ; "b" ; "c" } "")  	 ]
+  - location: 8 (remaining gas: 1039985.950 units remaining)
+    [ { "a" ; "b" ; "c" }  	@parameter
+      Unit  	 ]
+  - location: 9 (remaining gas: 1039985.870 units remaining)
+    [ ""  	
+      { "a" ; "b" ; "c" }  	@parameter
+      Unit  	 ]
+  - location: 12 (remaining gas: 1039985.800 units remaining)
+    [ { "a" ; "b" ; "c" }  	@parameter
+      ""  	
+      Unit  	 ]
+  - location: 13 (remaining gas: 1039985.279 units remaining)
+    [ ""  	
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039985.279 units remaining)
+    [ "a"  	@parameter.elt
+      ""  	
+      Unit  	 ]
+  - location: 15 (remaining gas: 1039985.209 units remaining)
+    [ ""  	
+      "a"  	@parameter.elt
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039985.109 units remaining)
+    [ "a"  	@parameter.elt
+      Unit  	 ]
+  - location: 18 (remaining gas: 1039985.029 units remaining)
+    [ {}  	
+      "a"  	@parameter.elt
+      Unit  	 ]
+  - location: 20 (remaining gas: 1039984.959 units remaining)
+    [ "a"  	@parameter.elt
+      {}  	
+      Unit  	 ]
+  - location: 21 (remaining gas: 1039984.879 units remaining)
+    [ { "a" }  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039984.809 units remaining)
+    [ { "a" }  	
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039984.809 units remaining)
+    [ { "a" }  	
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039984.729 units remaining)
+    [ ""  	
+      { "a" }  	
+      Unit  	 ]
+  - location: 22 (remaining gas: 1039984.649 units remaining)
+    [ { "" ; "a" }  	
+      Unit  	 ]
+  - location: 23 (remaining gas: 1039984.529 units remaining)
+    [ "a"  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039984.459 units remaining)
+    [ "a"  	
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039984.459 units remaining)
+    [ "a"  	
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039984.459 units remaining)
+    [ "b"  	@parameter.elt
+      "a"  	
+      Unit  	 ]
+  - location: 15 (remaining gas: 1039984.389 units remaining)
+    [ "a"  	
+      "b"  	@parameter.elt
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039984.289 units remaining)
+    [ "b"  	@parameter.elt
+      Unit  	 ]
+  - location: 18 (remaining gas: 1039984.209 units remaining)
+    [ {}  	
+      "b"  	@parameter.elt
+      Unit  	 ]
+  - location: 20 (remaining gas: 1039984.139 units remaining)
+    [ "b"  	@parameter.elt
+      {}  	
+      Unit  	 ]
+  - location: 21 (remaining gas: 1039984.059 units remaining)
+    [ { "b" }  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039983.989 units remaining)
+    [ { "b" }  	
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039983.989 units remaining)
+    [ { "b" }  	
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039983.909 units remaining)
+    [ "a"  	
+      { "b" }  	
+      Unit  	 ]
+  - location: 22 (remaining gas: 1039983.829 units remaining)
+    [ { "a" ; "b" }  	
+      Unit  	 ]
+  - location: 23 (remaining gas: 1039983.709 units remaining)
+    [ "ab"  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039983.639 units remaining)
+    [ "ab"  	
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039983.639 units remaining)
+    [ "ab"  	
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039983.639 units remaining)
+    [ "c"  	@parameter.elt
+      "ab"  	
+      Unit  	 ]
+  - location: 15 (remaining gas: 1039983.569 units remaining)
+    [ "ab"  	
+      "c"  	@parameter.elt
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039983.469 units remaining)
+    [ "c"  	@parameter.elt
+      Unit  	 ]
+  - location: 18 (remaining gas: 1039983.389 units remaining)
+    [ {}  	
+      "c"  	@parameter.elt
+      Unit  	 ]
+  - location: 20 (remaining gas: 1039983.319 units remaining)
+    [ "c"  	@parameter.elt
+      {}  	
+      Unit  	 ]
+  - location: 21 (remaining gas: 1039983.239 units remaining)
+    [ { "c" }  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039983.169 units remaining)
+    [ { "c" }  	
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039983.169 units remaining)
+    [ { "c" }  	
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039983.089 units remaining)
+    [ "ab"  	
+      { "c" }  	
+      Unit  	 ]
+  - location: 22 (remaining gas: 1039983.009 units remaining)
+    [ { "ab" ; "c" }  	
+      Unit  	 ]
+  - location: 23 (remaining gas: 1039982.889 units remaining)
+    [ "abc"  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039982.819 units remaining)
+    [ "abc"  	
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039982.819 units remaining)
+    [ "abc"  	
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039982.819 units remaining)
+    [ "abc"  	
+      Unit  	 ]
+  - location: 24 (remaining gas: 1039982.739 units remaining)
+    [ {}  	
+      "abc"  	
+      Unit  	 ]
+  - location: 26 (remaining gas: 1039982.659 units remaining)
+    [ (Pair {} "abc")  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039982.589 units remaining)
+    [ (Pair {} "abc")  	
+      Unit  	 ]
+

@@ -1,0 +1,70 @@
+tests/test_contract_opcodes.py::TestContractOpcodes::test_contract_input_output[set_cdr.tz-(Pair "hello" 7)-100-(Pair "hello" 100)]
+
+storage
+  (Pair "hello" 100)
+emitted operations
+  
+big_map diff
+  
+trace
+  - location: 8 (remaining gas: 1039986.051 units remaining)
+    [ (Pair 100 "hello" 7)  	 ]
+  - location: 9 (remaining gas: 1039985.971 units remaining)
+    [ (Pair 100 "hello" 7)  	
+      (Pair 100 "hello" 7)  	
+      Unit  	 ]
+  - location: 10 (remaining gas: 1039985.891 units remaining)
+    [ (Pair "hello" 7)  	@storage
+      (Pair 100 "hello" 7)  	
+      Unit  	 ]
+  - location: 11 (remaining gas: 1039985.791 units remaining)
+    [ (Pair 100 "hello" 7)  	
+      Unit  	 ]
+  - location: 13 (remaining gas: 1039985.711 units remaining)
+    [ 100  	@parameter
+      Unit  	 ]
+  - location: 12 (remaining gas: 1039985.641 units remaining)
+    [ 100  	@parameter
+      Unit  	 ]
+  - location: 12 (remaining gas: 1039985.641 units remaining)
+    [ 100  	@parameter
+      Unit  	 ]
+  - location: 12 (remaining gas: 1039985.561 units remaining)
+    [ (Pair "hello" 7)  	@storage
+      100  	@parameter
+      Unit  	 ]
+  - location: 15 (remaining gas: 1039985.481 units remaining)
+    [ (Pair "hello" 7)  	@storage
+      (Pair "hello" 7)  	@storage
+      100  	@parameter
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039985.401 units remaining)
+    [ 7  	
+      (Pair "hello" 7)  	@storage
+      100  	@parameter
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039985.321 units remaining)
+    [ (Pair "hello" 7)  	@storage
+      100  	@parameter
+      Unit  	 ]
+  - location: 18 (remaining gas: 1039985.241 units remaining)
+    [ "hello"  	@storage.s
+      100  	@parameter
+      Unit  	 ]
+  - location: 19 (remaining gas: 1039985.161 units remaining)
+    [ (Pair "hello" 100)  	@storage
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039985.091 units remaining)
+    [ (Pair "hello" 100)  	@storage
+      Unit  	 ]
+  - location: 20 (remaining gas: 1039985.011 units remaining)
+    [ {}  	
+      (Pair "hello" 100)  	@storage
+      Unit  	 ]
+  - location: 22 (remaining gas: 1039984.931 units remaining)
+    [ (Pair {} "hello" 100)  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039984.861 units remaining)
+    [ (Pair {} "hello" 100)  	
+      Unit  	 ]
+
