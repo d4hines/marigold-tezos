@@ -121,6 +121,14 @@ module Voting_period = struct
   include Voting_period_storage
 end
 
+module Event = struct
+  include Event_repr
+
+  let clear ctxt = (List.rev (Raw_context.get_events ctxt) , (Raw_context.set_events ctxt []))
+
+  let push ctxt event = Raw_context.(set_events ctxt (event :: (get_events ctxt)))
+end
+
 module Gas = struct
   include Gas_limit_repr
 

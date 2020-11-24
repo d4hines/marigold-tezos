@@ -522,7 +522,9 @@ let number_of_generated_growing_types : type b a. (b, a) instr -> int =
   | Dup_n _ ->
       0
   | Join_tickets _ ->
-      0
+    0
+  | Log _ ->
+    0
 
 (* ---- Error helpers -------------------------------------------------------*)
 
@@ -5480,7 +5482,15 @@ and parse_instr :
             (Join_tickets contents_ty)
             (Item_t (Option_t (ty, None), rest, annot))
       | _ ->
-          (* TODO: fix injectivity of types *) assert false )
+        (* TODO: fix injectivity of types *) assert false )
+  (* Events *)
+  | (Prim (loc, I_LOG, [], _annot), Item_t (t, rest, _unpacked_annot)) ->
+      check_packable
+        ~legacy:true
+        (* allow to pack contracts for hash/signature checks *) loc
+        t
+      >>?= fun () ->
+      typed ctxt loc (Log t) rest
   (* Primitive parsing errors *)
   | ( Prim
         ( loc,

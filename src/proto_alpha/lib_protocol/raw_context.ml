@@ -47,6 +47,7 @@ type t = {
   temporary_lazy_storage_ids : Lazy_storage_kind.Temp_ids.t;
   internal_nonce : int;
   internal_nonces_used : Int_set.t;
+  events: Event_repr.t list;
 }
 
 type context = t
@@ -483,6 +484,10 @@ let get_constants ctxt =
     | Some constants ->
         ok constants )
 
+let get_events ctxt = ctxt.events
+
+let set_events ctxt events = { ctxt with events }
+
 let patch_constants ctxt f =
   let constants = f ctxt.constants in
   set_constants ctxt.context constants
@@ -538,6 +543,7 @@ let prepare ~level ~predecessor_timestamp ~timestamp ~fitness ctxt =
     temporary_lazy_storage_ids = Lazy_storage_kind.Temp_ids.init;
     internal_nonce = 0;
     internal_nonces_used = Int_set.empty;
+    events = [];
   }
 
 type previous_protocol = Genesis of Parameters_repr.t | Delphi_007
