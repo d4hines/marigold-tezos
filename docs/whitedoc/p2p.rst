@@ -83,7 +83,7 @@ layer. It basically runs the ``accept(2)`` syscall and call
 that it is made aware of an incoming connection. From there, the pool
 will decide how this new connection must be handled.
 
-{Black, While, Grey}lists
+{Black, White, Grey}lists
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The welcome worker takes care of filtering all incoming connections using two
