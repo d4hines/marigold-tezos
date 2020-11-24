@@ -303,6 +303,8 @@ module Cost_of : sig
       'a Script_typed_ir.ticket ->
       'a Script_typed_ir.ticket ->
       Gas.cost
+
+    val log : Gas.cost
   end
 
   module Typechecking : sig
@@ -359,6 +361,7 @@ module Cost_of : sig
     val contract_exists : Gas.cost
 
     val proof_argument : int -> Gas.cost
+
   end
 
   module Unparsing : sig

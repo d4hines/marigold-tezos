@@ -146,6 +146,7 @@ type prim =
   | I_READ_TICKET
   | I_SPLIT_TICKET
   | I_JOIN_TICKETS
+  | I_LOG
   | T_bool
   | T_contract
   | T_int
@@ -248,6 +249,7 @@ let namespace = function
   | I_LE
   | I_LEFT
   | I_LEVEL
+  | I_LOG
   | I_LOOP
   | I_LOOP_LEFT
   | I_LSL
@@ -459,6 +461,8 @@ let string_of_prim = function
       "LEFT"
   | I_LEVEL ->
       "LEVEL"
+  | I_LOG ->
+      "LOG"
   | I_LOOP ->
       "LOOP"
   | I_LSL ->
@@ -745,6 +749,8 @@ let prim_of_string = function
       ok I_LEFT
   | "LEVEL" ->
       ok I_LEVEL
+  | "LOG" ->
+      ok I_LOG
   | "LOOP" ->
       ok I_LOOP
   | "LSL" ->

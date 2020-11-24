@@ -549,7 +549,9 @@ let cost_of_instr : type b a. (b, a) descr -> b -> Gas.cost =
   | (Split_ticket, (ticket, ((amount_a, amount_b), _))) ->
       Interp_costs.split_ticket ticket.amount amount_a amount_b
   | (Join_tickets ty, ((ticket_a, ticket_b), _)) ->
-      Interp_costs.join_tickets ty ticket_a ticket_b
+    Interp_costs.join_tickets ty ticket_a ticket_b
+  | (Log _, _) ->
+    Interp_costs.log
 
 let unpack ctxt ~ty ~bytes =
   Gas.check_enough ctxt (Script.serialized_cost bytes)
@@ -1447,6 +1449,12 @@ let rec step_bounded :
         else None
       in
       logged_return ((result, rest), ctxt)
+  | (Log t , (event , rest)) -> (
+      Script_ir_translator.pack_data ctxt t event
+      >>=? fun (bytes, ctxt) ->
+      let ctxt = Event.push ctxt (step_constants.self , bytes) in
+      logged_return (rest , ctxt)
+    )
 
 let step :
     type b a.
@@ -1479,7 +1487,8 @@ let execute logger ctxt mode step_constants ~entrypoint ~internal
     ( Script.expr
     * packed_internal_operation list
     * context
-    * Lazy_storage.diffs option )
+    * Lazy_storage.diffs option
+    * Event.t list)
     tzresult
     Lwt.t =
   parse_script ctxt unparsed_script ~legacy:true ~allow_forged_in_storage:true
@@ -1498,6 +1507,9 @@ let execute logger ctxt mode step_constants ~entrypoint ~internal
   >>?= fun (to_duplicate, ctxt) ->
   Script_ir_translator.collect_lazy_storage ctxt storage_type storage
   >>?= fun (to_update, ctxt) ->
+  (* This line should be unneeded and _events should be empty,
+     but additional checks don't hurt. *)
+  let (_events , ctxt) = Event.clear ctxt in
   trace
     (Runtime_contract_error (step_constants.self, script_code))
     (interp logger ctxt step_constants code (arg, storage))
@@ -1530,13 +1542,15 @@ let execute logger ctxt mode step_constants ~entrypoint ~internal
     | diff ->
         Some diff
   in
-  (storage, ops, ctxt, lazy_storage_diff)
+  let (events , ctxt) = Event.clear ctxt in
+  (storage, ops, ctxt, lazy_storage_diff, events)
 
 type execution_result = {
   ctxt : context;
   storage : Script.expr;
   lazy_storage_diff : Lazy_storage.diffs option;
   operations : packed_internal_operation list;
+  events : Event.t list ;
 }
 
 let execute ?(logger = (module No_trace : STEP_LOGGER)) ctxt mode
@@ -1550,5 +1564,5 @@ let execute ?(logger = (module No_trace : STEP_LOGGER)) ctxt mode
     ~internal
     script
     (Micheline.root parameter)
-  >|=? fun (storage, operations, ctxt, lazy_storage_diff) ->
-  {ctxt; storage; lazy_storage_diff; operations}
+  >|=? fun (storage, operations, ctxt, lazy_storage_diff, events) ->
+  {ctxt; storage; lazy_storage_diff; operations; events}

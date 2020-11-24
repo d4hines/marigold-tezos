@@ -138,6 +138,13 @@ module Raw_level : sig
   val of_int32 : int32 -> raw_level tzresult
 end
 
+module Event : sig
+  include module type of Event_repr
+
+  val clear : context -> t list * context
+  val push : context -> t -> context
+end
+
 module Cycle : sig
   include BASIC_DATA
 
@@ -363,6 +370,7 @@ module Script : sig
     | I_READ_TICKET
     | I_SPLIT_TICKET
     | I_JOIN_TICKETS
+    | I_LOG
     | T_bool
     | T_contract
     | T_int
@@ -852,7 +860,7 @@ module Lazy_storage : sig
 end
 
 module Contract : sig
-  include BASIC_DATA
+  include BASIC_DATA with type t = Contract_repr.t
 
   type contract = t
 
