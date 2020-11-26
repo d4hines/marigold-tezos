@@ -560,6 +560,89 @@ SECOND_EXPLOSION = '''
 
 
 @pytest.mark.contract
+@pytest.mark.incremental
+class TestView:
+    def test_deploy_view_lib(self, client, session):
+        path = f'{CONTRACT_PATH}/opcodes/view_toplevel_lib.tz'
+        originate(client, session, path, '3', 0)
+        session['lib'] = session['contract']
+        client.bake('bootstrap3', ["--minimal-timestamp"])
+
+    @pytest.mark.parametrize(
+        "contract,init_storage,expected",
+        [
+            ('view_op_id', '(Pair 0 0)', 'Pair 23 3'),
+            ('view_op_add', '42', '26'),
+            ('view_op_nonexistent_func', 'True', 'False'),
+            ('view_op_nonexistent_addr', 'True', 'False'),
+            ('view_op_toplevel_inconsistent_input_type', '5', '0'),
+            ('view_op_toplevel_inconsistent_output_type', 'True', 'False'),
+            ('get_storage', '144', '3'),
+            ('get_storage_nonexistent', '144', '0'),
+            ('get_storage_inconsistent_output_type', '0', '2'),
+        ],
+    )
+    def test_runtime(self, client, session, contract, init_storage, expected):
+        path = f'{CONTRACT_PATH}/opcodes/' + contract + '.tz'
+        originate(client, session, path, init_storage, 0)
+        client.transfer(
+            0,
+            'bootstrap1',
+            contract,
+            ["--arg", "(Pair 23 \"" + session['lib'] + "\")"],
+        )
+        client.bake('bootstrap2', ["--minimal-timestamp"])
+        assert client.get_storage(contract) == expected
+
+    @pytest.mark.parametrize(
+        "contract,expected_error",
+        [
+            ('view_toplevel_bad_return_type', 'is not compatible with type'),
+            (
+                'view_toplevel_bad_input_type',
+                'operator ADD is undefined between string and nat',
+            ),
+            (
+                'view_toplevel_invalid_arity',
+                'primitive view expects 4 arguments',
+            ),
+            (
+                'view_toplevel_bad_name',
+                'Tezos_raw_protocol_alpha.Script_tc_errors.Bad_view_name',
+            ),
+            (
+                'view_toplevel_duplicated_name',
+                'Tezos_raw_protocol_alpha.Script_tc_errors.'
+                + 'Duplicated_view_name',
+            ),
+            ('view_op_invalid_arity', 'primitive VIEW expects 3 arguments'),
+            (
+                'view_op_bad_name',
+                'Tezos_raw_protocol_alpha.Script_tc_errors.Bad_view_name',
+            ),
+            (
+                'view_op_bad_input_type',
+                'Type nat is not compatible with type string',
+            ),
+            (
+                'view_op_bad_return_type',
+                'two branches don\'t end with the same stack type',
+            ),
+            (
+                'get_storage_invalid_arbity',
+                'primitive GET_STORAGE expects 1 arguments',
+            ),
+        ],
+    )
+    def test_compile_time_error(
+        self, client, session, contract, expected_error
+    ):
+        path = f'{CONTRACT_PATH}/ill_typed/' + contract + '.tz'
+        with utils.assert_run_failure(expected_error):
+            originate(client, session, path, '4', 0)
+
+
+@pytest.mark.contract
 class TestGasBound:
     def test_write_contract(self, tmpdir, session: dict):
         items = {

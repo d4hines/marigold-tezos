@@ -1,0 +1,3 @@
+parameter (pair nat address) ;
+storage nat;
+code { CAR ; UNPAIR; DROP; GET_STORAGE nat ; IF_SOME { DUP ; DROP } { FAIL } ; NIL operation ; PAIR }
