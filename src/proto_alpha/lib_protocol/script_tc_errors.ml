@@ -70,6 +70,8 @@ type error += Unreachable_entrypoint of prim list
 
 type error += Entrypoint_name_too_long of string
 
+type error += Bad_view_name of Script.location
+
 (* Instruction typing errors *)
 type error += Fail_not_in_tail_position of Script.location
 
@@ -90,6 +92,11 @@ type error +=
   | Unmatched_branches :
       Script.location * unparsed_stack_ty * unparsed_stack_ty
       -> error
+
+(* View errors *)
+type error += Failed_view : Script.node -> error
+
+type error += Duplicated_view_name of Script.location
 
 type error += Self_in_lambda of Script.location
 

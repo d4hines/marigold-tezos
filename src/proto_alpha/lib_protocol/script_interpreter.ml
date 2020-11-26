@@ -49,6 +49,8 @@ type error += Cannot_serialize_storage
 
 type error += Michelson_too_many_recursive_calls
 
+type error += Bad_view_contract of Contract.t
+
 let () =
   let open Data_encoding in
   let trace_encoding =
@@ -282,6 +284,10 @@ let cost_of_instr : type b a. (b, a) descr -> b -> Gas.cost =
       Interp_costs.set_update v set
   | (Set_size, _) ->
       Interp_costs.set_size
+  | (Get_storage _, _) ->
+      Interp_costs.get_storage
+  | (View _, _) ->
+      Interp_costs.view
   | (Empty_map _, _) ->
       Interp_costs.empty_map
   | (Map_map _, (map, _)) ->
@@ -1131,6 +1137,63 @@ let rec step_bounded :
               lazy_storage_diff ),
             rest ),
           ctxt )
+  | (Get_storage t, ((c, _), rest)) -> (
+      Gas.consume ctxt Interp_costs.get_storage
+      >>?= fun ctxt ->
+      Contract.get_script ctxt c
+      >>=? fun (ctxt, script_opt) ->
+      match script_opt with
+      | None ->
+          logged_return ((None, rest), ctxt)
+      | Some script -> (
+          parse_script ~legacy:false ~allow_forged_in_storage:true ctxt script
+          >>=? fun (Ex_script {storage; storage_type}, ctxt) ->
+          match ty_eq ctxt loc t storage_type with
+          | Ok (Eq, ctxt) ->
+              logged_return ((Some storage, rest), ctxt)
+          | Error _ ->
+              logged_return ((None, rest), ctxt) ) )
+  | (View (name, input_ty, output_ty), (input, ((c, _), rest))) -> (
+      Gas.consume ctxt Interp_costs.get_storage
+      >>?= fun ctxt ->
+      Contract.get_script ctxt c
+      >>=? fun (ctxt, script_opt) ->
+      match script_opt with
+      | None ->
+          logged_return ((None, rest), ctxt)
+      | Some script -> (
+          parse_script ~legacy:false ~allow_forged_in_storage:true ctxt script
+          >>=? fun (Ex_script {storage; storage_type; views}, ctxt) ->
+          match SMap.find_opt name views with
+          | None ->
+              logged_return ((None, rest), ctxt)
+          | Some (Ex_view (Lam (view, _))) -> (
+            match
+              stack_ty_eq ctxt loc view.aft (Item_t (output_ty, Empty_t, None))
+            with
+            | Ok (Eq, ctxt) -> (
+                let bef_ty =
+                  stack_ty_eq
+                    ctxt
+                    loc
+                    view.bef
+                    (Item_t
+                       ( Pair_t
+                           ( (input_ty, None, None),
+                             (storage_type, None, None),
+                             None ),
+                         Empty_t,
+                         None ))
+                in
+                match bef_ty with
+                | Ok (Eq, ctxt) ->
+                    step logger ctxt step_constants view ((input, storage), ())
+                    >>=? fun ((output, ()), ctxt) ->
+                    logged_return ((Some output, rest), ctxt)
+                | Error _ ->
+                    logged_return ((None, rest), ctxt) )
+            | Error _ ->
+                logged_return ((None, rest), ctxt) ) ) )
   | (Implicit_account, (key, rest)) ->
       let contract = Contract.implicit_contract key in
       logged_return (((Unit_t None, (contract, "default")), rest), ctxt)
@@ -1448,7 +1511,7 @@ let rec step_bounded :
       in
       logged_return ((result, rest), ctxt)
 
-let step :
+and step :
     type b a.
     logger ->
     context ->

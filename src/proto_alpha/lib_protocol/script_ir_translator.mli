@@ -46,6 +46,7 @@ type ('arg, 'storage) code = {
     Script_typed_ir.lambda;
   arg_type : 'arg Script_typed_ir.ty;
   storage_type : 'storage Script_typed_ir.ty;
+  views : 'storage Script_typed_ir.ex_view Script_typed_ir.SMap.t;
   root_name : Script_typed_ir.field_annot option;
 }
 
@@ -153,6 +154,14 @@ val ty_eq :
 
 val compare_address : Script_typed_ir.address -> Script_typed_ir.address -> int
 
+val stack_ty_eq :
+  context ->
+  int ->
+  'ta Script_typed_ir.stack_ty ->
+  'tb Script_typed_ir.stack_ty ->
+  (('ta Script_typed_ir.stack_ty, 'tb Script_typed_ir.stack_ty) eq * context)
+  tzresult
+
 val compare_comparable : 'a Script_typed_ir.comparable_ty -> 'a -> 'a -> int
 
 val parse_comparable_data :
@@ -228,7 +237,11 @@ val unparse_ty :
 val parse_toplevel :
   legacy:bool ->
   Script.expr ->
-  (Script.node * Script.node * Script.node * Script_typed_ir.field_annot option)
+  ( Script.node
+  * Script.node
+  * Script.node
+  * (string * Script.node * Script.node * Script.node) list
+  * Script_typed_ir.field_annot option )
   tzresult
 
 val add_field_annot :

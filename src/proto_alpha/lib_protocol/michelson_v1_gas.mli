@@ -257,6 +257,10 @@ module Cost_of : sig
 
     val contract : Gas.cost
 
+    val get_storage : Gas.cost
+
+    val view : Gas.cost
+
     val transfer_tokens : Gas.cost
 
     val implicit_account : Gas.cost

@@ -43,6 +43,8 @@ type error += Cannot_serialize_storage
 
 type error += Michelson_too_many_recursive_calls
 
+type error += Bad_view_contract of Contract.t
+
 type execution_result = {
   ctxt : context;
   storage : Script.expr;

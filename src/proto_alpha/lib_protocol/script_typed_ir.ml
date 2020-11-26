@@ -105,11 +105,14 @@ type operation = packed_internal_operation * Lazy_storage.diffs option
 
 type 'a ticket = {ticketer : address; contents : 'a; amount : n num}
 
+module SMap = Map.Make (String)
+
 type ('arg, 'storage) script = {
   code : (('arg, 'storage) pair, (operation boxed_list, 'storage) pair) lambda;
   arg_type : 'arg ty;
   storage : 'storage;
   storage_type : 'storage ty;
+  views : 'storage ex_view SMap.t;
   root_name : field_annot option;
 }
 
@@ -120,6 +123,11 @@ and ('arg, 'ret) lambda =
       ('arg * end_of_stack, 'ret * end_of_stack) descr * Script.node
       -> ('arg, 'ret) lambda
 [@@coq_force_gadt]
+
+and ('input, 'output, 'storage) view = ('input * 'storage, 'output) lambda
+
+and 'storage ex_view =
+  | Ex_view : ('input, 'output, 'storage) view -> 'storage ex_view
 
 and 'arg typed_contract = 'arg ty * address
 
@@ -379,6 +387,12 @@ and ('bef, 'aft) instr =
   | Contract :
       'p ty * string
       -> (address * 'rest, 'p typed_contract option * 'rest) instr
+  | Get_storage :
+      'storage ty
+      -> (address * 'rest, 'storage option * 'rest) instr
+  | View :
+      (string * 'input ty * 'output ty)
+      -> ('input * (address * 'rest), 'output option * 'rest) instr
   | Transfer_tokens
       : ( 'arg * (Tez.t * ('arg typed_contract * 'rest)),
           operation * 'rest )
