@@ -83,7 +83,8 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    script_ir_translator.mli script_ir_translator.ml
    script_tc_errors_registration.ml
    script_interpreter_cost.mli script_interpreter_cost.ml
-   script_interpreter.mli script_interpreter.ml
+   script_interpreter_parameters.ml
+   script_interpreter.ml
    baking.mli baking.ml
    amendment.mli amendment.ml
    apply_results.mli apply_results.ml
@@ -169,7 +170,8 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    script_ir_translator.mli script_ir_translator.ml
    script_tc_errors_registration.ml
    script_interpreter_cost.mli script_interpreter_cost.ml
-   script_interpreter.mli script_interpreter.ml
+   script_interpreter_parameters.ml
+   script_interpreter.ml
    baking.mli baking.ml
    amendment.mli amendment.ml
    apply_results.mli apply_results.ml
@@ -255,7 +257,8 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    script_ir_translator.mli script_ir_translator.ml
    script_tc_errors_registration.ml
    script_interpreter_cost.mli script_interpreter_cost.ml
-   script_interpreter.mli script_interpreter.ml
+   script_interpreter_parameters.ml
+   script_interpreter.ml
    baking.mli baking.ml
    amendment.mli amendment.ml
    apply_results.mli apply_results.ml
@@ -361,6 +364,7 @@ include Tezos_raw_protocol_alpha.Main
    Script_ir_translator
    Script_tc_errors_registration
    Script_interpreter_cost
+   Script_interpreter_parameters
    Script_interpreter
    Baking
    Amendment
@@ -483,7 +487,8 @@ include Tezos_raw_protocol_alpha.Main
    script_ir_translator.mli script_ir_translator.ml
    script_tc_errors_registration.ml
    script_interpreter_cost.mli script_interpreter_cost.ml
-   script_interpreter.mli script_interpreter.ml
+   script_interpreter_parameters.ml
+   script_interpreter.ml
    baking.mli baking.ml
    amendment.mli amendment.ml
    apply_results.mli apply_results.ml
