@@ -63,6 +63,7 @@
 
         "Alpha_context",
 
+        "Script_typed_ir_parameters",
         "Script_typed_ir",
         "Script_tc_errors",
         "Michelson_v1_gas",

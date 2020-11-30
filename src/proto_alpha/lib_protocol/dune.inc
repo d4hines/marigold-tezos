@@ -75,6 +75,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    fees_storage.mli fees_storage.ml
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
+   script_typed_ir_parameters.ml
    script_typed_ir.ml
    script_tc_errors.ml
    michelson_v1_gas.mli michelson_v1_gas.ml
@@ -159,6 +160,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    fees_storage.mli fees_storage.ml
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
+   script_typed_ir_parameters.ml
    script_typed_ir.ml
    script_tc_errors.ml
    michelson_v1_gas.mli michelson_v1_gas.ml
@@ -243,6 +245,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    fees_storage.mli fees_storage.ml
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
+   script_typed_ir_parameters.ml
    script_typed_ir.ml
    script_tc_errors.ml
    michelson_v1_gas.mli michelson_v1_gas.ml
@@ -347,6 +350,7 @@ include Tezos_raw_protocol_alpha.Main
    Fees_storage
    Sapling_validator
    Alpha_context
+   Script_typed_ir_parameters
    Script_typed_ir
    Script_tc_errors
    Michelson_v1_gas
@@ -467,6 +471,7 @@ include Tezos_raw_protocol_alpha.Main
    fees_storage.mli fees_storage.ml
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
+   script_typed_ir_parameters.ml
    script_typed_ir.ml
    script_tc_errors.ml
    michelson_v1_gas.mli michelson_v1_gas.ml
