@@ -193,13 +193,13 @@ module type Type = sig
   end
 
   module Error_monad : sig
-    type 'a trace = 'a Error_monad.trace
+    type 'a trace
 
-    type error_category = Error_monad.error_category
+    type error_category = [`Branch | `Temporary | `Permanent]
 
-    type error = Error_monad.error = ..
+    type error = ..
 
-    type 'a tzresult = 'a Error_monad.tzresult
+    type 'a tzresult = ('a, error trace) result
 
     val ok_none : ('a option, 'b) result
 
