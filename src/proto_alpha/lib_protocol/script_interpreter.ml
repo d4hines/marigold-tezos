@@ -1438,6 +1438,7 @@ include Make (struct
   module Micheline = Micheline
   module Lwt = Lwt
   module List = List
+  module Format = Format
   module Raw_context = Alpha_context
   module Error_monad = Error_monad
 
@@ -1456,13 +1457,8 @@ include Make (struct
   end
 
   module Alpha_context = Alpha_context
+  module Operation = Alpha_context
   module Script_ir_translator = Script_ir_translator
   module Script_typed_ir = Script_typed_ir
   module Script_interpreter_cost = Script_interpreter_cost
-
-  module Operation = struct
-    include Alpha_context
-    include Alpha_context.Operation
-    module Kind = Alpha_context.Kind
-  end
 end)

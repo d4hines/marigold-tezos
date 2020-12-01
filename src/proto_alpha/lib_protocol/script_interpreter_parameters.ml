@@ -19,7 +19,11 @@ module type Type = sig
     external ( + ) : int -> int -> int = "%addint"
 
     external ( && ) : bool -> bool -> bool = "%sequand"
+
+    type ('ok, 'error) result = Ok of 'ok | Error of 'error
   end
+
+  open Pervasives
 
   module Signature : sig
     type t
@@ -44,9 +48,9 @@ module type Type = sig
 
     val zero : t
 
-    external to_int : t -> int = "ml_z_to_int"
+    val to_int : t -> int
 
-    external of_int : int -> t = "ml_z_of_int" [@@noalloc]
+    val of_int : int -> t
 
     val add : t -> t -> t
   end
@@ -173,9 +177,9 @@ module type Type = sig
   end
 
   module Lwt : sig
-    type 'a t = 'a Lwt.t
+    type 'a t
 
-    val return : 'a -> 'a Lwt.t
+    val return : 'a -> 'a t
   end
 
   module List : sig
@@ -190,6 +194,47 @@ module type Type = sig
     val flatten : 'a list list -> 'a list
 
     val length : 'a list -> int
+  end
+
+  module Format : sig
+    type formatter
+  end
+
+  module Data_encoding : sig
+    type 'a t
+
+    type 'a encoding = 'a t
+
+    type 'a lazy_t
+
+    type 'a field
+
+    module Binary : sig
+      val of_bytes : 'a encoding -> bytes -> 'a option
+    end
+
+    val empty : unit encoding
+
+    val list : ?max_length:int -> 'a encoding -> 'a list encoding
+
+    val opt :
+      ?title:string ->
+      ?description:string ->
+      string ->
+      't encoding ->
+      't option field
+
+    val string : string encoding
+
+    val obj1 : 'f1 field -> 'f1 encoding
+
+    val obj2 : 'f1 field -> 'f2 field -> ('f1 * 'f2) encoding
+
+    val obj3 :
+      'f1 field -> 'f2 field -> 'f3 field -> ('f1 * 'f2 * 'f3) encoding
+
+    val req :
+      ?title:string -> ?description:string -> string -> 't encoding -> 't field
   end
 
   module Error_monad : sig
@@ -290,43 +335,6 @@ module type Type = sig
 
   open Error_monad
 
-  module Data_encoding : sig
-    type 'a t = 'a Data_encoding.t
-
-    type 'a encoding = 'a t
-
-    type 'a lazy_t
-
-    type 'a field
-
-    module Binary : sig
-      val of_bytes : 'a encoding -> bytes -> 'a option
-    end
-
-    val empty : unit encoding
-
-    val list : ?max_length:int -> 'a encoding -> 'a list encoding
-
-    val opt :
-      ?title:string ->
-      ?description:string ->
-      string ->
-      't encoding ->
-      't option field
-
-    val string : string encoding
-
-    val obj1 : 'f1 field -> 'f1 encoding
-
-    val obj2 : 'f1 field -> 'f2 field -> ('f1 * 'f2) encoding
-
-    val obj3 :
-      'f1 field -> 'f2 field -> 'f3 field -> ('f1 * 'f2 * 'f3) encoding
-
-    val req :
-      ?title:string -> ?description:string -> string -> 't encoding -> 't field
-  end
-
   module Compare : sig
     module Z : sig
       type t = Z.t
@@ -374,9 +382,23 @@ module type Type = sig
       val eq : t -> t -> bool
     end
 
+    module Fr : sig
+      type t
+
+      val negate : t -> t
+
+      val mul : t -> t -> t
+
+      val add : t -> t -> t
+
+      val of_z : Z.t -> t
+
+      val to_z : t -> Z.t
+    end
+
     module G2 : sig
       module Scalar : sig
-        type t = Bls12_381.G2.Scalar.t
+        type t = Fr.t
       end
 
       type t
@@ -390,7 +412,7 @@ module type Type = sig
 
     module G1 : sig
       module Scalar : sig
-        type t = Bls12_381.G1.Scalar.t
+        type t = Fr.t
       end
 
       type t
@@ -400,20 +422,6 @@ module type Type = sig
       val mul : t -> Scalar.t -> t
 
       val add : t -> t -> t
-    end
-
-    module Fr : sig
-      type t = Bls12_381.Fr.t
-
-      val negate : t -> t
-
-      val mul : t -> t -> t
-
-      val add : t -> t -> t
-
-      val of_z : Z.t -> t
-
-      val to_z : t -> Z.t
     end
 
     val miller_loop : (G1.t * G2.t) list -> Gt.t
@@ -458,7 +466,7 @@ module type Type = sig
       type t
     end
 
-    type transaction = Sapling.UTXO.transaction
+    type transaction
 
     type state
 
@@ -469,7 +477,7 @@ module type Type = sig
       state ->
       transaction ->
       string ->
-      (Raw_context.t * (Int64.t * state) option) tzresult Lwt.t
+      (Raw_context.t * (int64 * state) option) tzresult Lwt.t
   end
 
   module Contract : sig
