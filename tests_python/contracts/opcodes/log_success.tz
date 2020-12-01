@@ -1,0 +1,10 @@
+parameter unit;
+storage unit;
+code { DROP;
+
+       # Log a packable type
+       PUSH string "dummy";
+       PACK;
+       LOG;
+
+       UNIT; NIL @noop operation; PAIR; };

@@ -64,6 +64,9 @@ class TestContractOpcodes:
             ('slice.tz', 'Some "Foo"', 'Pair 1 3', 'None'),
             ('slice.tz', 'Some "Foo"', 'Pair 1 1', '(Some "o")'),
 
+            # Test LOG
+            ('log_success.tz', 'Unit', 'Unit', 'Unit'),
+
             # Stress-test the failure case of slice for a
             # non-trivial gas consumption
             ('slice.tz',
