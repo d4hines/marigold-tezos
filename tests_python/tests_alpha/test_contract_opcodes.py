@@ -81,6 +81,10 @@ class TestContractOpcodes:
                 'Pair 1 10000',
                 'None',
             ),
+
+            # Test LOG
+            ('log_success.tz', 'Unit', 'Unit', 'Unit'),
+
             # Slice bytes
             ('slice_bytes.tz', 'None', 'Pair 0 1', 'None'),
             ('slice_bytes.tz', 'Some 0xaabbcc', 'Pair 0 0', '(Some 0x)'),
