@@ -5,7 +5,7 @@ open Micheline
 
 exception Expression_from_string
 
-let expression_from_string str : Script.expr tzresult Lwt.t =
+let expression_from_string str : Script.expr Error_monad.tzresult Lwt.t =
   let (ast, errs) = Michelson_v1_parser.parse_expression ~check:false str in
   ( match errs with
   | [] ->
