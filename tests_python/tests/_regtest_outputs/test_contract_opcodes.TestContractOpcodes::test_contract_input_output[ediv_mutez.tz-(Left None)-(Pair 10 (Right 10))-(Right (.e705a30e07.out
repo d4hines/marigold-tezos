@@ -9,10 +9,10 @@ big_map diff
 trace
   - location: 18 (remaining gas: 1039982.170 units remaining)
     [ (Pair (Pair 10 (Right 10)) (Left None))  	 ]
-  - location: 19 (remaining gas: 1039982.090 units remaining)
+  - location: 19 (remaining gas: 1039981.940 units remaining)
     [ (Pair 10 (Right 10))  	@parameter
       Unit  	 ]
-  - location: 20 (remaining gas: 1039982.010 units remaining)
+  - location: 20 (remaining gas: 1039981.940 units remaining)
     [ 10  	
       (Right 10)  	
       Unit  	 ]

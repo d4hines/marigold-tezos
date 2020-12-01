@@ -223,344 +223,984 @@ end
 
 type logger = (module STEP_LOGGER)
 
-let cost_of_instr : type a s r f. (a, s, r, f) kinstr -> a -> s -> Gas.cost =
+(*
+
+   Computing the cost of Michelson instructions.
+
+   The cost model for Michelson classifies instructions in two
+   categories: the ones whose cost depends on the data on the stack
+   and the ones that have a statically fixed cost.
+
+   The function [cost_of_instr] implements this cost model.  It is
+   used in the interpreter to track the consumption of gas (see the
+   function [step] below). This function is also used to regroup
+   together the sequence of instructions whose cost can be determined
+   statically (see [insert_pay_gas_in_advance] below).
+
+ *)
+
+(*
+
+   We need to know if an instruction has a purely static cost: this
+   piece of information is provided by [static_cost_of_instr].
+
+   To avoid code duplication between [static_cost_of_instr] and
+   [datadependent_cost_of_instr], the instruction's kind of cost
+   is refined thanks to the following GADT:
+
+ *)
+type _ cost_of_instr =
+  | StaticCost : Gas.cost -> static_cost cost_of_instr
+  | DynamicCost : dynamic_cost cost_of_instr
+
+let static_cost_of_instr :
+    type a s r f c. (a, s, r, f, c) kinstr -> c cost_of_instr = function
+  | KHalt _ ->
+      (* FIXME *)
+      StaticCost Gas.free
+  | KDrop _ ->
+      StaticCost Interp_costs.drop
+  | KDup _ ->
+      StaticCost Interp_costs.dup
+  | KSwap _ ->
+      StaticCost Interp_costs.swap
+  | KConst _ ->
+      StaticCost Interp_costs.push
+  | KCons_some _ ->
+      StaticCost Interp_costs.cons_some
+  | KCons_none _ ->
+      StaticCost Interp_costs.cons_none
+  | KIf_none _ ->
+      StaticCost Interp_costs.if_none
+  | KCons_pair _ ->
+      StaticCost Interp_costs.cons_pair
+  | KUnpair _ ->
+      StaticCost Interp_costs.unpair
+  | KCar _ ->
+      StaticCost Interp_costs.car
+  | KCdr _ ->
+      StaticCost Interp_costs.cdr
+  | KCons_left _ ->
+      StaticCost Interp_costs.cons_left
+  | KCons_right _ ->
+      StaticCost Interp_costs.cons_right
+  | KIf_left _ ->
+      StaticCost Interp_costs.if_left
+  | KCons_list _ ->
+      StaticCost Interp_costs.cons_list
+  | KNil _ ->
+      StaticCost Interp_costs.nil
+  | KIf_cons _ ->
+      StaticCost Interp_costs.if_cons
+  | KList_map _ ->
+      DynamicCost
+  | KList_mapping _ ->
+      DynamicCost
+  | KList_mapped _ ->
+      DynamicCost
+  | KList_size _ ->
+      StaticCost Interp_costs.list_size
+  | KList_iter _ ->
+      DynamicCost
+  | KIter _ ->
+      DynamicCost
+  | KEmpty_set _ ->
+      StaticCost Interp_costs.empty_set
+  | KSet_iter _ ->
+      DynamicCost
+  | KSet_mem _ ->
+      DynamicCost
+  | KSet_update _ ->
+      DynamicCost
+  | KSet_size _ ->
+      StaticCost Interp_costs.set_size
+  | KEmpty_map _ ->
+      StaticCost Interp_costs.empty_map
+  | KMap_map _ ->
+      DynamicCost
+  | KMap_get_and_update _ ->
+      DynamicCost
+  | KMap_mapping _ ->
+      DynamicCost
+  | KMap_mapped _ ->
+      DynamicCost
+  | KMap_iter _ ->
+      DynamicCost
+  | KMap_mem _ ->
+      DynamicCost
+  | KMap_get _ ->
+      DynamicCost
+  | KMap_update _ ->
+      DynamicCost
+  | KMap_size _ ->
+      StaticCost Interp_costs.map_size
+  | KEmpty_big_map _ ->
+      StaticCost Interp_costs.empty_map
+  | KBig_map_mem _ ->
+      DynamicCost
+  | KBig_map_get _ ->
+      DynamicCost
+  | KBig_map_update _ ->
+      DynamicCost
+  | KBig_map_get_and_update _ ->
+      DynamicCost
+  | KAdd_seconds_to_timestamp _ ->
+      DynamicCost
+  | KAdd_timestamp_to_seconds _ ->
+      DynamicCost
+  | KSub_timestamp_seconds _ ->
+      DynamicCost
+  | KDiff_timestamps _ ->
+      DynamicCost
+  | KConcat_string_pair _ ->
+      DynamicCost
+  | KConcat_string _ ->
+      DynamicCost
+  | KSlice_string _ ->
+      DynamicCost
+  | KString_size _ ->
+      StaticCost Interp_costs.string_size
+  | KConcat_bytes_pair _ ->
+      DynamicCost
+  | KConcat_bytes _ ->
+      DynamicCost
+  | KSlice_bytes _ ->
+      DynamicCost
+  | KBytes_size _ ->
+      StaticCost Interp_costs.bytes_size
+  | KAdd_tez _ ->
+      StaticCost Interp_costs.add_tez
+  | KSub_tez _ ->
+      StaticCost Interp_costs.sub_tez
+  | KMul_teznat _ ->
+      DynamicCost
+  | KMul_nattez _ ->
+      DynamicCost
+  | KOr _ ->
+      StaticCost Interp_costs.bool_or
+  | KAnd _ ->
+      StaticCost Interp_costs.bool_and
+  | KXor _ ->
+      StaticCost Interp_costs.bool_xor
+  | KNot _ ->
+      StaticCost Interp_costs.bool_not
+  | KIs_nat _ ->
+      StaticCost Interp_costs.is_nat
+  | KAbs_int _ ->
+      DynamicCost
+  | KInt_nat _ ->
+      StaticCost Interp_costs.int_nat
+  | KInt_bls12_381_fr _ ->
+      StaticCost Interp_costs.int_bls12_381_fr
+  | KNeg_int _ ->
+      DynamicCost
+  | KNeg_nat _ ->
+      DynamicCost
+  | KAdd_intint _ ->
+      DynamicCost
+  | KAdd_intnat _ ->
+      DynamicCost
+  | KAdd_natint _ ->
+      DynamicCost
+  | KAdd_natnat _ ->
+      DynamicCost
+  | KSub_int _ ->
+      DynamicCost
+  | KMul_intint _ ->
+      DynamicCost
+  | KMul_intnat _ ->
+      DynamicCost
+  | KMul_natint _ ->
+      DynamicCost
+  | KMul_natnat _ ->
+      DynamicCost
+  | KEdiv_teznat _ ->
+      DynamicCost
+  | KEdiv_tez _ ->
+      StaticCost Interp_costs.ediv_tez
+  | KEdiv_intint _ ->
+      DynamicCost
+  | KEdiv_intnat _ ->
+      DynamicCost
+  | KEdiv_natint _ ->
+      DynamicCost
+  | KEdiv_natnat _ ->
+      DynamicCost
+  | KLsl_nat _ ->
+      DynamicCost
+  | KLsr_nat _ ->
+      DynamicCost
+  | KOr_nat _ ->
+      DynamicCost
+  | KAnd_nat _ ->
+      DynamicCost
+  | KAnd_int_nat _ ->
+      DynamicCost
+  | KXor_nat _ ->
+      DynamicCost
+  | KNot_int _ ->
+      DynamicCost
+  | KNot_nat _ ->
+      DynamicCost
+  | KIf _ ->
+      StaticCost Interp_costs.if_
+  | KLoop _ ->
+      StaticCost Interp_costs.loop
+  | KLoop_left _ ->
+      StaticCost Interp_costs.loop_left
+  | KDip _ ->
+      StaticCost Interp_costs.dip
+  | KExec _ ->
+      StaticCost Interp_costs.exec
+  | KApply _ ->
+      StaticCost Interp_costs.apply
+  | KLambda _ ->
+      StaticCost Interp_costs.push
+  | KFailwith _ ->
+      StaticCost Gas.free
+  | KNop _ ->
+      StaticCost Interp_costs.nop
+  | KCompare _ ->
+      DynamicCost
+  | KEq _ ->
+      StaticCost Interp_costs.neq
+  | KNeq _ ->
+      StaticCost Interp_costs.neq
+  | KLt _ ->
+      StaticCost Interp_costs.neq
+  | KLe _ ->
+      StaticCost Interp_costs.neq
+  | KGt _ ->
+      StaticCost Interp_costs.neq
+  | KGe _ ->
+      StaticCost Interp_costs.neq
+  | KPack _ ->
+      StaticCost Gas.free
+  | KUnpack _ ->
+      StaticCost Gas.free
+  | KAddress _ ->
+      StaticCost Interp_costs.address
+  | KContract _ ->
+      StaticCost Interp_costs.contract
+  | KTransfer_tokens _ ->
+      StaticCost Interp_costs.transfer_tokens
+  | KImplicit_account _ ->
+      StaticCost Interp_costs.implicit_account
+  | KSet_delegate _ ->
+      StaticCost Interp_costs.set_delegate
+  | KBalance _ ->
+      StaticCost Interp_costs.balance
+  | KLevel _ ->
+      StaticCost Interp_costs.level
+  | KNow _ ->
+      StaticCost Interp_costs.now
+  | KSapling_empty_state _ ->
+      StaticCost Interp_costs.sapling_empty_state
+  | KSapling_verify_update _ ->
+      DynamicCost
+  | KCheck_signature _ ->
+      DynamicCost
+  | KHash_key _ ->
+      DynamicCost
+  | KBlake2b _ ->
+      DynamicCost
+  | KSha256 _ ->
+      DynamicCost
+  | KSha512 _ ->
+      DynamicCost
+  | KSource _ ->
+      StaticCost Interp_costs.source
+  | KSender _ ->
+      StaticCost Interp_costs.source
+  | KSelf _ ->
+      StaticCost Interp_costs.self
+  | KSelf_address _ ->
+      StaticCost Interp_costs.self
+  | KAmount _ ->
+      StaticCost Interp_costs.amount
+  | KDig (_, n, _, _) ->
+      StaticCost (Interp_costs.dign n)
+  | KDug (_, n, _, _) ->
+      StaticCost (Interp_costs.dugn n)
+  | KDipn (_, n, _, _, _) ->
+      StaticCost (Interp_costs.dipn n)
+  | KDropn (_, n, _, _) ->
+      StaticCost (Interp_costs.dropn n)
+  | KChainId _ ->
+      StaticCost Interp_costs.chain_id
+  | KCreate_contract _ ->
+      StaticCost Interp_costs.create_contract
+  | KNever _ ->
+      StaticCost Gas.free
+  | KVoting_power _ ->
+      StaticCost Interp_costs.voting_power
+  | KTotal_voting_power _ ->
+      StaticCost Interp_costs.total_voting_power
+  | KKeccak _ ->
+      DynamicCost
+  | KSha3 _ ->
+      DynamicCost
+  | KAdd_bls12_381_g1 _ ->
+      StaticCost Interp_costs.add_bls12_381_g1
+  | KAdd_bls12_381_g2 _ ->
+      StaticCost Interp_costs.add_bls12_381_g2
+  | KAdd_bls12_381_fr _ ->
+      StaticCost Interp_costs.add_bls12_381_fr
+  | KMul_bls12_381_g1 _ ->
+      StaticCost Interp_costs.mul_bls12_381_g1
+  | KMul_bls12_381_g2 _ ->
+      StaticCost Interp_costs.mul_bls12_381_g2
+  | KMul_bls12_381_fr _ ->
+      StaticCost Interp_costs.mul_bls12_381_fr
+  | KNeg_bls12_381_g1 _ ->
+      StaticCost Interp_costs.neg_bls12_381_g1
+  | KNeg_bls12_381_g2 _ ->
+      StaticCost Interp_costs.neg_bls12_381_g2
+  | KNeg_bls12_381_fr _ ->
+      StaticCost Interp_costs.neg_bls12_381_fr
+  | KMul_bls12_381_fr_z _ ->
+      StaticCost Interp_costs.mul_bls12_381_fr_z
+  | KMul_bls12_381_z_fr _ ->
+      StaticCost Interp_costs.mul_bls12_381_fr_z
+  | KPairing_check_bls12_381 _ ->
+      DynamicCost
+  | KDup_n (_, n, _, _) ->
+      StaticCost (Interp_costs.dupn n)
+  | KComb (_, n, _, _) ->
+      StaticCost (Interp_costs.comb n)
+  | KUncomb (_, n, _, _) ->
+      StaticCost (Interp_costs.uncomb n)
+  | KComb_get (_, n, _, _) ->
+      StaticCost (Interp_costs.comb_get n)
+  | KComb_set (_, n, _, _) ->
+      StaticCost (Interp_costs.comb_set n)
+  | KTicket _ ->
+      StaticCost Interp_costs.ticket
+  | KRead_ticket _ ->
+      StaticCost Interp_costs.read_ticket
+  | KSplit_ticket _ ->
+      DynamicCost
+  | KJoin_tickets _ ->
+      DynamicCost
+  | KPayGas (_, _, n, _, _) ->
+      StaticCost n
+  | KCountGas _ ->
+      (* FIXME *)
+      StaticCost Gas.free
+
+let datadependent_cost_of_instr :
+    type a s r f. (a, s, r, f, dynamic_cost) kinstr -> a -> s -> Gas.cost =
  fun instr accu stack ->
-  let stack = (accu, stack) in
-  match (instr, stack) with
-  | (KHalt _, _) ->
-      (* FIXME *)
-      Gas.free
-  | (KDrop _, _) ->
-      Interp_costs.drop
-  | (KDup _, _) ->
-      Interp_costs.dup
-  | (KSwap _, _) ->
-      Interp_costs.swap
-  | (KConst _, _) ->
-      Interp_costs.push
-  | (KCons_some _, _) ->
-      Interp_costs.cons_some
-  | (KCons_none _, _) ->
-      Interp_costs.cons_none
-  | (KIf_none _, _) ->
-      Interp_costs.if_none
-  | (KCons_pair _, _) ->
-      Interp_costs.cons_pair
-  | (KUnpair _, _) ->
-      Interp_costs.unpair
-  | (KCar _, _) ->
-      Interp_costs.car
-  | (KCdr _, _) ->
-      Interp_costs.cdr
-  | (KCons_left _, _) ->
-      Interp_costs.cons_left
-  | (KCons_right _, _) ->
-      Interp_costs.cons_right
-  | (KIf_left _, _) ->
-      Interp_costs.if_left
-  | (KCons_list _, _) ->
-      Interp_costs.cons_list
-  | (KNil _, _) ->
-      Interp_costs.nil
-  | (KIf_cons _, _) ->
-      Interp_costs.if_cons
-  | (KList_map _, (list, _)) ->
+  match (instr, accu, stack) with
+  | (KList_map _, list, _) ->
       Interp_costs.list_map list
-  | (KList_mapping _, _) ->
+  | (KList_mapping _, _, _) ->
       (* FIXME *)
       Gas.free
-  | (KList_mapped _, _) ->
+  | (KList_mapped _, _, _) ->
       (* FIXME *)
       Gas.free
-  | (KList_size _, _) ->
-      Interp_costs.list_size
-  | (KList_iter _, (l, _)) ->
+  | (KList_iter _, l, _) ->
       Interp_costs.list_iter l
-  | (KIter _, _) ->
+  | (KIter _, _, _) ->
       (* FIXME *)
       Gas.free
-  | (KEmpty_set _, _) ->
-      Interp_costs.empty_set
-  | (KSet_iter _, (set, _)) ->
+  | (KSet_iter _, set, _) ->
       Interp_costs.set_iter set
-  | (KSet_mem _, (v, (set, _))) ->
+  | (KSet_mem _, v, (set, _)) ->
       Interp_costs.set_mem v set
-  | (KSet_update _, (v, (_, (set, _)))) ->
+  | (KSet_update _, v, (_, (set, _))) ->
       Interp_costs.set_update v set
-  | (KSet_size _, _) ->
-      Interp_costs.set_size
-  | (KEmpty_map _, _) ->
-      Interp_costs.empty_map
-  | (KMap_map _, (map, _)) ->
+  | (KMap_map _, map, _) ->
       Interp_costs.map_map map
-  | (KMap_mapping _, _) ->
+  | (KMap_mapping _, _, _) ->
       (* FIXME *)
       Gas.free
-  | (KMap_mapped _, _) ->
+  | (KMap_mapped _, _, _) ->
       (* FIXME *)
       Gas.free
-  | (KMap_iter _, (map, _)) ->
+  | (KMap_iter _, map, _) ->
       Interp_costs.map_iter map
-  | (KMap_mem _, (v, (map, _rest))) ->
+  | (KMap_mem _, v, (map, _rest)) ->
       Interp_costs.map_mem v map
-  | (KMap_get _, (v, (map, _rest))) ->
+  | (KMap_get _, v, (map, _rest)) ->
       Interp_costs.map_get v map
-  | (KMap_update _, (k, (_, (map, _)))) ->
+  | (KMap_update _, k, (_, (map, _))) ->
       Interp_costs.map_update k map
-  | (KMap_get_and_update _, (k, (_, (map, _)))) ->
+  | (KMap_get_and_update _, k, (_, (map, _))) ->
       Interp_costs.map_get_and_update k map
-  | (KMap_size _, _) ->
-      Interp_costs.map_size
-  | (KEmpty_big_map _, _) ->
-      Interp_costs.empty_map
-  | (KBig_map_mem _, (key, (map, _))) ->
+  | (KBig_map_mem _, key, (map, _)) ->
       Interp_costs.map_mem key map.diff
-  | (KBig_map_get _, (key, (map, _))) ->
+  | (KBig_map_get _, key, (map, _)) ->
       Interp_costs.map_get key map.diff
-  | (KBig_map_update _, (key, (_, (map, _)))) ->
+  | (KBig_map_update _, key, (_, (map, _))) ->
       Interp_costs.map_update key map.diff
-  | (KBig_map_get_and_update _, (key, (_, (map, _)))) ->
+  | (KBig_map_get_and_update _, key, (_, (map, _))) ->
       Interp_costs.map_get_and_update key map.diff
-  | (KAdd_seconds_to_timestamp _, (n, (t, _))) ->
+  | (KAdd_seconds_to_timestamp _, n, (t, _)) ->
       Interp_costs.add_seconds_timestamp n t
-  | (KAdd_timestamp_to_seconds _, (t, (n, _))) ->
+  | (KAdd_timestamp_to_seconds _, t, (n, _)) ->
       Interp_costs.add_seconds_timestamp n t
-  | (KSub_timestamp_seconds _, (t, (n, _))) ->
+  | (KSub_timestamp_seconds _, t, (n, _)) ->
       Interp_costs.sub_seconds_timestamp n t
-  | (KDiff_timestamps _, (t1, (t2, _))) ->
+  | (KDiff_timestamps _, t1, (t2, _)) ->
       Interp_costs.diff_timestamps t1 t2
-  | (KConcat_string_pair _, (x, (y, _))) ->
+  | (KConcat_string_pair _, x, (y, _)) ->
       Interp_costs.concat_string_pair x y
-  | (KConcat_string _, (ss, _)) ->
+  | (KConcat_string _, ss, _) ->
       Interp_costs.concat_string_precheck ss
-  | (KSlice_string _, (_offset, (_length, (s, _)))) ->
+  | (KSlice_string _, _offset, (_length, (s, _))) ->
       Interp_costs.slice_string s
-  | (KString_size _, _) ->
-      Interp_costs.string_size
-  | (KConcat_bytes_pair _, (x, (y, _))) ->
+  | (KConcat_bytes_pair _, x, (y, _)) ->
       Interp_costs.concat_bytes_pair x y
-  | (KConcat_bytes _, (ss, _)) ->
+  | (KConcat_bytes _, ss, _) ->
       Interp_costs.concat_string_precheck ss
-  | (KSlice_bytes _, (_offset, (_length, (s, _)))) ->
+  | (KSlice_bytes _, _offset, (_length, (s, _))) ->
       Interp_costs.slice_bytes s
-  | (KBytes_size _, _) ->
-      Interp_costs.bytes_size
-  | (KAdd_tez _, _) ->
-      Interp_costs.add_tez
-  | (KSub_tez _, _) ->
-      Interp_costs.sub_tez
-  | (KMul_teznat _, (_, (n, _))) ->
+  | (KMul_teznat _, _, (n, _)) ->
       Interp_costs.mul_teznat n
-  | (KMul_nattez _, (n, (_, _))) ->
+  | (KMul_nattez _, n, (_, _)) ->
       Interp_costs.mul_teznat n
-  | (KOr _, _) ->
-      Interp_costs.bool_or
-  | (KAnd _, _) ->
-      Interp_costs.bool_and
-  | (KXor _, _) ->
-      Interp_costs.bool_xor
-  | (KNot _, _) ->
-      Interp_costs.bool_not
-  | (KIs_nat _, _) ->
-      Interp_costs.is_nat
-  | (KAbs_int _, (x, _)) ->
+  | (KAbs_int _, x, _) ->
       Interp_costs.abs_int x
-  | (KInt_nat _, _) ->
-      Interp_costs.int_nat
-  | (KNeg_int _, (x, _)) ->
+  | (KNeg_int _, x, _) ->
       Interp_costs.neg_int x
-  | (KNeg_nat _, (x, _)) ->
+  | (KNeg_nat _, x, _) ->
       Interp_costs.neg_nat x
-  | (KAdd_intint _, (x, (y, _))) ->
+  | (KAdd_intint _, x, (y, _)) ->
       Interp_costs.add_bigint x y
-  | (KAdd_intnat _, (x, (y, _))) ->
+  | (KAdd_intnat _, x, (y, _)) ->
       Interp_costs.add_bigint x y
-  | (KAdd_natint _, (x, (y, _))) ->
+  | (KAdd_natint _, x, (y, _)) ->
       Interp_costs.add_bigint x y
-  | (KAdd_natnat _, (x, (y, _))) ->
+  | (KAdd_natnat _, x, (y, _)) ->
       Interp_costs.add_bigint x y
-  | (KSub_int _, (x, (y, _))) ->
+  | (KSub_int _, x, (y, _)) ->
       Interp_costs.sub_bigint x y
-  | (KMul_intint _, (x, (y, _))) ->
+  | (KMul_intint _, x, (y, _)) ->
       Interp_costs.mul_bigint x y
-  | (KMul_intnat _, (x, (y, _))) ->
+  | (KMul_intnat _, x, (y, _)) ->
       Interp_costs.mul_bigint x y
-  | (KMul_natint _, (x, (y, _))) ->
+  | (KMul_natint _, x, (y, _)) ->
       Interp_costs.mul_bigint x y
-  | (KMul_natnat _, (x, (y, _))) ->
+  | (KMul_natnat _, x, (y, _)) ->
       Interp_costs.mul_bigint x y
-  | (KEdiv_teznat _, (x, (y, _))) ->
+  | (KEdiv_teznat _, x, (y, _)) ->
       Interp_costs.ediv_teznat x y
-  | (KEdiv_tez _, _) ->
-      Interp_costs.ediv_tez
-  | (KEdiv_intint _, (x, (y, _))) ->
+  | (KEdiv_intint _, x, (y, _)) ->
       Interp_costs.ediv_bigint x y
-  | (KEdiv_intnat _, (x, (y, _))) ->
+  | (KEdiv_intnat _, x, (y, _)) ->
       Interp_costs.ediv_bigint x y
-  | (KEdiv_natint _, (x, (y, _))) ->
+  | (KEdiv_natint _, x, (y, _)) ->
       Interp_costs.ediv_bigint x y
-  | (KEdiv_natnat _, (x, (y, _))) ->
+  | (KEdiv_natnat _, x, (y, _)) ->
       Interp_costs.ediv_bigint x y
-  | (KLsl_nat _, (x, _)) ->
+  | (KLsl_nat _, x, _) ->
       Interp_costs.lsl_nat x
-  | (KLsr_nat _, (x, _)) ->
+  | (KLsr_nat _, x, _) ->
       Interp_costs.lsr_nat x
-  | (KOr_nat _, (x, (y, _))) ->
+  | (KOr_nat _, x, (y, _)) ->
       Interp_costs.or_nat x y
-  | (KAnd_nat _, (x, (y, _))) ->
+  | (KAnd_nat _, x, (y, _)) ->
       Interp_costs.and_nat x y
-  | (KAnd_int_nat _, (x, (y, _))) ->
+  | (KAnd_int_nat _, x, (y, _)) ->
       Interp_costs.and_nat x y
-  | (KXor_nat _, (x, (y, _))) ->
+  | (KXor_nat _, x, (y, _)) ->
       Interp_costs.xor_nat x y
-  | (KNot_int _, (x, _)) ->
+  | (KNot_int _, x, _) ->
       Interp_costs.not_nat x
-  | (KNot_nat _, (x, _)) ->
+  | (KNot_nat _, x, _) ->
       Interp_costs.not_nat x
-  | (KIf _, _) ->
-      Interp_costs.if_
-  | (KLoop _, _) ->
-      Interp_costs.loop
-  | (KLoop_left _, _) ->
-      Interp_costs.loop_left
-  | (KDip _, _) ->
-      Interp_costs.dip
-  | (KExec _, _) ->
-      Interp_costs.exec
-  | (KApply _, _) ->
-      Interp_costs.apply
-  | (KLambda _, _) ->
-      Interp_costs.push
-  | (KFailwith _, _) ->
-      Gas.free
-  | (KNop _, _) ->
-      Interp_costs.nop
-  | (KCompare (_, ty, _), (a, (b, _))) ->
+  | (KCompare (_, ty, _), a, (b, _)) ->
       Interp_costs.compare ty a b
-  | (KEq _, _) ->
-      Interp_costs.neq
-  | (KNeq _, _) ->
-      Interp_costs.neq
-  | (KLt _, _) ->
-      Interp_costs.neq
-  | (KLe _, _) ->
-      Interp_costs.neq
-  | (KGt _, _) ->
-      Interp_costs.neq
-  | (KGe _, _) ->
-      Interp_costs.neq
-  | (KPack _, _) ->
-      Gas.free
-  | (KUnpack _, _) ->
-      Gas.free
-  | (KAddress _, _) ->
-      Interp_costs.address
-  | (KContract _, _) ->
-      Interp_costs.contract
-  | (KTransfer_tokens _, _) ->
-      Interp_costs.transfer_tokens
-  | (KImplicit_account _, _) ->
-      Interp_costs.implicit_account
-  | (KSet_delegate _, _) ->
-      Interp_costs.set_delegate
-  | (KBalance _, _) ->
-      Interp_costs.balance
-  | (KLevel _, _) ->
-      Interp_costs.level
-  | (KNow _, _) ->
-      Interp_costs.now
-  | (KCheck_signature _, (key, (_, (message, _)))) ->
+  | (KCheck_signature _, key, (_, (message, _))) ->
       Interp_costs.check_signature key message
-  | (KHash_key _, (pk, _)) ->
+  | (KHash_key _, pk, _) ->
       Interp_costs.hash_key pk
-  | (KBlake2b _, (bytes, _)) ->
+  | (KBlake2b _, bytes, _) ->
       Interp_costs.blake2b bytes
-  | (KSha256 _, (bytes, _)) ->
+  | (KSha256 _, bytes, _) ->
       Interp_costs.sha256 bytes
-  | (KSha512 _, (bytes, _)) ->
+  | (KSha512 _, bytes, _) ->
       Interp_costs.sha512 bytes
-  | (KSource _, _) ->
-      Interp_costs.source
-  | (KSender _, _) ->
-      Interp_costs.source
-  | (KSelf _, _) ->
-      Interp_costs.self
-  | (KSelf_address _, _) ->
-      Interp_costs.self
-  | (KAmount _, _) ->
-      Interp_costs.amount
-  | (KDig (_, n, _, _), _) ->
-      Interp_costs.dign n
-  | (KDug (_, n, _, _), _) ->
-      Interp_costs.dugn n
-  | (KDipn (_, n, _, _, _), _) ->
-      Interp_costs.dipn n
-  | (KDropn (_, n, _, _), _) ->
-      Interp_costs.dropn n
-  | (KChainId _, _) ->
-      Interp_costs.chain_id
-  | (KCreate_contract _, _) ->
-      Interp_costs.create_contract
-  | (KNever _, (_, _)) ->
-      .
-  | (KVoting_power _, _) ->
-      Interp_costs.voting_power
-  | (KTotal_voting_power _, _) ->
-      Interp_costs.total_voting_power
-  | (KKeccak _, (bytes, _)) ->
+  | (KKeccak _, bytes, _) ->
       Interp_costs.keccak bytes
-  | (KSha3 _, (bytes, _)) ->
+  | (KSha3 _, bytes, _) ->
       Interp_costs.sha3 bytes
-  | (KAdd_bls12_381_g1 _, _) ->
-      Interp_costs.add_bls12_381_g1
-  | (KAdd_bls12_381_g2 _, _) ->
-      Interp_costs.add_bls12_381_g2
-  | (KAdd_bls12_381_fr _, _) ->
-      Interp_costs.add_bls12_381_fr
-  | (KMul_bls12_381_g1 _, _) ->
-      Interp_costs.mul_bls12_381_g1
-  | (KMul_bls12_381_g2 _, _) ->
-      Interp_costs.mul_bls12_381_g2
-  | (KMul_bls12_381_fr _, _) ->
-      Interp_costs.mul_bls12_381_fr
-  | (KMul_bls12_381_fr_z _, _) ->
-      Interp_costs.mul_bls12_381_fr_z
-  | (KMul_bls12_381_z_fr _, _) ->
-      Interp_costs.mul_bls12_381_fr_z
-  | (KInt_bls12_381_fr _, _) ->
-      Interp_costs.int_bls12_381_fr
-  | (KNeg_bls12_381_g1 _, _) ->
-      Interp_costs.neg_bls12_381_g1
-  | (KNeg_bls12_381_g2 _, _) ->
-      Interp_costs.neg_bls12_381_g2
-  | (KNeg_bls12_381_fr _, _) ->
-      Interp_costs.neg_bls12_381_fr
-  | (KPairing_check_bls12_381 _, (pairs, _)) ->
+  | (KPairing_check_bls12_381 _, pairs, _) ->
       Interp_costs.pairing_check_bls12_381 pairs
-  | (KComb (_, n, _, _), _) ->
-      Interp_costs.comb n
-  | (KUncomb (_, n, _, _), _) ->
-      Interp_costs.uncomb n
-  | (KComb_get (_, n, _, _), _) ->
-      Interp_costs.comb_get n
-  | (KComb_set (_, n, _, _), _) ->
-      Interp_costs.comb_set n
-  | (KDup_n (_, n, _, _), _) ->
-      Interp_costs.dupn n
-  | (KSapling_empty_state _, _) ->
-      Interp_costs.sapling_empty_state
-  | (KSapling_verify_update _, (tx, _)) ->
+  | (KSapling_verify_update _, tx, _) ->
       let inputs = List.length tx.inputs in
       let outputs = List.length tx.outputs in
       Interp_costs.sapling_verify_update ~inputs ~outputs
-  | (KTicket _, _) ->
-      Interp_costs.ticket
-  | (KRead_ticket _, _) ->
-      Interp_costs.read_ticket
-  | (KSplit_ticket _, (ticket, ((amount_a, amount_b), _))) ->
+  | (KSplit_ticket _, ticket, ((amount_a, amount_b), _)) ->
       Interp_costs.split_ticket ticket.amount amount_a amount_b
-  | (KJoin_tickets (_, ty, _), ((ticket_a, ticket_b), _)) ->
+  | (KJoin_tickets (_, ty, _), (ticket_a, ticket_b), _) ->
       Interp_costs.join_tickets ty ticket_a ticket_b
+
+let[@inline] cost_of_instr :
+    type a s r f c. (a, s, r, f, c) kinstr -> a -> s -> Gas.cost =
+ fun instr accu stack ->
+  match static_cost_of_instr instr with
+  | DynamicCost ->
+      datadependent_cost_of_instr instr accu stack
+  | StaticCost g ->
+      g
+
+(*
+
+   Factorization of gas monitoring
+   ===============================
+
+   We apply a preprocessing to Michelson scripts before executing
+   them. This preprocessor inserts new instructions of the form
+   [KPayGas (d, k1, k2)] where [k1] represents a sequence of
+   instructions of statically determined cost [d].
+
+   The preprocessing accumulates a statically determined cost
+   by traversing the script abstract syntax tree in a bottom-up
+   way. When an instruction has a dynamic cost, we insert a
+   [KPayGas] instruction unless there is only a single instruction
+   in the sequence of statically determined cost.
+
+   For instructions with more than two continuations, typically
+   conditional and looping instructions, we treat the two continuations
+   separately. For looping instruction, this would be unsound to do
+   otherwise. For conditional instructions, we could merge two
+   sequences with the same cost but this case is probably too seldom
+   to justify extra complexity.
+
+   A notable exception to that rule is [Dip] because its two continuations
+   are actually applied in sequence: hence, their costs can be factorized
+   out if they are static.
+
+ *)
+
+let insert_pay_gas k =
+  let rec insert :
+      type a s b t r f c.
+      (a, s) kinfo ->
+      (a, s, b, t, static_cost) kinstr_context ->
+      static_cost cost_of_instr ->
+      (b, t, r, f, c) kinstr ->
+      bool * (a, s, r, f, static_cost) kinstr =
+   fun kinfo i cost_of_instr k ->
+    match (cost_of_instr, k) with
+    | (StaticCost g, KPayGas (_, kinfo2, g', k1, k2)) ->
+        (false, KPayGas (kinfo, kinfo2, Gas.(g +@ g'), i.graft k1, k2))
+    | (StaticCost g, k) ->
+        let kinfo2 = kinfo_of_kinstr k in
+        (true, KPayGas (kinfo, kinfo2, g, i.graft (KHalt kinfo2), k))
+  and recurse :
+      type a s r f c. (a, s, r, f, c) kinstr -> (a, s, r, f, c) kinstr =
+   fun i ->
+    let (single, i') = decompose i in
+    if single then i else i'
+  and decompose :
+      type a s r f c. (a, s, r, f, c) kinstr -> bool * (a, s, r, f, c) kinstr =
+   fun i ->
+    (*
+
+        Only (a subset of the) instructions with a static cost can
+        take part in this rewriting. The type assigned to [rewrite]
+        helps us to properly skip instructions with a dynamic cost
+        here.
+
+      *)
+    let[@inline] rewrite : (_, _, _, _, static_cost) kinstr -> _ -> _ -> _ -> _
+        =
+     fun i kinfo k kinstr_ctxt ->
+      let cost = static_cost_of_instr i in
+      let (_, k') = decompose k in
+      insert kinfo kinstr_ctxt cost k'
+    in
+    (*
+
+         Other instructions are simply returned with their potentially
+         rewritten subterms.
+
+      *)
+    let ret i = (true, i) in
+    match i with
+    | KDrop (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KDrop (kinfo, k))}
+    | KDup (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KDup (kinfo, k))}
+    | KSwap (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KSwap (kinfo, k))}
+    | KConst (kinfo, x, k) ->
+        rewrite i kinfo k {graft = (fun k -> KConst (kinfo, x, k))}
+    | KCons_pair (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KCons_pair (kinfo, k))}
+    | KCar (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KCar (kinfo, k))}
+    | KCdr (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KCdr (kinfo, k))}
+    | KUnpair (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KUnpair (kinfo, k))}
+    | KCons_some (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KCons_some (kinfo, k))}
+    | KCons_none (kinfo, ty, k) ->
+        rewrite i kinfo k {graft = (fun k -> KCons_none (kinfo, ty, k))}
+    | KIf_none (kinfo, k1, k2) ->
+        ret (KIf_none (kinfo, recurse k1, recurse k2))
+    | KCons_left (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KCons_left (kinfo, k))}
+    | KCons_right (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KCons_right (kinfo, k))}
+    | KIf_left (kinfo, k1, k2) ->
+        (true, KIf_left (kinfo, recurse k1, recurse k2))
+    | KCons_list (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KCons_list (kinfo, k))}
+    | KNil (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KNil (kinfo, k))}
+    | KIf_cons (kinfo, k1, k2) ->
+        (true, KIf_cons (kinfo, recurse k1, recurse k2))
+    | KList_map (kinfo, k1, k2) ->
+        (true, KList_map (kinfo, recurse k1, recurse k2))
+    | KList_mapping _
+    | KList_mapped _
+    | KIter _
+    | KMap_mapping _
+    | KMap_mapped _ ->
+        ret i (* These cases never occur in source programs. *)
+    | KList_iter (kinfo, kinfo2, kf, k) ->
+        ret (KList_iter (kinfo, kinfo2, recurse kf, recurse k))
+    | KList_size (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KList_size (kinfo, k))}
+    | KEmpty_set (kinfo, ty, k) ->
+        rewrite i kinfo k {graft = (fun k -> KEmpty_set (kinfo, ty, k))}
+    | KSet_iter (kinfo, kinfo2, kf, k) ->
+        ret (KSet_iter (kinfo, kinfo2, recurse kf, recurse k))
+    | KSet_mem (kinfo, k) ->
+        ret (KSet_mem (kinfo, recurse k))
+    | KSet_update (kinfo, k) ->
+        ret (KSet_update (kinfo, recurse k))
+    | KSet_size (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KSet_size (kinfo, k))}
+    | KEmpty_map (kinfo, cty, ty, k) ->
+        rewrite i kinfo k {graft = (fun k -> KEmpty_map (kinfo, cty, ty, k))}
+    | KMap_map (kinfo, kinfo1, kinfo2, kf, k) ->
+        ret (KMap_map (kinfo, kinfo1, kinfo2, recurse kf, recurse k))
+    | KMap_iter (kinfo, kinfo1, kf, k) ->
+        ret (KMap_iter (kinfo, kinfo1, recurse kf, recurse k))
+    | KMap_mem (kinfo, k) ->
+        ret (KMap_mem (kinfo, recurse k))
+    | KMap_get (kinfo, k) ->
+        ret (KMap_get (kinfo, recurse k))
+    | KMap_update (kinfo, k) ->
+        ret (KMap_update (kinfo, recurse k))
+    | KMap_get_and_update (kinfo, k) ->
+        ret (KMap_get_and_update (kinfo, recurse k))
+    | KMap_size (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KMap_size (kinfo, k))}
+    | KEmpty_big_map (kinfo, cty, ty, k) ->
+        rewrite
+          i
+          kinfo
+          k
+          {graft = (fun k -> KEmpty_big_map (kinfo, cty, ty, k))}
+    | KBig_map_mem (kinfo, k) ->
+        ret (KBig_map_mem (kinfo, recurse k))
+    | KBig_map_get (kinfo, k) ->
+        ret (KBig_map_get (kinfo, recurse k))
+    | KBig_map_update (kinfo, k) ->
+        ret (KBig_map_update (kinfo, recurse k))
+    | KBig_map_get_and_update (kinfo, k) ->
+        ret (KBig_map_get_and_update (kinfo, recurse k))
+    | KConcat_string (kinfo, k) ->
+        ret (KConcat_string (kinfo, recurse k))
+    | KConcat_string_pair (kinfo, k) ->
+        ret (KConcat_string_pair (kinfo, recurse k))
+    | KSlice_string (kinfo, k) ->
+        ret (KSlice_string (kinfo, recurse k))
+    | KString_size (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KString_size (kinfo, k))}
+    | KConcat_bytes (kinfo, k) ->
+        ret (KConcat_bytes (kinfo, recurse k))
+    | KConcat_bytes_pair (kinfo, k) ->
+        ret (KConcat_bytes_pair (kinfo, recurse k))
+    | KSlice_bytes (kinfo, k) ->
+        ret (KSlice_bytes (kinfo, recurse k))
+    | KBytes_size (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KBytes_size (kinfo, k))}
+    | KAdd_seconds_to_timestamp (kinfo, k) ->
+        ret (KAdd_seconds_to_timestamp (kinfo, recurse k))
+    | KAdd_timestamp_to_seconds (kinfo, k) ->
+        ret (KAdd_timestamp_to_seconds (kinfo, recurse k))
+    | KSub_timestamp_seconds (kinfo, k) ->
+        ret (KSub_timestamp_seconds (kinfo, recurse k))
+    | KDiff_timestamps (kinfo, k) ->
+        ret (KDiff_timestamps (kinfo, recurse k))
+    | KAdd_tez (kinfo, k) ->
+        ret (KAdd_tez (kinfo, recurse k))
+    | KSub_tez (kinfo, k) ->
+        ret (KSub_tez (kinfo, recurse k))
+    | KMul_teznat (kinfo, k) ->
+        ret (KMul_teznat (kinfo, recurse k))
+    | KMul_nattez (kinfo, k) ->
+        ret (KMul_nattez (kinfo, recurse k))
+    | KEdiv_teznat (kinfo, k) ->
+        ret (KEdiv_teznat (kinfo, recurse k))
+    | KEdiv_tez (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KEdiv_tez (kinfo, k))}
+    | KOr (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KOr (kinfo, k))}
+    | KAnd (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KAnd (kinfo, k))}
+    | KXor (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KXor (kinfo, k))}
+    | KNot (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KNot (kinfo, k))}
+    | KIs_nat (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KIs_nat (kinfo, k))}
+    | KNeg_nat (kinfo, k) ->
+        ret (KNeg_nat (kinfo, recurse k))
+    | KNeg_int (kinfo, k) ->
+        ret (KNeg_int (kinfo, recurse k))
+    | KAbs_int (kinfo, k) ->
+        ret (KAbs_int (kinfo, recurse k))
+    | KInt_nat (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KInt_nat (kinfo, k))}
+    | KAdd_intint (kinfo, k) ->
+        ret (KAdd_intint (kinfo, recurse k))
+    | KAdd_intnat (kinfo, k) ->
+        ret (KAdd_intnat (kinfo, recurse k))
+    | KAdd_natint (kinfo, k) ->
+        ret (KAdd_natint (kinfo, recurse k))
+    | KAdd_natnat (kinfo, k) ->
+        ret (KAdd_natnat (kinfo, recurse k))
+    | KSub_int (kinfo, k) ->
+        ret (KSub_int (kinfo, recurse k))
+    | KMul_intint (kinfo, k) ->
+        ret (KMul_intint (kinfo, recurse k))
+    | KMul_intnat (kinfo, k) ->
+        ret (KMul_intnat (kinfo, recurse k))
+    | KMul_natint (kinfo, k) ->
+        ret (KMul_natint (kinfo, recurse k))
+    | KMul_natnat (kinfo, k) ->
+        ret (KMul_natnat (kinfo, recurse k))
+    | KEdiv_intint (kinfo, k) ->
+        ret (KEdiv_intint (kinfo, recurse k))
+    | KEdiv_intnat (kinfo, k) ->
+        ret (KEdiv_intnat (kinfo, recurse k))
+    | KEdiv_natint (kinfo, k) ->
+        ret (KEdiv_natint (kinfo, recurse k))
+    | KEdiv_natnat (kinfo, k) ->
+        ret (KEdiv_natnat (kinfo, recurse k))
+    | KLsl_nat (kinfo, k) ->
+        ret (KLsl_nat (kinfo, recurse k))
+    | KLsr_nat (kinfo, k) ->
+        ret (KLsr_nat (kinfo, recurse k))
+    | KOr_nat (kinfo, k) ->
+        ret (KOr_nat (kinfo, recurse k))
+    | KAnd_nat (kinfo, k) ->
+        ret (KAnd_nat (kinfo, recurse k))
+    | KAnd_int_nat (kinfo, k) ->
+        ret (KAnd_int_nat (kinfo, recurse k))
+    | KXor_nat (kinfo, k) ->
+        ret (KXor_nat (kinfo, recurse k))
+    | KNot_nat (kinfo, k) ->
+        ret (KNot_nat (kinfo, recurse k))
+    | KNot_int (kinfo, k) ->
+        ret (KNot_int (kinfo, recurse k))
+    | KIf (kinfo, kt, kf) ->
+        ret (KIf (kinfo, recurse kt, recurse kf))
+    | KLoop (kinfo, kbody, k) ->
+        ret (KLoop (kinfo, recurse kbody, recurse k))
+    | KLoop_left (kinfo, kbody, k) ->
+        ret (KLoop_left (kinfo, recurse kbody, recurse k))
+    | KDip (kinfo, kinfo2, kf, k) -> (
+        let (StaticCost cost) = static_cost_of_instr i in
+        match (recurse kf, recurse k) with
+        | (KPayGas (_, _, df, kf, KHalt _), KPayGas (_, kinfo2', d, k, k2)) ->
+            ( false,
+              KPayGas
+                ( kinfo,
+                  kinfo2',
+                  Gas.(cost +@ df +@ d),
+                  KDip (kinfo, kinfo2, kf, k),
+                  k2 ) )
+        | (KPayGas (_, _kfinfo2, df, kf, KHalt _), k) ->
+            let kinfo' = kinfo_of_kinstr k in
+            ( false,
+              KPayGas
+                ( kinfo,
+                  kinfo',
+                  Gas.(cost +@ df),
+                  KDip (kinfo, kinfo2, kf, KHalt kinfo'),
+                  k ) )
+        | (kf, k) ->
+            ret (KDip (kinfo, kinfo2, kf, k)) )
+    | KExec (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KExec (kinfo, k))}
+    | KApply (kinfo, ty, k) ->
+        ret (KApply (kinfo, ty, k))
+    | KLambda (kinfo, lambda, k) ->
+        rewrite i kinfo k {graft = (fun k -> KLambda (kinfo, lambda, k))}
+    | KFailwith (kinfo, loc, ty, k) ->
+        rewrite i kinfo k {graft = (fun k -> KFailwith (kinfo, loc, ty, k))}
+    | KNop (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KNop (kinfo, k))}
+    | KCompare (kinfo, ty, k) ->
+        ret (KCompare (kinfo, ty, recurse k))
+    | KEq (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KEq (kinfo, k))}
+    | KNeq (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KNeq (kinfo, k))}
+    | KLt (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KLt (kinfo, k))}
+    | KGt (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KGt (kinfo, k))}
+    | KLe (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KLe (kinfo, k))}
+    | KGe (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KGe (kinfo, k))}
+    | KAddress (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KAddress (kinfo, k))}
+    | KContract (kinfo, ty, code, k) ->
+        rewrite i kinfo k {graft = (fun k -> KContract (kinfo, ty, code, k))}
+    | KTransfer_tokens (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KTransfer_tokens (kinfo, k))}
+    | KImplicit_account (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KImplicit_account (kinfo, k))}
+    | KCreate_contract (kinfo, ty1, ty2, l, a, k) ->
+        let c =
+          {graft = (fun k -> KCreate_contract (kinfo, ty1, ty2, l, a, k))}
+        in
+        rewrite i kinfo k c
+    | KSet_delegate (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KSet_delegate (kinfo, k))}
+    | KNow (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KNow (kinfo, k))}
+    | KBalance (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KBalance (kinfo, k))}
+    | KLevel (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KLevel (kinfo, k))}
+    | KCheck_signature (kinfo, k) ->
+        ret (KCheck_signature (kinfo, recurse k))
+    | KHash_key (kinfo, k) ->
+        ret (KHash_key (kinfo, recurse k))
+    | KPack (kinfo, s, k) ->
+        rewrite i kinfo k {graft = (fun k -> KPack (kinfo, s, k))}
+    | KUnpack (kinfo, s, k) ->
+        rewrite i kinfo k {graft = (fun k -> KUnpack (kinfo, s, k))}
+    | KBlake2b (kinfo, k) ->
+        ret (KBlake2b (kinfo, recurse k))
+    | KSha256 (kinfo, k) ->
+        ret (KSha256 (kinfo, recurse k))
+    | KSha512 (kinfo, k) ->
+        ret (KSha512 (kinfo, recurse k))
+    | KSource (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KSource (kinfo, k))}
+    | KSender (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KSender (kinfo, k))}
+    | KSelf (kinfo, ty, code, k) ->
+        rewrite i kinfo k {graft = (fun k -> KSelf (kinfo, ty, code, k))}
+    | KSelf_address (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KSelf_address (kinfo, k))}
+    | KAmount (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KAmount (kinfo, k))}
+    | KSapling_empty_state (kinfo, ms, k) ->
+        ret (KSapling_empty_state (kinfo, ms, recurse k))
+    | KSapling_verify_update (kinfo, k) ->
+        ret (KSapling_verify_update (kinfo, recurse k))
+    | KDig (kinfo, n, w, k) ->
+        rewrite i kinfo k {graft = (fun k -> KDig (kinfo, n, w, k))}
+    | KDug (kinfo, n, w, k) ->
+        rewrite i kinfo k {graft = (fun k -> KDug (kinfo, n, w, k))}
+    | KDipn (kinfo, n, w, kf, k) -> (
+        let (StaticCost cost) = static_cost_of_instr i in
+        match (recurse kf, recurse k) with
+        | (KPayGas (_, _, df, kf, KHalt _), KPayGas (_, kinfo2', d, k, k2)) ->
+            ( false,
+              KPayGas
+                ( kinfo,
+                  kinfo2',
+                  Gas.(cost +@ df +@ d),
+                  KDipn (kinfo, n, w, kf, k),
+                  k2 ) )
+        | (KPayGas (_, _kfinfo2, df, kf, KHalt _), k) ->
+            let kinfo' = kinfo_of_kinstr k in
+            ( false,
+              KPayGas
+                ( kinfo,
+                  kinfo',
+                  Gas.(cost +@ df),
+                  KDipn (kinfo, n, w, kf, KHalt kinfo'),
+                  k ) )
+        | (kf, k) ->
+            ret (KDipn (kinfo, n, w, kf, k)) )
+    | KDropn (kinfo, n, w, k) ->
+        rewrite i kinfo k {graft = (fun k -> KDropn (kinfo, n, w, k))}
+    | KChainId (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KChainId (kinfo, k))}
+    | KNever (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KNever (kinfo, k))}
+    | KVoting_power (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KVoting_power (kinfo, k))}
+    | KTotal_voting_power (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KTotal_voting_power (kinfo, k))}
+    | KKeccak (kinfo, k) ->
+        ret (KKeccak (kinfo, recurse k))
+    | KSha3 (kinfo, k) ->
+        ret (KSha3 (kinfo, recurse k))
+    | KAdd_bls12_381_g1 (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KAdd_bls12_381_g1 (kinfo, k))}
+    | KAdd_bls12_381_g2 (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KAdd_bls12_381_g2 (kinfo, k))}
+    | KAdd_bls12_381_fr (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KAdd_bls12_381_fr (kinfo, k))}
+    | KMul_bls12_381_g1 (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KMul_bls12_381_g1 (kinfo, k))}
+    | KMul_bls12_381_g2 (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KMul_bls12_381_g2 (kinfo, k))}
+    | KMul_bls12_381_fr (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KMul_bls12_381_fr (kinfo, k))}
+    | KMul_bls12_381_z_fr (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KMul_bls12_381_z_fr (kinfo, k))}
+    | KMul_bls12_381_fr_z (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KMul_bls12_381_fr_z (kinfo, k))}
+    | KInt_bls12_381_fr (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KInt_bls12_381_fr (kinfo, k))}
+    | KNeg_bls12_381_g1 (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KNeg_bls12_381_g1 (kinfo, k))}
+    | KNeg_bls12_381_g2 (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KNeg_bls12_381_g2 (kinfo, k))}
+    | KNeg_bls12_381_fr (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KNeg_bls12_381_fr (kinfo, k))}
+    | KPairing_check_bls12_381 (kinfo, k) ->
+        ret (KPairing_check_bls12_381 (kinfo, recurse k))
+    | KComb (kinfo, n, w, k) ->
+        rewrite i kinfo k {graft = (fun k -> KComb (kinfo, n, w, k))}
+    | KUncomb (kinfo, n, w, k) ->
+        rewrite i kinfo k {graft = (fun k -> KUncomb (kinfo, n, w, k))}
+    | KComb_get (kinfo, n, w, k) ->
+        rewrite i kinfo k {graft = (fun k -> KComb_get (kinfo, n, w, k))}
+    | KComb_set (kinfo, n, w, k) ->
+        rewrite i kinfo k {graft = (fun k -> KComb_set (kinfo, n, w, k))}
+    | KDup_n (kinfo, n, w, k) ->
+        rewrite i kinfo k {graft = (fun k -> KDup_n (kinfo, n, w, k))}
+    | KTicket (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KTicket (kinfo, k))}
+    | KRead_ticket (kinfo, k) ->
+        rewrite i kinfo k {graft = (fun k -> KRead_ticket (kinfo, k))}
+    | KSplit_ticket (kinfo, k) ->
+        ret (KSplit_ticket (kinfo, recurse k))
+    | KJoin_tickets (kinfo, cty, k) ->
+        ret (KJoin_tickets (kinfo, cty, recurse k))
+    | KHalt kinfo ->
+        ret (KHalt kinfo)
+    | KPayGas _ ->
+        (* This case should never occur. *)
+        ret i
+    | KCountGas _ ->
+        (* This case should never occur. *)
+        ret i
+  in
+  snd (decompose k)
+
+(* ---- evaluation  ---------------------------------------------------*)
 
 let unpack ctxt ~ty ~bytes =
   Gas.check_enough ctxt (Script.serialized_cost bytes)
@@ -595,12 +1235,12 @@ let unpack ctxt ~ty ~bytes =
 type (_, _, _, _) konts =
   | KNil : ('r, 'f, 'r, 'f) konts
   | KCons :
-      ('a, 's, 'b, 't) kinstr * ('b, 't, 'r, 'f) konts
+      ('a, 's, 'b, 't, _) kinstr * ('b, 't, 'r, 'f) konts
       -> ('a, 's, 'r, 'f) konts
 
 type (_, _, _) exkinstr =
   | ExKInstr :
-      ('t, 'x * 'z) eq * ('x, 'z, 'b, 'u) kinstr
+      ('t, 'x * 'z) eq * ('x, 'z, 'b, 'u, _) kinstr
       -> ('t, 'b, 'u) exkinstr
 
 let[@inline] option_iter opt what =
@@ -608,6 +1248,42 @@ let[@inline] option_iter opt what =
 
 let[@inline] lwt_option_iter opt what =
   match opt with None -> Lwt.return (Ok None) | Some l -> what l
+
+(*
+
+   Gas update and check for gas exhaustion
+   =======================================
+
+   Each instruction has a cost. For many instructions, this cost can
+   be statically determined. When a sequence of instructions has a
+   statically determined cost, the forthcoming [pay_gas_in_advance]
+   inserts the instruction [PayGas] so that the gas is paid in advance
+   for this sequence and not at each execution step.
+
+   The [gas_monitor_status] is true if the gas has already been paid
+   by a [PayGas] or if the gas does not have to be counted.
+
+*)
+type gas_monitor_status = bool
+
+let monitor_gas = true
+
+let dont_monitor_gas = false
+
+let consume :
+    type a s r f cost.
+    context ->
+    gas_monitor_status ->
+    (a, s, r, f, cost) kinstr ->
+    a ->
+    s ->
+    context tzresult =
+ fun ctxt count_gas k accu stack ->
+  if count_gas then
+    let gas = cost_of_instr k accu stack in
+    Gas.consume ctxt gas
+  else Ok ctxt
+ [@@inline always]
 
 let rec step_bounded :
     type bef aft.
@@ -637,96 +1313,102 @@ let rec step_bounded :
   in
   let (KDescr {kinstr; kli; klo}) = descr in
   let rec step :
-      type a s b t r f.
+      type a s b t r f c.
       context ->
-      (a, s, b, t) kinstr ->
+      gas_monitor_status ->
+      (a, s, b, t, c) kinstr ->
       (b, t, r, f) konts ->
       a ->
       s ->
       (r * f * context) tzresult Lwt.t =
-   fun ctxt k ks accu stack ->
-    let[@inline] continue :
-        type a s b t r f.
+   fun ctxt gms k ks accu stack ->
+    let[@inline] run :
+        type a s b t r f c.
         context ->
-        (a, s, b, t) kinstr ->
+        gas_monitor_status ->
+        (a, s, b, t, c) kinstr ->
         (b, t, r, f) konts ->
         a ->
         s ->
         (r * f * context) tzresult Lwt.t =
-     fun ctxt k' ks accu stack ->
+     fun ctxt gms k' ks accu stack ->
       log_exit ctxt k k' accu stack ;
-      (step [@ocaml.tailcall]) ctxt k' ks accu stack
+      (step [@ocaml.tailcall]) ctxt gms k' ks accu stack
     in
-    let gas = cost_of_instr k accu stack in
-    Gas.consume ctxt gas
+    consume ctxt gms k accu stack
     >>?= fun ctxt ->
     log_entry ctxt k accu stack ;
     match k with
+    | KPayGas (_, kinfo2, _, k1, k2) ->
+        let ks = KCons (KCountGas (kinfo2, k2), ks) in
+        (step [@ocaml.tailcall]) ctxt dont_monitor_gas k1 ks accu stack
+    | KCountGas (_, k) ->
+        (step [@ocaml.tailcall]) ctxt monitor_gas k ks accu stack
     | KHalt _ -> (
       match ks with
       | KNil ->
           ( Lwt.return (Ok (accu, stack, ctxt))
             : (r * f * context) tzresult Lwt.t )
       | KCons (k, ks) ->
-          (continue [@ocaml.tailcall]) ctxt k ks accu stack )
+          (step [@ocaml.tailcall]) ctxt gms k ks accu stack )
     (* stack ops *)
     | KDrop (_, k) ->
-        (continue [@ocaml.tailcall]) ctxt k ks (fst stack) (snd stack)
+        (run [@ocaml.tailcall]) ctxt gms k ks (fst stack) (snd stack)
     | KDup (_, k) ->
-        (continue [@ocaml.tailcall]) ctxt k ks accu (accu, stack)
+        (run [@ocaml.tailcall]) ctxt gms k ks accu (accu, stack)
     | KSwap (_, k) ->
         let (top, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks top (accu, stack)
+        (run [@ocaml.tailcall]) ctxt gms k ks top (accu, stack)
     | KConst (_, v, k) ->
-        (continue [@ocaml.tailcall]) ctxt k ks v (accu, stack)
+        (run [@ocaml.tailcall]) ctxt gms k ks v (accu, stack)
     (* options *)
     | KCons_some (_, k) ->
-        (continue [@ocaml.tailcall]) ctxt k ks (Some accu) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Some accu) stack
     | KCons_none (_, _, k) ->
-        (continue [@ocaml.tailcall]) ctxt k ks None (accu, stack)
+        (run [@ocaml.tailcall]) ctxt gms k ks None (accu, stack)
     | KIf_none (_, bt, bf) -> (
       match accu with
       | None ->
-          (continue [@ocaml.tailcall]) ctxt bt ks (fst stack) (snd stack)
+          (run [@ocaml.tailcall]) ctxt gms bt ks (fst stack) (snd stack)
       | Some v ->
-          (continue [@ocaml.tailcall]) ctxt bf ks v stack )
+          (run [@ocaml.tailcall]) ctxt gms bf ks v stack )
     (* pairs *)
     | KCons_pair (_, k) ->
         let (b, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (accu, b) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (accu, b) stack
     | KUnpair (_, k) ->
         let (a, b) = accu in
-        (continue [@ocaml.tailcall]) ctxt k ks a (b, stack)
+        (run [@ocaml.tailcall]) ctxt gms k ks a (b, stack)
     | KCar (_, k) ->
         let (a, _) = accu in
-        (continue [@ocaml.tailcall]) ctxt k ks a stack
+        (run [@ocaml.tailcall]) ctxt gms k ks a stack
     | KCdr (_, k) ->
         let (_, b) = accu in
-        (continue [@ocaml.tailcall]) ctxt k ks b stack
+        (run [@ocaml.tailcall]) ctxt gms k ks b stack
     (* unions *)
     | KCons_left (_, k) ->
-        (continue [@ocaml.tailcall]) ctxt k ks (L accu) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (L accu) stack
     | KCons_right (_, k) ->
-        (continue [@ocaml.tailcall]) ctxt k ks (R accu) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (R accu) stack
     | KIf_left (_, bl, br) -> (
       match accu with
       | L v ->
-          (continue [@ocaml.tailcall]) ctxt bl ks v stack
+          (run [@ocaml.tailcall]) ctxt gms bl ks v stack
       | R v ->
-          (continue [@ocaml.tailcall]) ctxt br ks v stack )
+          (run [@ocaml.tailcall]) ctxt gms br ks v stack )
     (* lists *)
     | KCons_list (_, k) ->
         let (tl, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (list_cons accu tl) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (list_cons accu tl) stack
     | KNil (_, k) ->
-        (continue [@ocaml.tailcall]) ctxt k ks list_empty (accu, stack)
+        (run [@ocaml.tailcall]) ctxt gms k ks list_empty (accu, stack)
     | KIf_cons (_, bc, bn) -> (
       match accu.elements with
       | [] ->
-          (continue [@ocaml.tailcall]) ctxt bn ks (fst stack) (snd stack)
+          (run [@ocaml.tailcall]) ctxt gms bn ks (fst stack) (snd stack)
       | hd :: tl ->
           let tl = {elements = tl; length = accu.length - 1} in
-          (continue [@ocaml.tailcall]) ctxt bc ks hd (tl, stack) )
+          (run [@ocaml.tailcall]) ctxt gms bc ks hd (tl, stack) )
     | KList_map (kinfo, body, k) ->
         let xs = accu.elements in
         let ys = [] in
@@ -744,182 +1426,164 @@ let rec step_bounded :
         let k =
           KList_mapping (kinfo_mapping, kinfo_mapped, body, xs, ys, len, k)
         in
-        (continue [@ocaml.tailcall]) ctxt k ks (fst stack) (snd stack)
+        (step [@ocaml.tailcall]) ctxt gms k ks (fst stack) (snd stack)
     | KList_mapping (kinfo_mapping, kinfo_mapped, body, xs, ys, len, k) -> (
       match xs with
       | [] ->
           let ys = {elements = List.rev ys; length = len} in
-          (continue [@ocaml.tailcall]) ctxt k ks ys (accu, stack)
+          (step [@ocaml.tailcall]) ctxt gms k ks ys (accu, stack)
       | x :: xs ->
           let ks =
             KCons
               ( KList_mapped (kinfo_mapped, kinfo_mapping, body, xs, ys, len, k),
                 ks )
           in
-          (continue [@ocaml.tailcall]) ctxt body ks x (accu, stack) )
+          (step [@ocaml.tailcall]) ctxt gms body ks x (accu, stack) )
     | KList_mapped (kinfo_mapped, kinfo_mapping, body, xs, ys, len, k) ->
         let k =
           KList_mapping
             (kinfo_mapping, kinfo_mapped, body, xs, accu :: ys, len, k)
         in
-        (continue [@ocaml.tailcall]) ctxt k ks (fst stack) (snd stack)
+        (step [@ocaml.tailcall]) ctxt gms k ks (fst stack) (snd stack)
     | KList_size (_, k) ->
         let list = accu in
         let len = Script_int.(abs (of_int list.length)) in
-        (continue [@ocaml.tailcall]) ctxt k ks len stack
+        (run [@ocaml.tailcall]) ctxt gms k ks len stack
     | KList_iter (_, kinfo_iter, body, k) ->
         let xs = accu.elements in
         let k = KIter (kinfo_iter, body, xs, k) in
-        (continue [@ocaml.tailcall]) ctxt k ks (fst stack) (snd stack)
+        (step [@ocaml.tailcall]) ctxt gms k ks (fst stack) (snd stack)
     | KIter (kinfo, body, xs, k) -> (
       match xs with
       | [] ->
-          (continue [@ocaml.tailcall]) ctxt k ks accu stack
+          (step [@ocaml.tailcall]) ctxt gms k ks accu stack
       | x :: xs ->
           let ks = KCons (KIter (kinfo, body, xs, k), ks) in
-          (continue [@ocaml.tailcall]) ctxt body ks x (accu, stack) )
+          (step [@ocaml.tailcall]) ctxt gms body ks x (accu, stack) )
     (* sets *)
     | KEmpty_set (_, ty, k) ->
-        (continue [@ocaml.tailcall]) ctxt k ks (empty_set ty) (accu, stack)
+        (run [@ocaml.tailcall]) ctxt gms k ks (empty_set ty) (accu, stack)
     | KSet_iter (_, kinfo_iter, body, k) ->
         let set = accu in
         let l = List.rev (set_fold (fun e acc -> e :: acc) set []) in
-        (continue [@ocaml.tailcall])
-          ctxt
-          (KIter (kinfo_iter, body, l, k))
-          ks
-          (fst stack)
-          (snd stack)
+        let kiter = KIter (kinfo_iter, body, l, k) in
+        (step [@ocaml.tailcall]) ctxt gms kiter ks (fst stack) (snd stack)
     | KSet_mem (_, k) ->
         let (set, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (set_mem accu set) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (set_mem accu set) stack
     | KSet_update (_, k) ->
         let (presence, (set, stack)) = stack in
-        (continue [@ocaml.tailcall])
+        (run [@ocaml.tailcall])
           ctxt
+          gms
           k
           ks
           (set_update accu presence set)
           stack
     | KSet_size (_, k) ->
-        (continue [@ocaml.tailcall]) ctxt k ks (set_size accu) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (set_size accu) stack
     (* maps *)
     | KEmpty_map (_, ty, _, k) ->
-        (continue [@ocaml.tailcall]) ctxt k ks (empty_map ty) (accu, stack)
+        (run [@ocaml.tailcall]) ctxt gms k ks (empty_map ty) (accu, stack)
     | KMap_map (_, kinfo_mapping, kinfo_mapped, body, k) ->
         let map = accu in
         let xs = List.rev (map_fold (fun k v acc -> (k, v) :: acc) map []) in
         let ys = empty_map (map_key_ty map) in
-        (continue [@ocaml.tailcall])
-          ctxt
-          (KMap_mapping (kinfo_mapping, kinfo_mapped, body, xs, ys, k))
-          ks
-          (fst stack)
-          (snd stack)
+        let km = KMap_mapping (kinfo_mapping, kinfo_mapped, body, xs, ys, k) in
+        (step [@ocaml.tailcall]) ctxt gms km ks (fst stack) (snd stack)
     | KMap_mapping (kinfo_mapping, kinfo_mapped, body, xs, ys, k) -> (
       match xs with
       | [] ->
-          (continue [@ocaml.tailcall]) ctxt k ks ys (accu, stack)
+          (step [@ocaml.tailcall]) ctxt gms k ks ys (accu, stack)
       | (xk, xv) :: xs ->
           let ks =
             KCons
               ( KMap_mapped (kinfo_mapped, kinfo_mapping, body, xs, ys, xk, k),
                 ks )
           in
-          (continue [@ocaml.tailcall]) ctxt body ks (xk, xv) (accu, stack) )
+          (step [@ocaml.tailcall]) ctxt gms body ks (xk, xv) (accu, stack) )
     | KMap_mapped (kinfo_mapped, kinfo_mapping, body, xs, ys, yk, k) ->
         let ys = map_update yk (Some accu) ys in
         let k = KMap_mapping (kinfo_mapping, kinfo_mapped, body, xs, ys, k) in
-        (continue [@ocaml.tailcall]) ctxt k ks (fst stack) (snd stack)
-    | KMap_iter (kinfo, body, k) ->
+        (step [@ocaml.tailcall]) ctxt gms k ks (fst stack) (snd stack)
+    | KMap_iter (_, kinfo_iter, body, k) ->
         let map = accu in
         let l = List.rev (map_fold (fun k v acc -> (k, v) :: acc) map []) in
-        let kinfo_iter =
-          match kinfo.kstack_ty with
-          | Item_t (_, kstack_ty, _) ->
-              {kinfo with kstack_ty}
-        in
-        (continue [@ocaml.tailcall])
-          ctxt
-          (KIter (kinfo_iter, body, l, k))
-          ks
-          (fst stack)
-          (snd stack)
+        let kiter = KIter (kinfo_iter, body, l, k) in
+        (step [@ocaml.tailcall]) ctxt gms kiter ks (fst stack) (snd stack)
     | KMap_mem (_, k) ->
         let (map, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (map_mem accu map) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (map_mem accu map) stack
     | KMap_get (_, k) ->
         let (map, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (map_get accu map) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (map_get accu map) stack
     | KMap_update (_, k) ->
         let (v, (map, stack)) = stack in
         let key = accu in
-        (continue [@ocaml.tailcall]) ctxt k ks (map_update key v map) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (map_update key v map) stack
     | KMap_get_and_update (_, k) ->
         let key = accu in
         let (v, (map, rest)) = stack in
         let map' = map_update key v map in
         let v' = map_get key map in
-        (continue [@ocaml.tailcall]) ctxt k ks v' (map', rest)
+        (run [@ocaml.tailcall]) ctxt gms k ks v' (map', rest)
     | KMap_size (_, k) ->
-        (continue [@ocaml.tailcall]) ctxt k ks (map_size accu) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (map_size accu) stack
     (* Big map operations *)
     | KEmpty_big_map (_, tk, tv, k) ->
         let ebm = Script_ir_translator.empty_big_map tk tv in
-        (continue [@ocaml.tailcall]) ctxt k ks ebm (accu, stack)
+        (run [@ocaml.tailcall]) ctxt gms k ks ebm (accu, stack)
     | KBig_map_mem (_, k) ->
         let (map, stack) = stack in
         let key = accu in
         Script_ir_translator.big_map_mem ctxt key map
-        >>=? fun (res, ctxt) ->
-        (continue [@ocaml.tailcall]) ctxt k ks res stack
+        >>=? fun (res, ctxt) -> (run [@ocaml.tailcall]) ctxt gms k ks res stack
     | KBig_map_get (_, k) ->
         let (map, stack) = stack in
         let key = accu in
         Script_ir_translator.big_map_get ctxt key map
-        >>=? fun (res, ctxt) ->
-        (continue [@ocaml.tailcall]) ctxt k ks res stack
+        >>=? fun (res, ctxt) -> (run [@ocaml.tailcall]) ctxt gms k ks res stack
     | KBig_map_update (_, k) ->
         let key = accu in
         let (maybe_value, (map, stack)) = stack in
         let big_map =
           Script_ir_translator.big_map_update key maybe_value map
         in
-        (continue [@ocaml.tailcall]) ctxt k ks big_map stack
+        (run [@ocaml.tailcall]) ctxt gms k ks big_map stack
     | KBig_map_get_and_update (_, k) ->
         let key = accu in
         let (v, (map, stack)) = stack in
         let map' = Script_ir_translator.big_map_update key v map in
         Script_ir_translator.big_map_get ctxt key map
         >>=? fun (v', ctxt) ->
-        (continue [@ocaml.tailcall]) ctxt k ks v' (map', stack)
+        (run [@ocaml.tailcall]) ctxt gms k ks v' (map', stack)
     (* timestamp operations *)
     | KAdd_seconds_to_timestamp (_, k) ->
         let n = accu in
         let (t, stack) = stack in
         let result = Script_timestamp.add_delta t n in
-        (continue [@ocaml.tailcall]) ctxt k ks result stack
+        (run [@ocaml.tailcall]) ctxt gms k ks result stack
     | KAdd_timestamp_to_seconds (_, k) ->
         let t = accu in
         let (n, stack) = stack in
         let result = Script_timestamp.add_delta t n in
-        (continue [@ocaml.tailcall]) ctxt k ks result stack
+        (run [@ocaml.tailcall]) ctxt gms k ks result stack
     | KSub_timestamp_seconds (_, k) ->
         let t = accu in
         let (s, stack) = stack in
         let result = Script_timestamp.sub_delta t s in
-        (continue [@ocaml.tailcall]) ctxt k ks result stack
+        (run [@ocaml.tailcall]) ctxt gms k ks result stack
     | KDiff_timestamps (_, k) ->
         let t1 = accu in
         let (t2, stack) = stack in
         let result = Script_timestamp.diff t1 t2 in
-        (continue [@ocaml.tailcall]) ctxt k ks result stack
+        (run [@ocaml.tailcall]) ctxt gms k ks result stack
     (* string operations *)
     | KConcat_string_pair (_, k) ->
         let x = accu in
         let (y, stack) = stack in
         let s = String.concat "" [x; y] in
-        (continue [@ocaml.tailcall]) ctxt k ks s stack
+        (run [@ocaml.tailcall]) ctxt gms k ks s stack
     | KConcat_string (_, k) ->
         let ss = accu in
         (* The cost for this fold_left has been paid upfront *)
@@ -932,7 +1596,7 @@ let rec step_bounded :
         Gas.consume ctxt (Interp_costs.concat_string total_length)
         >>?= fun ctxt ->
         let s = String.concat "" ss.elements in
-        (continue [@ocaml.tailcall]) ctxt k ks s stack
+        (run [@ocaml.tailcall]) ctxt gms k ks s stack
     | KSlice_string (_, k) ->
         let offset = accu and (length, (s, stack)) = stack in
         let s_length = Z.of_int (String.length s) in
@@ -941,18 +1605,18 @@ let rec step_bounded :
         if Compare.Z.(offset < s_length && Z.add offset length <= s_length)
         then
           let s = String.sub s (Z.to_int offset) (Z.to_int length) in
-          (continue [@ocaml.tailcall]) ctxt k ks (Some s) stack
-        else (continue [@ocaml.tailcall]) ctxt k ks None stack
+          (run [@ocaml.tailcall]) ctxt gms k ks (Some s) stack
+        else (run [@ocaml.tailcall]) ctxt gms k ks None stack
     | KString_size (_, k) ->
         let s = accu in
         let result = Script_int.(abs (of_int (String.length s))) in
-        (continue [@ocaml.tailcall]) ctxt k ks result stack
+        (run [@ocaml.tailcall]) ctxt gms k ks result stack
     (* bytes operations *)
     | KConcat_bytes_pair (_, k) ->
         let x = accu in
         let (y, stack) = stack in
         let s = Bytes.cat x y in
-        (continue [@ocaml.tailcall]) ctxt k ks s stack
+        (run [@ocaml.tailcall]) ctxt gms k ks s stack
     | KConcat_bytes (_, k) ->
         let ss = accu in
         (* The cost for this fold_left has been paid upfront *)
@@ -965,7 +1629,7 @@ let rec step_bounded :
         Gas.consume ctxt (Interp_costs.concat_string total_length)
         >>?= fun ctxt ->
         let s = Bytes.concat Bytes.empty ss.elements in
-        (continue [@ocaml.tailcall]) ctxt k ks s stack
+        (run [@ocaml.tailcall]) ctxt gms k ks s stack
     | KSlice_bytes (_, k) ->
         let offset = accu and (length, (s, stack)) = stack in
         let s_length = Z.of_int (Bytes.length s) in
@@ -974,23 +1638,23 @@ let rec step_bounded :
         if Compare.Z.(offset < s_length && Z.add offset length <= s_length)
         then
           let s = Bytes.sub s (Z.to_int offset) (Z.to_int length) in
-          (continue [@ocaml.tailcall]) ctxt k ks (Some s) stack
-        else (continue [@ocaml.tailcall]) ctxt k ks None stack
+          (run [@ocaml.tailcall]) ctxt gms k ks (Some s) stack
+        else (run [@ocaml.tailcall]) ctxt gms k ks None stack
     | KBytes_size (_, k) ->
         let s = accu in
         let result = Script_int.(abs (of_int (Bytes.length s))) in
-        (continue [@ocaml.tailcall]) ctxt k ks result stack
+        (run [@ocaml.tailcall]) ctxt gms k ks result stack
     (* currency operations *)
     | KAdd_tez (_, k) ->
         let x = accu in
         let (y, stack) = stack in
         Tez.(x +? y)
-        >>?= fun res -> (continue [@ocaml.tailcall]) ctxt k ks res stack
+        >>?= fun res -> (run [@ocaml.tailcall]) ctxt gms k ks res stack
     | KSub_tez (_, k) ->
         let x = accu in
         let (y, stack) = stack in
         Tez.(x -? y)
-        >>?= fun res -> (continue [@ocaml.tailcall]) ctxt k ks res stack
+        >>?= fun res -> (run [@ocaml.tailcall]) ctxt gms k ks res stack
     | KMul_teznat (kinfo, k) -> (
         let x = accu in
         let (y, stack) = stack in
@@ -999,7 +1663,7 @@ let rec step_bounded :
             get_log () >>=? fun log -> fail (Overflow (kinfo.kloc, log))
         | Some y ->
             Tez.(x *? y)
-            >>?= fun res -> (continue [@ocaml.tailcall]) ctxt k ks res stack )
+            >>?= fun res -> (run [@ocaml.tailcall]) ctxt gms k ks res stack )
     | KMul_nattez (kinfo, k) -> (
         let y = accu in
         let (x, stack) = stack in
@@ -1008,66 +1672,66 @@ let rec step_bounded :
             get_log () >>=? fun log -> fail (Overflow (kinfo.kloc, log))
         | Some y ->
             Tez.(x *? y)
-            >>?= fun res -> (continue [@ocaml.tailcall]) ctxt k ks res stack )
+            >>?= fun res -> (run [@ocaml.tailcall]) ctxt gms k ks res stack )
     (* boolean operations *)
     | KOr (_, k) ->
         let x = accu in
         let (y, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (x || y) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (x || y) stack
     | KAnd (_, k) ->
         let x = accu in
         let (y, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (x && y) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (x && y) stack
     | KXor (_, k) ->
         let x = accu in
         let (y, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks Compare.Bool.(x <> y) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks Compare.Bool.(x <> y) stack
     | KNot (_, k) ->
         let x = accu in
-        (continue [@ocaml.tailcall]) ctxt k ks (not x) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (not x) stack
     (* integer operations *)
     | KIs_nat (_, k) ->
         let x = accu in
-        (continue [@ocaml.tailcall]) ctxt k ks (Script_int.is_nat x) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Script_int.is_nat x) stack
     | KAbs_int (_, k) ->
         let x = accu in
-        (continue [@ocaml.tailcall]) ctxt k ks (Script_int.abs x) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Script_int.abs x) stack
     | KInt_nat (_, k) ->
         let x = accu in
-        (continue [@ocaml.tailcall]) ctxt k ks (Script_int.int x) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Script_int.int x) stack
     | KNeg_int (_, k) ->
         let x = accu in
-        (continue [@ocaml.tailcall]) ctxt k ks (Script_int.neg x) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Script_int.neg x) stack
     | KNeg_nat (_, k) ->
         let x = accu in
-        (continue [@ocaml.tailcall]) ctxt k ks (Script_int.neg x) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Script_int.neg x) stack
     | KAdd_intint (_, k) ->
         let x = accu and (y, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (Script_int.add x y) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Script_int.add x y) stack
     | KAdd_intnat (_, k) ->
         let x = accu and (y, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (Script_int.add x y) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Script_int.add x y) stack
     | KAdd_natint (_, k) ->
         let x = accu and (y, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (Script_int.add x y) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Script_int.add x y) stack
     | KAdd_natnat (_, k) ->
         let x = accu and (y, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (Script_int.add_n x y) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Script_int.add_n x y) stack
     | KSub_int (_, k) ->
         let x = accu and (y, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (Script_int.sub x y) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Script_int.sub x y) stack
     | KMul_intint (_, k) ->
         let x = accu and (y, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (Script_int.mul x y) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Script_int.mul x y) stack
     | KMul_intnat (_, k) ->
         let x = accu and (y, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (Script_int.mul x y) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Script_int.mul x y) stack
     | KMul_natint (_, k) ->
         let x = accu and (y, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (Script_int.mul x y) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Script_int.mul x y) stack
     | KMul_natnat (_, k) ->
         let x = accu and (y, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (Script_int.mul_n x y) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Script_int.mul_n x y) stack
     | KEdiv_teznat (_, k) ->
         let x = accu and (y, stack) = stack in
         let x = Script_int.of_int64 (Tez.to_mutez x) in
@@ -1088,7 +1752,7 @@ let rec step_bounded :
             | _ ->
                 assert false )
         in
-        (continue [@ocaml.tailcall]) ctxt k ks result stack
+        (run [@ocaml.tailcall]) ctxt gms k ks result stack
     | KEdiv_tez (_, k) ->
         let x = accu and (y, stack) = stack in
         let x = Script_int.abs (Script_int.of_int64 (Tez.to_mutez x)) in
@@ -1108,80 +1772,75 @@ let rec step_bounded :
               | Some r ->
                   Some (q, r) ) )
         in
-        (continue [@ocaml.tailcall]) ctxt k ks result stack
+        (run [@ocaml.tailcall]) ctxt gms k ks result stack
     | KEdiv_intint (_, k) ->
         let x = accu and (y, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (Script_int.ediv x y) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Script_int.ediv x y) stack
     | KEdiv_intnat (_, k) ->
         let x = accu and (y, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (Script_int.ediv x y) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Script_int.ediv x y) stack
     | KEdiv_natint (_, k) ->
         let x = accu and (y, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (Script_int.ediv x y) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Script_int.ediv x y) stack
     | KEdiv_natnat (_, k) ->
         let x = accu and (y, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (Script_int.ediv_n x y) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Script_int.ediv_n x y) stack
     | KLsl_nat (kinfo, k) -> (
         let x = accu and (y, stack) = stack in
         match Script_int.shift_left_n x y with
         | None ->
             get_log () >>=? fun log -> fail (Overflow (kinfo.kloc, log))
         | Some x ->
-            (continue [@ocaml.tailcall]) ctxt k ks x stack )
+            (run [@ocaml.tailcall]) ctxt gms k ks x stack )
     | KLsr_nat (kinfo, k) -> (
         let x = accu and (y, stack) = stack in
         match Script_int.shift_right_n x y with
         | None ->
             get_log () >>=? fun log -> fail (Overflow (kinfo.kloc, log))
         | Some r ->
-            (continue [@ocaml.tailcall]) ctxt k ks r stack )
+            (run [@ocaml.tailcall]) ctxt gms k ks r stack )
     | KOr_nat (_, k) ->
         let x = accu and (y, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (Script_int.logor x y) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Script_int.logor x y) stack
     | KAnd_nat (_, k) ->
         let x = accu and (y, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (Script_int.logand x y) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Script_int.logand x y) stack
     | KAnd_int_nat (_, k) ->
         let x = accu and (y, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (Script_int.logand x y) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Script_int.logand x y) stack
     | KXor_nat (_, k) ->
         let x = accu and (y, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (Script_int.logxor x y) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Script_int.logxor x y) stack
     | KNot_int (_, k) ->
         let x = accu in
-        (continue [@ocaml.tailcall]) ctxt k ks (Script_int.lognot x) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Script_int.lognot x) stack
     | KNot_nat (_, k) ->
         let x = accu in
-        (continue [@ocaml.tailcall]) ctxt k ks (Script_int.lognot x) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Script_int.lognot x) stack
     (* control *)
     | KIf (_, bt, bf) ->
         if accu then
-          (continue [@ocaml.tailcall]) ctxt bt ks (fst stack) (snd stack)
-        else (continue [@ocaml.tailcall]) ctxt bf ks (fst stack) (snd stack)
+          (run [@ocaml.tailcall]) ctxt gms bt ks (fst stack) (snd stack)
+        else (run [@ocaml.tailcall]) ctxt gms bf ks (fst stack) (snd stack)
     | KLoop (_, body, k) as self ->
         if accu then
-          (continue [@ocaml.tailcall])
-            ctxt
-            body
-            (KCons (self, ks))
-            (fst stack)
-            (snd stack)
-        else (continue [@ocaml.tailcall]) ctxt k ks (fst stack) (snd stack)
+          let ks = KCons (self, ks) in
+          (run [@ocaml.tailcall]) ctxt gms body ks (fst stack) (snd stack)
+        else (run [@ocaml.tailcall]) ctxt gms k ks (fst stack) (snd stack)
     | KLoop_left (_, bl, br) as self -> (
       match accu with
       | L v ->
-          (continue [@ocaml.tailcall]) ctxt bl (KCons (self, ks)) v stack
+          (run [@ocaml.tailcall]) ctxt gms bl (KCons (self, ks)) v stack
       | R v ->
-          (continue [@ocaml.tailcall]) ctxt br ks v stack )
+          (run [@ocaml.tailcall]) ctxt gms br ks v stack )
     | KDip (_, kinfo_const, b, k) ->
         let ign = accu in
         let ks = KCons (KConst (kinfo_const, ign, k), ks) in
-        (continue [@ocaml.tailcall]) ctxt b ks (fst stack) (snd stack)
+        (run [@ocaml.tailcall]) ctxt gms b ks (fst stack) (snd stack)
     | KExec (_, k) ->
         let arg = accu and (code, stack) = stack in
         interp logger ctxt step_constants code arg
-        >>=? fun (res, ctxt) ->
-        (continue [@ocaml.tailcall]) ctxt k ks res stack
+        >>=? fun (res, ctxt) -> (run [@ocaml.tailcall]) ctxt gms k ks res stack
     | KApply (_, capture_ty, k) -> (
         let capture = accu in
         let (lam, stack) = stack in
@@ -1238,11 +1897,11 @@ let rec step_bounded :
                     expr ] )
             in
             let lam' = Lam (full_descr, full_expr) in
-            (continue [@ocaml.tailcall]) ctxt k ks lam' stack
+            (run [@ocaml.tailcall]) ctxt gms k ks lam' stack
         | _ ->
             assert false )
     | KLambda (_, lam, k) ->
-        (continue [@ocaml.tailcall]) ctxt k ks lam (accu, stack)
+        (run [@ocaml.tailcall]) ctxt gms k ks lam (accu, stack)
     | KFailwith (_, kloc, tv, _) ->
         let v = accu in
         trace Cannot_serialize_failure (unparse_data ctxt Optimized tv v)
@@ -1250,7 +1909,7 @@ let rec step_bounded :
         let v = Micheline.strip_locations v in
         get_log () >>=? fun log -> fail (Reject (kloc, v, log))
     | KNop (_, k) ->
-        (continue [@ocaml.tailcall]) ctxt k ks accu stack
+        (run [@ocaml.tailcall]) ctxt gms k ks accu stack
     (* comparison *)
     | KCompare (_, ty, k) ->
         let a = accu in
@@ -1258,52 +1917,51 @@ let rec step_bounded :
         let r =
           Script_int.of_int @@ Script_ir_translator.compare_comparable ty a b
         in
-        (continue [@ocaml.tailcall]) ctxt k ks r stack
+        (run [@ocaml.tailcall]) ctxt gms k ks r stack
     (* comparators *)
     | KEq (_, k) ->
         let cmpres = accu in
         let cmpres = Script_int.compare cmpres Script_int.zero in
         let cmpres = Compare.Int.(cmpres = 0) in
-        (continue [@ocaml.tailcall]) ctxt k ks cmpres stack
+        (run [@ocaml.tailcall]) ctxt gms k ks cmpres stack
     | KNeq (_, k) ->
         let cmpres = accu in
         let cmpres = Script_int.compare cmpres Script_int.zero in
         let cmpres = Compare.Int.(cmpres <> 0) in
-        (continue [@ocaml.tailcall]) ctxt k ks cmpres stack
+        (run [@ocaml.tailcall]) ctxt gms k ks cmpres stack
     | KLt (_, k) ->
         let cmpres = accu in
         let cmpres = Script_int.compare cmpres Script_int.zero in
         let cmpres = Compare.Int.(cmpres < 0) in
-        (continue [@ocaml.tailcall]) ctxt k ks cmpres stack
+        (run [@ocaml.tailcall]) ctxt gms k ks cmpres stack
     | KLe (_, k) ->
         let cmpres = accu in
         let cmpres = Script_int.compare cmpres Script_int.zero in
         let cmpres = Compare.Int.(cmpres <= 0) in
-        (continue [@ocaml.tailcall]) ctxt k ks cmpres stack
+        (run [@ocaml.tailcall]) ctxt gms k ks cmpres stack
     | KGt (_, k) ->
         let cmpres = accu in
         let cmpres = Script_int.compare cmpres Script_int.zero in
         let cmpres = Compare.Int.(cmpres > 0) in
-        (continue [@ocaml.tailcall]) ctxt k ks cmpres stack
+        (run [@ocaml.tailcall]) ctxt gms k ks cmpres stack
     | KGe (_, k) ->
         let cmpres = accu in
         let cmpres = Script_int.compare cmpres Script_int.zero in
         let cmpres = Compare.Int.(cmpres >= 0) in
-        (continue [@ocaml.tailcall]) ctxt k ks cmpres stack
+        (run [@ocaml.tailcall]) ctxt gms k ks cmpres stack
     (* packing *)
     | KPack (_, ty, k) ->
         let value = accu in
         Script_ir_translator.pack_data ctxt ty value
         >>=? fun (bytes, ctxt) ->
-        (continue [@ocaml.tailcall]) ctxt k ks bytes stack
+        (run [@ocaml.tailcall]) ctxt gms k ks bytes stack
     | KUnpack (_, ty, k) ->
         let bytes = accu in
         unpack ctxt ~ty ~bytes
-        >>=? fun (opt, ctxt) ->
-        (continue [@ocaml.tailcall]) ctxt k ks opt stack
+        >>=? fun (opt, ctxt) -> (run [@ocaml.tailcall]) ctxt gms k ks opt stack
     | KAddress (_, k) ->
         let (_, address) = accu in
-        (continue [@ocaml.tailcall]) ctxt k ks address stack
+        (run [@ocaml.tailcall]) ctxt gms k ks address stack
     | KContract (kinfo, t, entrypoint, k) -> (
         let contract = accu in
         match (contract, entrypoint) with
@@ -1317,9 +1975,9 @@ let rec step_bounded :
               contract
               ~entrypoint
             >>=? fun (ctxt, maybe_contract) ->
-            (continue [@ocaml.tailcall]) ctxt k ks maybe_contract stack
+            (run [@ocaml.tailcall]) ctxt gms k ks maybe_contract stack
         | _ ->
-            (continue [@ocaml.tailcall]) ctxt k ks None stack )
+            (run [@ocaml.tailcall]) ctxt gms k ks None stack )
     | KTransfer_tokens (_, k) ->
         let p = accu in
         let (amount, ((tp, (destination, entrypoint)), stack)) = stack in
@@ -1350,18 +2008,14 @@ let rec step_bounded :
         in
         fresh_internal_nonce ctxt
         >>?= fun (ctxt, nonce) ->
-        (continue [@ocaml.tailcall])
-          ctxt
-          k
-          ks
-          ( Internal_operation {source = step_constants.self; operation; nonce},
-            lazy_storage_diff )
-          stack
+        let iop = {source = step_constants.self; operation; nonce} in
+        let accu = (Internal_operation iop, lazy_storage_diff) in
+        (run [@ocaml.tailcall]) ctxt gms k ks accu stack
     | KImplicit_account (_, k) ->
         let key = accu in
         let contract = Contract.implicit_contract key in
         let res = (Unit_t None, (contract, "default")) in
-        (continue [@ocaml.tailcall]) ctxt k ks res stack
+        (run [@ocaml.tailcall]) ctxt gms k ks res stack
     | KCreate_contract
         (_, storage_type, param_type, Lam (_, code), root_name, k) ->
         (* Removed the instruction's arguments manager, spendable and delegatable *)
@@ -1423,12 +2077,7 @@ let rec step_bounded :
           ( Internal_operation {source = step_constants.self; operation; nonce},
             lazy_storage_diff )
         in
-        (continue [@ocaml.tailcall])
-          ctxt
-          k
-          ks
-          res
-          ((contract, "default"), stack)
+        (run [@ocaml.tailcall]) ctxt gms k ks res ((contract, "default"), stack)
     | KSet_delegate (_, k) ->
         let delegate = accu in
         let operation = Delegation delegate in
@@ -1438,55 +2087,56 @@ let rec step_bounded :
           ( Internal_operation {source = step_constants.self; operation; nonce},
             None )
         in
-        (continue [@ocaml.tailcall]) ctxt k ks res stack
+        (run [@ocaml.tailcall]) ctxt gms k ks res stack
     | KBalance (_, k) ->
         Contract.get_balance_carbonated ctxt step_constants.self
         >>=? fun (ctxt, balance) ->
-        (continue [@ocaml.tailcall]) ctxt k ks balance (accu, stack)
+        (run [@ocaml.tailcall]) ctxt gms k ks balance (accu, stack)
     | KLevel (_, k) ->
         let level =
           (Level.current ctxt).level |> Raw_level.to_int32
           |> Script_int.of_int32 |> Script_int.abs
         in
-        (continue [@ocaml.tailcall]) ctxt k ks level (accu, stack)
+        (run [@ocaml.tailcall]) ctxt gms k ks level (accu, stack)
     | KNow (_, k) ->
         let now = Script_timestamp.now ctxt in
-        (continue [@ocaml.tailcall]) ctxt k ks now (accu, stack)
+        (run [@ocaml.tailcall]) ctxt gms k ks now (accu, stack)
     | KCheck_signature (_, k) ->
         let key = accu and (signature, (message, stack)) = stack in
         let res = Signature.check key signature message in
-        (continue [@ocaml.tailcall]) ctxt k ks res stack
+        (run [@ocaml.tailcall]) ctxt gms k ks res stack
     | KHash_key (_, k) ->
         let key = accu in
         let res = Signature.Public_key.hash key in
-        (continue [@ocaml.tailcall]) ctxt k ks res stack
+        (run [@ocaml.tailcall]) ctxt gms k ks res stack
     | KBlake2b (_, k) ->
         let bytes = accu in
         let hash = Raw_hashes.blake2b bytes in
-        (continue [@ocaml.tailcall]) ctxt k ks hash stack
+        (run [@ocaml.tailcall]) ctxt gms k ks hash stack
     | KSha256 (_, k) ->
         let bytes = accu in
         let hash = Raw_hashes.sha256 bytes in
-        (continue [@ocaml.tailcall]) ctxt k ks hash stack
+        (run [@ocaml.tailcall]) ctxt gms k ks hash stack
     | KSha512 (_, k) ->
         let bytes = accu in
         let hash = Raw_hashes.sha512 bytes in
-        (continue [@ocaml.tailcall]) ctxt k ks hash stack
+        (run [@ocaml.tailcall]) ctxt gms k ks hash stack
     | KSource (_, k) ->
         let res = (step_constants.payer, "default") in
-        (continue [@ocaml.tailcall]) ctxt k ks res (accu, stack)
+        (run [@ocaml.tailcall]) ctxt gms k ks res (accu, stack)
     | KSender (_, k) ->
         let res = (step_constants.source, "default") in
-        (continue [@ocaml.tailcall]) ctxt k ks res (accu, stack)
+        (run [@ocaml.tailcall]) ctxt gms k ks res (accu, stack)
     | KSelf (_, ty, entrypoint, k) ->
         let res = (ty, (step_constants.self, entrypoint)) in
-        (continue [@ocaml.tailcall]) ctxt k ks res (accu, stack)
+        (run [@ocaml.tailcall]) ctxt gms k ks res (accu, stack)
     | KSelf_address (_, k) ->
         let res = (step_constants.self, "default") in
-        (continue [@ocaml.tailcall]) ctxt k ks res (accu, stack)
+        (run [@ocaml.tailcall]) ctxt gms k ks res (accu, stack)
     | KAmount (_, k) ->
-        (continue [@ocaml.tailcall])
+        (run [@ocaml.tailcall])
           ctxt
+          gms
           k
           ks
           step_constants.amount
@@ -1498,7 +2148,7 @@ let rec step_bounded :
             n'
             (accu, stack)
         in
-        (continue [@ocaml.tailcall]) ctxt k ks accu stack
+        (run [@ocaml.tailcall]) ctxt gms k ks accu stack
     | KDug (_, _n, n', k) ->
         let v = accu in
         let (stack, ()) =
@@ -1507,7 +2157,7 @@ let rec step_bounded :
             n'
             stack
         in
-        (continue [@ocaml.tailcall]) ctxt k ks (fst stack) (snd stack)
+        (run [@ocaml.tailcall]) ctxt gms k ks (fst stack) (snd stack)
     | KDipn (_, _n, n', b, k) -> (
         (*
 
@@ -1535,7 +2185,7 @@ let rec step_bounded :
         match ktransfer n' (accu, stack) (ExKInstr (Eq, k)) with
         | (stack, ExKInstr (Eq, restore_prefix)) ->
             let ks = KCons (restore_prefix, ks) in
-            (continue [@ocaml.tailcall]) ctxt b ks (fst stack) (snd stack) )
+            (run [@ocaml.tailcall]) ctxt gms b ks (fst stack) (snd stack) )
     | KDropn (_, _n, n', k) ->
         let (_, stack) =
           interp_stack_prefix_preserving_operation
@@ -1543,10 +2193,10 @@ let rec step_bounded :
             n'
             (accu, stack)
         in
-        (continue [@ocaml.tailcall]) ctxt k ks (fst stack) (snd stack)
+        (run [@ocaml.tailcall]) ctxt gms k ks (fst stack) (snd stack)
     | KSapling_empty_state (_, memo_size, k) ->
         let state = Sapling.empty_state ~memo_size () in
-        (continue [@ocaml.tailcall]) ctxt k ks state (accu, stack)
+        (run [@ocaml.tailcall]) ctxt gms k ks state (accu, stack)
     | KSapling_verify_update (_, k) -> (
         let transaction = accu in
         let (state, stack) = stack in
@@ -1558,12 +2208,13 @@ let rec step_bounded :
         match balance_state_opt with
         | Some (balance, state) ->
             let state = Some (Script_int.of_int64 balance, state) in
-            (continue [@ocaml.tailcall]) ctxt k ks state stack
+            (run [@ocaml.tailcall]) ctxt gms k ks state stack
         | None ->
-            (continue [@ocaml.tailcall]) ctxt k ks None stack )
+            (run [@ocaml.tailcall]) ctxt gms k ks None stack )
     | KChainId (_, k) ->
-        (continue [@ocaml.tailcall])
+        (run [@ocaml.tailcall])
           ctxt
+          gms
           k
           ks
           step_constants.chain_id
@@ -1575,61 +2226,61 @@ let rec step_bounded :
         Vote.get_voting_power ctxt key_hash
         >>=? fun (ctxt, rolls) ->
         let power = Script_int.(abs (of_int32 rolls)) in
-        (continue [@ocaml.tailcall]) ctxt k ks power stack
+        (run [@ocaml.tailcall]) ctxt gms k ks power stack
     | KTotal_voting_power (_, k) ->
         Vote.get_total_voting_power ctxt
         >>=? fun (ctxt, rolls) ->
         let power = Script_int.(abs (of_int32 rolls)) in
-        (continue [@ocaml.tailcall]) ctxt k ks power (accu, stack)
+        (run [@ocaml.tailcall]) ctxt gms k ks power (accu, stack)
     | KKeccak (_, k) ->
         let bytes = accu in
         let hash = Raw_hashes.keccak256 bytes in
-        (continue [@ocaml.tailcall]) ctxt k ks hash stack
+        (run [@ocaml.tailcall]) ctxt gms k ks hash stack
     | KSha3 (_, k) ->
         let bytes = accu in
         let hash = Raw_hashes.sha3_256 bytes in
-        (continue [@ocaml.tailcall]) ctxt k ks hash stack
+        (run [@ocaml.tailcall]) ctxt gms k ks hash stack
     | KAdd_bls12_381_g1 (_, k) ->
         let x = accu and (y, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (Bls12_381.G1.add x y) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Bls12_381.G1.add x y) stack
     | KAdd_bls12_381_g2 (_, k) ->
         let x = accu and (y, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (Bls12_381.G2.add x y) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Bls12_381.G2.add x y) stack
     | KAdd_bls12_381_fr (_, k) ->
         let x = accu and (y, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (Bls12_381.Fr.add x y) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Bls12_381.Fr.add x y) stack
     | KMul_bls12_381_g1 (_, k) ->
         let x = accu and (y, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (Bls12_381.G1.mul x y) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Bls12_381.G1.mul x y) stack
     | KMul_bls12_381_g2 (_, k) ->
         let x = accu and (y, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (Bls12_381.G2.mul x y) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Bls12_381.G2.mul x y) stack
     | KMul_bls12_381_fr (_, k) ->
         let x = accu and (y, stack) = stack in
-        (continue [@ocaml.tailcall]) ctxt k ks (Bls12_381.Fr.mul x y) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Bls12_381.Fr.mul x y) stack
     | KMul_bls12_381_fr_z (_, k) ->
         let x = accu and (y, stack) = stack in
         let x = Bls12_381.Fr.of_z (Script_int.to_zint x) in
         let res = Bls12_381.Fr.mul x y in
-        (continue [@ocaml.tailcall]) ctxt k ks res stack
+        (run [@ocaml.tailcall]) ctxt gms k ks res stack
     | KMul_bls12_381_z_fr (_, k) ->
         let y = accu and (x, stack) = stack in
         let x = Bls12_381.Fr.of_z (Script_int.to_zint x) in
         let res = Bls12_381.Fr.mul x y in
-        (continue [@ocaml.tailcall]) ctxt k ks res stack
+        (run [@ocaml.tailcall]) ctxt gms k ks res stack
     | KInt_bls12_381_fr (_, k) ->
         let x = accu in
         let res = Script_int.of_zint (Bls12_381.Fr.to_z x) in
-        (continue [@ocaml.tailcall]) ctxt k ks res stack
+        (run [@ocaml.tailcall]) ctxt gms k ks res stack
     | KNeg_bls12_381_g1 (_, k) ->
         let x = accu in
-        (continue [@ocaml.tailcall]) ctxt k ks (Bls12_381.G1.negate x) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Bls12_381.G1.negate x) stack
     | KNeg_bls12_381_g2 (_, k) ->
         let x = accu in
-        (continue [@ocaml.tailcall]) ctxt k ks (Bls12_381.G2.negate x) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Bls12_381.G2.negate x) stack
     | KNeg_bls12_381_fr (_, k) ->
         let x = accu in
-        (continue [@ocaml.tailcall]) ctxt k ks (Bls12_381.Fr.negate x) stack
+        (run [@ocaml.tailcall]) ctxt gms k ks (Bls12_381.Fr.negate x) stack
     | KPairing_check_bls12_381 (_, k) ->
         let pairs = accu in
         let check =
@@ -1642,7 +2293,7 @@ let rec step_bounded :
                 |> Option.map Gt.(eq one))
               |> Option.value ~default:false
         in
-        (continue [@ocaml.tailcall]) ctxt k ks check stack
+        (run [@ocaml.tailcall]) ctxt gms k ks check stack
     | KComb (_, _, witness, k) ->
         let rec aux :
             type before after.
@@ -1656,7 +2307,7 @@ let rec step_bounded :
               ((a, b), tl')
         in
         let stack = aux witness (accu, stack) in
-        (continue [@ocaml.tailcall]) ctxt k ks (fst stack) (snd stack)
+        (run [@ocaml.tailcall]) ctxt gms k ks (fst stack) (snd stack)
     | KUncomb (_, _, witness, k) ->
         let rec aux :
             type before after.
@@ -1669,7 +2320,7 @@ let rec step_bounded :
               (a, aux witness' (b, tl))
         in
         let stack = aux witness (accu, stack) in
-        (continue [@ocaml.tailcall]) ctxt k ks (fst stack) (snd stack)
+        (run [@ocaml.tailcall]) ctxt gms k ks (fst stack) (snd stack)
     | KComb_get (_, _, witness, k) ->
         let comb = accu in
         let rec aux :
@@ -1685,7 +2336,7 @@ let rec step_bounded :
               aux witness' b
         in
         let accu = aux witness comb in
-        (continue [@ocaml.tailcall]) ctxt k ks accu stack
+        (run [@ocaml.tailcall]) ctxt gms k ks accu stack
     | KComb_set (_, _, witness, k) ->
         let value = accu and (comb, stack) = stack in
         let rec aux :
@@ -1704,7 +2355,7 @@ let rec step_bounded :
               (hd, aux witness' value tl)
         in
         let accu = aux witness value comb in
-        (continue [@ocaml.tailcall]) ctxt k ks accu stack
+        (run [@ocaml.tailcall]) ctxt gms k ks accu stack
     | KDup_n (_, _, witness, k) ->
         let rec aux :
             type before after.
@@ -1718,13 +2369,14 @@ let rec step_bounded :
         in
         let stack = (accu, stack) in
         let accu = aux witness stack in
-        (continue [@ocaml.tailcall]) ctxt k ks accu stack
+        (run [@ocaml.tailcall]) ctxt gms k ks accu stack
     (* Tickets *)
     | KTicket (_, k) ->
         let contents = accu and (amount, stack) = stack in
         let ticketer = (step_constants.self, "default") in
-        (continue [@ocaml.tailcall])
+        (run [@ocaml.tailcall])
           ctxt
+          gms
           k
           ks
           {ticketer; contents; amount}
@@ -1732,8 +2384,9 @@ let rec step_bounded :
     | KRead_ticket (_, k) ->
         let {ticketer; contents; amount} = accu in
         let stack = (accu, stack) in
-        (continue [@ocaml.tailcall])
+        (run [@ocaml.tailcall])
           ctxt
+          gms
           k
           ks
           (ticketer, (contents, amount))
@@ -1749,7 +2402,7 @@ let rec step_bounded :
               ({ticket with amount = amount_a}, {ticket with amount = amount_b})
           else None
         in
-        (continue [@ocaml.tailcall]) ctxt k ks result stack
+        (run [@ocaml.tailcall]) ctxt gms k ks result stack
     | KJoin_tickets (_, contents_ty, k) ->
         let (ticket_a, ticket_b) = accu in
         let result =
@@ -1770,10 +2423,10 @@ let rec step_bounded :
               }
           else None
         in
-        (continue [@ocaml.tailcall]) ctxt k ks result stack
+        (run [@ocaml.tailcall]) ctxt monitor_gas k ks result stack
   in
   let (accu, stack) = lift kli stack in
-  step ctxt kinstr KNil accu stack
+  step ctxt true kinstr KNil accu stack
   >>=? fun (accu, stack, ctxt) -> return (unlift klo (accu, stack), ctxt)
 
 (* FIXME: This function will disappear when elaboration is ready. *)
@@ -1787,7 +2440,8 @@ and step_descr :
     (a * context) tzresult Lwt.t =
  fun logger ctxt step_constants descr stack ->
   (* FIXME: That's ugly but this is only temporary. *)
-  let kdescr = translate descr in
+  let (KDescr d) = translate descr in
+  let kdescr = KDescr {d with kinstr = insert_pay_gas d.kinstr} in
   step_bounded logger ctxt step_constants kdescr stack
 
 and interp :

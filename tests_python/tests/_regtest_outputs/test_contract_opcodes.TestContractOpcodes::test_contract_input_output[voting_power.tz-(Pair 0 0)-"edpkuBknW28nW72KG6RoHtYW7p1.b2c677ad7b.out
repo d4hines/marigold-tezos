@@ -15,35 +15,32 @@ trace
   - location: 10 (remaining gas: 1039961 units remaining)
     [ "tz1KqTpEZ7Yob7QbPE4Hy4Wo8fHG8LhKxZSx"  	
       Unit  	 ]
-  - location: 11 (remaining gas: 1039745.592 units remaining)
+  - location: 11 (remaining gas: 1039744.712 units remaining)
     [ 500  	
       Unit  	 ]
-  - location: 12 (remaining gas: 1039745.492 units remaining)
+  - location: 12 (remaining gas: 1039744.712 units remaining)
     [ Unit  	 ]
-  - location: 14 (remaining gas: 1039535.084 units remaining)
+  - location: 14 (remaining gas: 1039534.704 units remaining)
     [ 2500  	
       Unit  	 ]
-  - location: 13 (remaining gas: 1039535.014 units remaining)
+  - location: 13 (remaining gas: 1039534.704 units remaining)
     [ 2500  	
       Unit  	 ]
-  - location: 13 (remaining gas: 1039535.014 units remaining)
-    [ 2500  	
-      Unit  	 ]
-  - location: 13 (remaining gas: 1039534.934 units remaining)
+  - location: 13 (remaining gas: 1039534.704 units remaining)
     [ 500  	
       2500  	
       Unit  	 ]
-  - location: 15 (remaining gas: 1039534.854 units remaining)
+  - location: 15 (remaining gas: 1039534.704 units remaining)
     [ (Pair 500 2500)  	
       Unit  	 ]
-  - location: 16 (remaining gas: 1039534.774 units remaining)
+  - location: 16 (remaining gas: 1039534.704 units remaining)
     [ {}  	
       (Pair 500 2500)  	
       Unit  	 ]
-  - location: 18 (remaining gas: 1039534.694 units remaining)
+  - location: 18 (remaining gas: 1039534.704 units remaining)
     [ (Pair {} 500 2500)  	
       Unit  	 ]
-  - location: -1 (remaining gas: 1039534.624 units remaining)
+  - location: -1 (remaining gas: 1039534.704 units remaining)
     [ (Pair {} 500 2500)  	
       Unit  	 ]
 

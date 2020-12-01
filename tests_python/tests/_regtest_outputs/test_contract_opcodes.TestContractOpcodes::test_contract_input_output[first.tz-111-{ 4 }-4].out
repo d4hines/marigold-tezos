@@ -16,29 +16,27 @@ trace
     [ 4  	@parameter.hd
       {}  	@parameter.tl
       Unit  	 ]
-  - location: 11 (remaining gas: 1039990.665 units remaining)
+  - location: 11 (remaining gas: 1039990.215 units remaining)
     [ {}  	@parameter.tl
       Unit  	 ]
-  - location: 13 (remaining gas: 1039990.585 units remaining)
+  - location: 13 (remaining gas: 1039990.215 units remaining)
     [ Unit  	 ]
-  - location: 12 (remaining gas: 1039990.515 units remaining)
+  - location: 12 (remaining gas: 1039990.215 units remaining)
     [ Unit  	 ]
-  - location: 12 (remaining gas: 1039990.515 units remaining)
-    [ Unit  	 ]
-  - location: 12 (remaining gas: 1039990.435 units remaining)
+  - location: 12 (remaining gas: 1039990.215 units remaining)
     [ 4  	@parameter.hd
       Unit  	 ]
-  - location: 10 (remaining gas: 1039990.365 units remaining)
+  - location: 10 (remaining gas: 1039990.215 units remaining)
     [ 4  	@parameter.hd
       Unit  	 ]
-  - location: 18 (remaining gas: 1039990.285 units remaining)
+  - location: 18 (remaining gas: 1039990.215 units remaining)
     [ {}  	
       4  	@parameter.hd
       Unit  	 ]
-  - location: 20 (remaining gas: 1039990.205 units remaining)
+  - location: 20 (remaining gas: 1039990.215 units remaining)
     [ (Pair {} 4)  	
       Unit  	 ]
-  - location: -1 (remaining gas: 1039990.135 units remaining)
+  - location: -1 (remaining gas: 1039990.215 units remaining)
     [ (Pair {} 4)  	
       Unit  	 ]
 

@@ -15,14 +15,14 @@ trace
   - location: 9 (remaining gas: 1039964.030 units remaining)
     [ "tz1XPTDmvT3vVE5Uunngmixm7gj7zmdbPq6k"  	
       Unit  	 ]
-  - location: 10 (remaining gas: 1039963.950 units remaining)
+  - location: 10 (remaining gas: 1039963.720 units remaining)
     [ (Some "tz1XPTDmvT3vVE5Uunngmixm7gj7zmdbPq6k")  	
       Unit  	 ]
-  - location: 11 (remaining gas: 1039963.870 units remaining)
+  - location: 11 (remaining gas: 1039963.720 units remaining)
     [ {}  	
       (Some "tz1XPTDmvT3vVE5Uunngmixm7gj7zmdbPq6k")  	
       Unit  	 ]
-  - location: 13 (remaining gas: 1039963.790 units remaining)
+  - location: 13 (remaining gas: 1039963.720 units remaining)
     [ (Pair {} (Some "tz1XPTDmvT3vVE5Uunngmixm7gj7zmdbPq6k"))  	
       Unit  	 ]
   - location: -1 (remaining gas: 1039963.720 units remaining)

@@ -95,145 +95,157 @@ open Script_typed_ir
    The final types for the whole sequence of instructions
    are written 'r and 'f.
 
+   Instructions with a static cost
+   ===============================
+
+   Instructions are classified into two categories: instructions whose
+   cost can be determined statically and the other instructions whose
+   cost depends on the stack. The third parameter encodes this
+   classification.
+
 *)
-type ('bef_top, 'bef, 'res_top, 'res) kinstr =
+type static_cost = StaticCost
+
+type dynamic_cost = DynamicCost
+
+type ('bef_top, 'bef, 'res_top, 'res, 'cost) kinstr =
   (*
      Stack
      -----
   *)
   | KDrop :
-      ('a, 'b * 's) kinfo * ('b, 's, 'r, 'f) kinstr
-      -> ('a, 'b * 's, 'r, 'f) kinstr
+      ('a, 'b * 's) kinfo * ('b, 's, 'r, 'f, _) kinstr
+      -> ('a, 'b * 's, 'r, 'f, static_cost) kinstr
   | KDup :
-      ('a, 's) kinfo * ('a, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      ('a, 's) kinfo * ('a, 'a * 's, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   | KSwap :
-      ('a, 'b * 's) kinfo * ('b, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 'b * 's, 'r, 'f) kinstr
+      ('a, 'b * 's) kinfo * ('b, 'a * 's, 'r, 'f, _) kinstr
+      -> ('a, 'b * 's, 'r, 'f, static_cost) kinstr
   | KConst :
-      ('a, 's) kinfo * 'ty * ('ty, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      ('a, 's) kinfo * 'ty * ('ty, 'a * 's, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   (*
      Pairs
      -----
   *)
   | KCons_pair :
-      ('a, 'b * 's) kinfo * ('a * 'b, 's, 'r, 'f) kinstr
-      -> ('a, 'b * 's, 'r, 'f) kinstr
+      ('a, 'b * 's) kinfo * ('a * 'b, 's, 'r, 'f, _) kinstr
+      -> ('a, 'b * 's, 'r, 'f, static_cost) kinstr
   | KCar :
-      ('a * 'b, 's) kinfo * ('a, 's, 'r, 'f) kinstr
-      -> ('a * 'b, 's, 'r, 'f) kinstr
+      ('a * 'b, 's) kinfo * ('a, 's, 'r, 'f, _) kinstr
+      -> ('a * 'b, 's, 'r, 'f, static_cost) kinstr
   | KCdr :
-      ('a * 'b, 's) kinfo * ('b, 's, 'r, 'f) kinstr
-      -> ('a * 'b, 's, 'r, 'f) kinstr
+      ('a * 'b, 's) kinfo * ('b, 's, 'r, 'f, _) kinstr
+      -> ('a * 'b, 's, 'r, 'f, static_cost) kinstr
   | KUnpair :
-      ('a * 'b, 's) kinfo * ('a, 'b * 's, 'r, 'f) kinstr
-      -> ('a * 'b, 's, 'r, 'f) kinstr
+      ('a * 'b, 's) kinfo * ('a, 'b * 's, 'r, 'f, _) kinstr
+      -> ('a * 'b, 's, 'r, 'f, static_cost) kinstr
   (*
      Options
      -------
    *)
   | KCons_some :
-      ('v, 's) kinfo * ('v option, 's, 'r, 'f) kinstr
-      -> ('v, 's, 'r, 'f) kinstr
+      ('v, 's) kinfo * ('v option, 's, 'r, 'f, _) kinstr
+      -> ('v, 's, 'r, 'f, static_cost) kinstr
   | KCons_none :
-      ('a, 's) kinfo * 'b ty * ('b option, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      ('a, 's) kinfo * 'b ty * ('b option, 'a * 's, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   | KIf_none :
       ('a option, 'b * 's) kinfo
-      * ('b, 's, 'r, 'f) kinstr
-      * ('a, 'b * 's, 'r, 'f) kinstr
-      -> ('a option, 'b * 's, 'r, 'f) kinstr
+      * ('b, 's, 'r, 'f, _) kinstr
+      * ('a, 'b * 's, 'r, 'f, _) kinstr
+      -> ('a option, 'b * 's, 'r, 'f, static_cost) kinstr
   (*
      Unions
      ------
    *)
   | KCons_left :
-      ('a, 's) kinfo * (('a, 'b) union, 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      ('a, 's) kinfo * (('a, 'b) union, 's, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   | KCons_right :
-      ('b, 's) kinfo * (('a, 'b) union, 's, 'r, 'f) kinstr
-      -> ('b, 's, 'r, 'f) kinstr
+      ('b, 's) kinfo * (('a, 'b) union, 's, 'r, 'f, _) kinstr
+      -> ('b, 's, 'r, 'f, static_cost) kinstr
   | KIf_left :
       (('a, 'b) union, 's) kinfo
-      * ('a, 's, 'r, 'f) kinstr
-      * ('b, 's, 'r, 'f) kinstr
-      -> (('a, 'b) union, 's, 'r, 'f) kinstr
+      * ('a, 's, 'r, 'f, _) kinstr
+      * ('b, 's, 'r, 'f, _) kinstr
+      -> (('a, 'b) union, 's, 'r, 'f, static_cost) kinstr
   (*
      Lists
      -----
   *)
   | KCons_list :
-      ('a, 'a boxed_list * 's) kinfo * ('a boxed_list, 's, 'r, 'f) kinstr
-      -> ('a, 'a boxed_list * 's, 'r, 'f) kinstr
+      ('a, 'a boxed_list * 's) kinfo * ('a boxed_list, 's, 'r, 'f, _) kinstr
+      -> ('a, 'a boxed_list * 's, 'r, 'f, static_cost) kinstr
   | KNil :
-      ('a, 's) kinfo * ('b boxed_list, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      ('a, 's) kinfo * ('b boxed_list, 'a * 's, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   | KIf_cons :
       ('a boxed_list, 'b * 's) kinfo
-      * ('a, 'a boxed_list * ('b * 's), 'r, 'f) kinstr
-      * ('b, 's, 'r, 'f) kinstr
-      -> ('a boxed_list, 'b * 's, 'r, 'f) kinstr
+      * ('a, 'a boxed_list * ('b * 's), 'r, 'f, _) kinstr
+      * ('b, 's, 'r, 'f, _) kinstr
+      -> ('a boxed_list, 'b * 's, 'r, 'f, static_cost) kinstr
   | KList_map :
       ('a boxed_list, 'c * 's) kinfo
-      * ('a, 'c * 's, 'b, 'c * 's) kinstr
-      * ('b boxed_list, 'c * 's, 'r, 'f) kinstr
-      -> ('a boxed_list, 'c * 's, 'r, 'f) kinstr
+      * ('a, 'c * 's, 'b, 'c * 's, _) kinstr
+      * ('b boxed_list, 'c * 's, 'r, 'f, _) kinstr
+      -> ('a boxed_list, 'c * 's, 'r, 'f, dynamic_cost) kinstr
   | KList_mapping :
       ('c, 's) kinfo
       * ('b, 'c * 's) kinfo
-      * ('a, 'c * 's, 'b, 'c * 's) kinstr
+      * ('a, 'c * 's, 'b, 'c * 's, _) kinstr
       * 'a list
       * 'b list
       * int
-      * ('b boxed_list, 'c * 's, 'r, 'f) kinstr
-      -> ('c, 's, 'r, 'f) kinstr
+      * ('b boxed_list, 'c * 's, 'r, 'f, _) kinstr
+      -> ('c, 's, 'r, 'f, dynamic_cost) kinstr
   | KList_mapped :
       ('b, 'c * 's) kinfo
       * ('c, 's) kinfo
-      * ('a, 'c * 's, 'b, 'c * 's) kinstr
+      * ('a, 'c * 's, 'b, 'c * 's, _) kinstr
       * 'a list
       * 'b list
       * int
-      * ('b boxed_list, 'c * 's, 'r, 'f) kinstr
-      -> ('b, 'c * 's, 'r, 'f) kinstr
+      * ('b boxed_list, 'c * 's, 'r, 'f, _) kinstr
+      -> ('b, 'c * 's, 'r, 'f, dynamic_cost) kinstr
   | KList_iter :
       ('a boxed_list, 'b * 's) kinfo
       * ('b, 's) kinfo
-      * ('a, 'b * 's, 'b, 's) kinstr
-      * ('b, 's, 'r, 'f) kinstr
-      -> ('a boxed_list, 'b * 's, 'r, 'f) kinstr
+      * ('a, 'b * 's, 'b, 's, _) kinstr
+      * ('b, 's, 'r, 'f, _) kinstr
+      -> ('a boxed_list, 'b * 's, 'r, 'f, dynamic_cost) kinstr
   | KIter :
       ('b, 's) kinfo
-      * ('a, 'b * 's, 'b, 's) kinstr
+      * ('a, 'b * 's, 'b, 's, _) kinstr
       * 'a list
-      * ('b, 's, 'r, 'f) kinstr
-      -> ('b, 's, 'r, 'f) kinstr
+      * ('b, 's, 'r, 'f, _) kinstr
+      -> ('b, 's, 'r, 'f, dynamic_cost) kinstr
   | KList_size :
-      ('a boxed_list, 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> ('a boxed_list, 's, 'r, 'f) kinstr
+      ('a boxed_list, 's) kinfo * (n num, 's, 'r, 'f, _) kinstr
+      -> ('a boxed_list, 's, 'r, 'f, static_cost) kinstr
   (*
     Sets
     ----
   *)
   | KEmpty_set :
-      ('a, 's) kinfo * 'b comparable_ty * ('b set, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      ('a, 's) kinfo * 'b comparable_ty * ('b set, 'a * 's, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   | KSet_iter :
       ('a set, 'b * 's) kinfo
       * ('b, 's) kinfo
-      * ('a, 'b * 's, 'b, 's) kinstr
-      * ('b, 's, 'r, 'f) kinstr
-      -> ('a set, 'b * 's, 'r, 'f) kinstr
+      * ('a, 'b * 's, 'b, 's, _) kinstr
+      * ('b, 's, 'r, 'f, _) kinstr
+      -> ('a set, 'b * 's, 'r, 'f, dynamic_cost) kinstr
   | KSet_mem :
-      ('a, 'a set * 's) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> ('a, 'a set * 's, 'r, 'f) kinstr
+      ('a, 'a set * 's) kinfo * (bool, 's, 'r, 'f, _) kinstr
+      -> ('a, 'a set * 's, 'r, 'f, dynamic_cost) kinstr
   | KSet_update :
-      ('a, bool * ('a set * 's)) kinfo * ('a set, 's, 'r, 'f) kinstr
-      -> ('a, bool * ('a set * 's), 'r, 'f) kinstr
+      ('a, bool * ('a set * 's)) kinfo * ('a set, 's, 'r, 'f, _) kinstr
+      -> ('a, bool * ('a set * 's), 'r, 'f, dynamic_cost) kinstr
   | KSet_size :
-      ('a set, 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> ('a set, 's, 'r, 'f) kinstr
+      ('a set, 's) kinfo * (n num, 's, 'r, 'f, _) kinstr
+      -> ('a set, 's, 'r, 'f, static_cost) kinstr
   (*
      Maps
      ----
@@ -242,54 +254,55 @@ type ('bef_top, 'bef, 'res_top, 'res) kinstr =
       ('a, 's) kinfo
       * 'b comparable_ty
       * 'c ty
-      * (('b, 'c) map, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      * (('b, 'c) map, 'a * 's, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   | KMap_map :
       (('a, 'b) map, 'd * 's) kinfo
       * ('d, 's) kinfo
       * ('c, 'd * 's) kinfo
-      * ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
-      * (('a, 'c) map, 'd * 's, 'r, 'f) kinstr
-      -> (('a, 'b) map, 'd * 's, 'r, 'f) kinstr
+      * ('a * 'b, 'd * 's, 'c, 'd * 's, _) kinstr
+      * (('a, 'c) map, 'd * 's, 'r, 'f, _) kinstr
+      -> (('a, 'b) map, 'd * 's, 'r, 'f, dynamic_cost) kinstr
   | KMap_mapping :
       ('d, 's) kinfo
       * ('c, 'd * 's) kinfo
-      * ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
+      * ('a * 'b, 'd * 's, 'c, 'd * 's, _) kinstr
       * ('a * 'b) list
       * ('a, 'c) map
-      * (('a, 'c) map, 'd * 's, 'r, 'f) kinstr
-      -> ('d, 's, 'r, 'f) kinstr
+      * (('a, 'c) map, 'd * 's, 'r, 'f, _) kinstr
+      -> ('d, 's, 'r, 'f, dynamic_cost) kinstr
   | KMap_mapped :
       ('c, 'd * 's) kinfo
       * ('d, 's) kinfo
-      * ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
+      * ('a * 'b, 'd * 's, 'c, 'd * 's, _) kinstr
       * ('a * 'b) list
       * ('a, 'c) map
       * 'a
-      * (('a, 'c) map, 'd * 's, 'r, 'f) kinstr
-      -> ('c, 'd * 's, 'r, 'f) kinstr
+      * (('a, 'c) map, 'd * 's, 'r, 'f, _) kinstr
+      -> ('c, 'd * 's, 'r, 'f, dynamic_cost) kinstr
   | KMap_iter :
       (('a, 'b) map, 'c * 's) kinfo
-      * ('a * 'b, 'c * 's, 'c, 's) kinstr
-      * ('c, 's, 'r, 'f) kinstr
-      -> (('a, 'b) map, 'c * 's, 'r, 'f) kinstr
+      * ('c, 's) kinfo
+      * ('a * 'b, 'c * 's, 'c, 's, _) kinstr
+      * ('c, 's, 'r, 'f, _) kinstr
+      -> (('a, 'b) map, 'c * 's, 'r, 'f, dynamic_cost) kinstr
   | KMap_mem :
-      ('a, ('a, 'b) map * 's) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> ('a, ('a, 'b) map * 's, 'r, 'f) kinstr
+      ('a, ('a, 'b) map * 's) kinfo * (bool, 's, 'r, 'f, _) kinstr
+      -> ('a, ('a, 'b) map * 's, 'r, 'f, dynamic_cost) kinstr
   | KMap_get :
-      ('a, ('a, 'b) map * 's) kinfo * ('b option, 's, 'r, 'f) kinstr
-      -> ('a, ('a, 'b) map * 's, 'r, 'f) kinstr
+      ('a, ('a, 'b) map * 's) kinfo * ('b option, 's, 'r, 'f, _) kinstr
+      -> ('a, ('a, 'b) map * 's, 'r, 'f, dynamic_cost) kinstr
   | KMap_update :
       ('a, 'b option * (('a, 'b) map * 's)) kinfo
-      * (('a, 'b) map, 's, 'r, 'f) kinstr
-      -> ('a, 'b option * (('a, 'b) map * 's), 'r, 'f) kinstr
+      * (('a, 'b) map, 's, 'r, 'f, _) kinstr
+      -> ('a, 'b option * (('a, 'b) map * 's), 'r, 'f, dynamic_cost) kinstr
   | KMap_get_and_update :
       ('a, 'v option * (('a, 'v) map * 'rest)) kinfo
-      * ('v option, ('a, 'v) map * 'rest, 'r, 'f) kinstr
-      -> ('a, 'v option * (('a, 'v) map * 'rest), 'r, 'f) kinstr
+      * ('v option, ('a, 'v) map * 'rest, 'r, 'f, _) kinstr
+      -> ('a, 'v option * (('a, 'v) map * 'rest), 'r, 'f, dynamic_cost) kinstr
   | KMap_size :
-      (('a, 'b) map, 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> (('a, 'b) map, 's, 'r, 'f) kinstr
+      (('a, 'b) map, 's) kinfo * (n num, 's, 'r, 'f, _) kinstr
+      -> (('a, 'b) map, 's, 'r, 'f, static_cost) kinstr
   (*
      Big maps
      --------
@@ -298,493 +311,532 @@ type ('bef_top, 'bef, 'res_top, 'res) kinstr =
       ('a, 's) kinfo
       * 'b comparable_ty
       * 'c ty
-      * (('b, 'c) big_map, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      * (('b, 'c) big_map, 'a * 's, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   | KBig_map_mem :
-      ('a, ('a, 'b) big_map * 's) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> ('a, ('a, 'b) big_map * 's, 'r, 'f) kinstr
+      ('a, ('a, 'b) big_map * 's) kinfo * (bool, 's, 'r, 'f, _) kinstr
+      -> ('a, ('a, 'b) big_map * 's, 'r, 'f, dynamic_cost) kinstr
   | KBig_map_get :
-      ('a, ('a, 'b) big_map * 's) kinfo * ('b option, 's, 'r, 'f) kinstr
-      -> ('a, ('a, 'b) big_map * 's, 'r, 'f) kinstr
+      ('a, ('a, 'b) big_map * 's) kinfo * ('b option, 's, 'r, 'f, _) kinstr
+      -> ('a, ('a, 'b) big_map * 's, 'r, 'f, dynamic_cost) kinstr
   | KBig_map_update :
       ('a, 'b option * (('a, 'b) big_map * 's)) kinfo
-      * (('a, 'b) big_map, 's, 'r, 'f) kinstr
-      -> ('a, 'b option * (('a, 'b) big_map * 's), 'r, 'f) kinstr
+      * (('a, 'b) big_map, 's, 'r, 'f, _) kinstr
+      -> ('a, 'b option * (('a, 'b) big_map * 's), 'r, 'f, dynamic_cost) kinstr
   | KBig_map_get_and_update :
       ('a, 'v option * (('a, 'v) big_map * 'rest)) kinfo
-      * ('v option, ('a, 'v) big_map * 'rest, 'r, 'f) kinstr
-      -> ('a, 'v option * (('a, 'v) big_map * 'rest), 'r, 'f) kinstr
+      * ('v option, ('a, 'v) big_map * 'rest, 'r, 'f, _) kinstr
+      -> ( 'a,
+           'v option * (('a, 'v) big_map * 'rest),
+           'r,
+           'f,
+           dynamic_cost )
+         kinstr
   (*
      Strings
      -------
   *)
   | KConcat_string :
-      (string boxed_list, 's) kinfo * (string, 's, 'r, 'f) kinstr
-      -> (string boxed_list, 's, 'r, 'f) kinstr
+      (string boxed_list, 's) kinfo * (string, 's, 'r, 'f, _) kinstr
+      -> (string boxed_list, 's, 'r, 'f, dynamic_cost) kinstr
   | KConcat_string_pair :
-      (string, string * 's) kinfo * (string, 's, 'r, 'f) kinstr
-      -> (string, string * 's, 'r, 'f) kinstr
+      (string, string * 's) kinfo * (string, 's, 'r, 'f, _) kinstr
+      -> (string, string * 's, 'r, 'f, dynamic_cost) kinstr
   | KSlice_string :
-      (n num, n num * (string * 's)) kinfo * (string option, 's, 'r, 'f) kinstr
-      -> (n num, n num * (string * 's), 'r, 'f) kinstr
+      (n num, n num * (string * 's)) kinfo
+      * (string option, 's, 'r, 'f, _) kinstr
+      -> (n num, n num * (string * 's), 'r, 'f, dynamic_cost) kinstr
   | KString_size :
-      (string, 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> (string, 's, 'r, 'f) kinstr
+      (string, 's) kinfo * (n num, 's, 'r, 'f, _) kinstr
+      -> (string, 's, 'r, 'f, static_cost) kinstr
   (*
      Bytes
      -----
   *)
   | KConcat_bytes :
-      (bytes boxed_list, 's) kinfo * (bytes, 's, 'r, 'f) kinstr
-      -> (bytes boxed_list, 's, 'r, 'f) kinstr
+      (bytes boxed_list, 's) kinfo * (bytes, 's, 'r, 'f, _) kinstr
+      -> (bytes boxed_list, 's, 'r, 'f, dynamic_cost) kinstr
   | KConcat_bytes_pair :
-      (bytes, bytes * 's) kinfo * (bytes, 's, 'r, 'f) kinstr
-      -> (bytes, bytes * 's, 'r, 'f) kinstr
+      (bytes, bytes * 's) kinfo * (bytes, 's, 'r, 'f, _) kinstr
+      -> (bytes, bytes * 's, 'r, 'f, dynamic_cost) kinstr
   | KSlice_bytes :
-      (n num, n num * (bytes * 's)) kinfo * (bytes option, 's, 'r, 'f) kinstr
-      -> (n num, n num * (bytes * 's), 'r, 'f) kinstr
+      (n num, n num * (bytes * 's)) kinfo
+      * (bytes option, 's, 'r, 'f, _) kinstr
+      -> (n num, n num * (bytes * 's), 'r, 'f, dynamic_cost) kinstr
   | KBytes_size :
-      (bytes, 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> (bytes, 's, 'r, 'f) kinstr
+      (bytes, 's) kinfo * (n num, 's, 'r, 'f, _) kinstr
+      -> (bytes, 's, 'r, 'f, static_cost) kinstr
   (*
      Timestamps
      ----------
    *)
   | KAdd_seconds_to_timestamp :
       (z num, Script_timestamp.t * 's) kinfo
-      * (Script_timestamp.t, 's, 'r, 'f) kinstr
-      -> (z num, Script_timestamp.t * 's, 'r, 'f) kinstr
+      * (Script_timestamp.t, 's, 'r, 'f, _) kinstr
+      -> (z num, Script_timestamp.t * 's, 'r, 'f, dynamic_cost) kinstr
   | KAdd_timestamp_to_seconds :
       (Script_timestamp.t, z num * 's) kinfo
-      * (Script_timestamp.t, 's, 'r, 'f) kinstr
-      -> (Script_timestamp.t, z num * 's, 'r, 'f) kinstr
+      * (Script_timestamp.t, 's, 'r, 'f, _) kinstr
+      -> (Script_timestamp.t, z num * 's, 'r, 'f, dynamic_cost) kinstr
   | KSub_timestamp_seconds :
       (Script_timestamp.t, z num * 's) kinfo
-      * (Script_timestamp.t, 's, 'r, 'f) kinstr
-      -> (Script_timestamp.t, z num * 's, 'r, 'f) kinstr
+      * (Script_timestamp.t, 's, 'r, 'f, _) kinstr
+      -> (Script_timestamp.t, z num * 's, 'r, 'f, dynamic_cost) kinstr
   | KDiff_timestamps :
       (Script_timestamp.t, Script_timestamp.t * 's) kinfo
-      * (z num, 's, 'r, 'f) kinstr
-      -> (Script_timestamp.t, Script_timestamp.t * 's, 'r, 'f) kinstr
+      * (z num, 's, 'r, 'f, _) kinstr
+      -> ( Script_timestamp.t,
+           Script_timestamp.t * 's,
+           'r,
+           'f,
+           dynamic_cost )
+         kinstr
   (*
      Tez
      ---
     *)
   | KAdd_tez :
-      (Tez.t, Tez.t * 's) kinfo * (Tez.t, 's, 'r, 'f) kinstr
-      -> (Tez.t, Tez.t * 's, 'r, 'f) kinstr
+      (Tez.t, Tez.t * 's) kinfo * (Tez.t, 's, 'r, 'f, _) kinstr
+      -> (Tez.t, Tez.t * 's, 'r, 'f, static_cost) kinstr
   | KSub_tez :
-      (Tez.t, Tez.t * 's) kinfo * (Tez.t, 's, 'r, 'f) kinstr
-      -> (Tez.t, Tez.t * 's, 'r, 'f) kinstr
+      (Tez.t, Tez.t * 's) kinfo * (Tez.t, 's, 'r, 'f, _) kinstr
+      -> (Tez.t, Tez.t * 's, 'r, 'f, static_cost) kinstr
   | KMul_teznat :
-      (Tez.t, n num * 's) kinfo * (Tez.t, 's, 'r, 'f) kinstr
-      -> (Tez.t, n num * 's, 'r, 'f) kinstr
+      (Tez.t, n num * 's) kinfo * (Tez.t, 's, 'r, 'f, _) kinstr
+      -> (Tez.t, n num * 's, 'r, 'f, dynamic_cost) kinstr
   | KMul_nattez :
-      (n num, Tez.t * 's) kinfo * (Tez.t, 's, 'r, 'f) kinstr
-      -> (n num, Tez.t * 's, 'r, 'f) kinstr
+      (n num, Tez.t * 's) kinfo * (Tez.t, 's, 'r, 'f, _) kinstr
+      -> (n num, Tez.t * 's, 'r, 'f, dynamic_cost) kinstr
   | KEdiv_teznat :
       (Tez.t, n num * 's) kinfo
-      * ((Tez.t, Tez.t) pair option, 's, 'r, 'f) kinstr
-      -> (Tez.t, n num * 's, 'r, 'f) kinstr
+      * ((Tez.t, Tez.t) pair option, 's, 'r, 'f, _) kinstr
+      -> (Tez.t, n num * 's, 'r, 'f, dynamic_cost) kinstr
   | KEdiv_tez :
       (Tez.t, Tez.t * 's) kinfo
-      * ((n num, Tez.t) pair option, 's, 'r, 'f) kinstr
-      -> (Tez.t, Tez.t * 's, 'r, 'f) kinstr
+      * ((n num, Tez.t) pair option, 's, 'r, 'f, _) kinstr
+      -> (Tez.t, Tez.t * 's, 'r, 'f, static_cost) kinstr
   (*
      Booleans
      --------
    *)
   | KOr :
-      (bool, bool * 's) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> (bool, bool * 's, 'r, 'f) kinstr
+      (bool, bool * 's) kinfo * (bool, 's, 'r, 'f, _) kinstr
+      -> (bool, bool * 's, 'r, 'f, static_cost) kinstr
   | KAnd :
-      (bool, bool * 's) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> (bool, bool * 's, 'r, 'f) kinstr
+      (bool, bool * 's) kinfo * (bool, 's, 'r, 'f, _) kinstr
+      -> (bool, bool * 's, 'r, 'f, static_cost) kinstr
   | KXor :
-      (bool, bool * 's) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> (bool, bool * 's, 'r, 'f) kinstr
+      (bool, bool * 's) kinfo * (bool, 's, 'r, 'f, _) kinstr
+      -> (bool, bool * 's, 'r, 'f, static_cost) kinstr
   | KNot :
-      (bool, 's) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> (bool, 's, 'r, 'f) kinstr
+      (bool, 's) kinfo * (bool, 's, 'r, 'f, _) kinstr
+      -> (bool, 's, 'r, 'f, static_cost) kinstr
   (*
      Integers
      --------
   *)
   | KIs_nat :
-      (z num, 's) kinfo * (n num option, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
+      (z num, 's) kinfo * (n num option, 's, 'r, 'f, _) kinstr
+      -> (z num, 's, 'r, 'f, static_cost) kinstr
   | KNeg_nat :
-      (n num, 's) kinfo * (z num, 's, 'r, 'f) kinstr
-      -> (n num, 's, 'r, 'f) kinstr
+      (n num, 's) kinfo * (z num, 's, 'r, 'f, _) kinstr
+      -> (n num, 's, 'r, 'f, dynamic_cost) kinstr
   | KNeg_int :
-      (z num, 's) kinfo * (z num, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
+      (z num, 's) kinfo * (z num, 's, 'r, 'f, _) kinstr
+      -> (z num, 's, 'r, 'f, dynamic_cost) kinstr
   | KAbs_int :
-      (z num, 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
+      (z num, 's) kinfo * (n num, 's, 'r, 'f, _) kinstr
+      -> (z num, 's, 'r, 'f, dynamic_cost) kinstr
   | KInt_nat :
-      (n num, 's) kinfo * (z num, 's, 'r, 'f) kinstr
-      -> (n num, 's, 'r, 'f) kinstr
+      (n num, 's) kinfo * (z num, 's, 'r, 'f, _) kinstr
+      -> (n num, 's, 'r, 'f, static_cost) kinstr
   | KAdd_intint :
-      (z num, z num * 's) kinfo * (z num, 's, 'r, 'f) kinstr
-      -> (z num, z num * 's, 'r, 'f) kinstr
+      (z num, z num * 's) kinfo * (z num, 's, 'r, 'f, _) kinstr
+      -> (z num, z num * 's, 'r, 'f, dynamic_cost) kinstr
   | KAdd_intnat :
-      (z num, n num * 's) kinfo * (z num, 's, 'r, 'f) kinstr
-      -> (z num, n num * 's, 'r, 'f) kinstr
+      (z num, n num * 's) kinfo * (z num, 's, 'r, 'f, _) kinstr
+      -> (z num, n num * 's, 'r, 'f, dynamic_cost) kinstr
   | KAdd_natint :
-      (n num, z num * 's) kinfo * (z num, 's, 'r, 'f) kinstr
-      -> (n num, z num * 's, 'r, 'f) kinstr
+      (n num, z num * 's) kinfo * (z num, 's, 'r, 'f, _) kinstr
+      -> (n num, z num * 's, 'r, 'f, dynamic_cost) kinstr
   | KAdd_natnat :
-      (n num, n num * 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> (n num, n num * 's, 'r, 'f) kinstr
+      (n num, n num * 's) kinfo * (n num, 's, 'r, 'f, _) kinstr
+      -> (n num, n num * 's, 'r, 'f, dynamic_cost) kinstr
   | KSub_int :
-      ('a num, 'b num * 's) kinfo * (z num, 's, 'r, 'f) kinstr
-      -> ('a num, 'b num * 's, 'r, 'f) kinstr
+      ('a num, 'b num * 's) kinfo * (z num, 's, 'r, 'f, _) kinstr
+      -> ('a num, 'b num * 's, 'r, 'f, dynamic_cost) kinstr
   | KMul_intint :
-      (z num, z num * 's) kinfo * (z num, 's, 'r, 'f) kinstr
-      -> (z num, z num * 's, 'r, 'f) kinstr
+      (z num, z num * 's) kinfo * (z num, 's, 'r, 'f, _) kinstr
+      -> (z num, z num * 's, 'r, 'f, dynamic_cost) kinstr
   | KMul_intnat :
-      (z num, n num * 's) kinfo * (z num, 's, 'r, 'f) kinstr
-      -> (z num, n num * 's, 'r, 'f) kinstr
+      (z num, n num * 's) kinfo * (z num, 's, 'r, 'f, _) kinstr
+      -> (z num, n num * 's, 'r, 'f, dynamic_cost) kinstr
   | KMul_natint :
-      (n num, z num * 's) kinfo * (z num, 's, 'r, 'f) kinstr
-      -> (n num, z num * 's, 'r, 'f) kinstr
+      (n num, z num * 's) kinfo * (z num, 's, 'r, 'f, _) kinstr
+      -> (n num, z num * 's, 'r, 'f, dynamic_cost) kinstr
   | KMul_natnat :
-      (n num, n num * 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> (n num, n num * 's, 'r, 'f) kinstr
+      (n num, n num * 's) kinfo * (n num, 's, 'r, 'f, _) kinstr
+      -> (n num, n num * 's, 'r, 'f, dynamic_cost) kinstr
   | KEdiv_intint :
       (z num, z num * 's) kinfo
-      * ((z num, n num) pair option, 's, 'r, 'f) kinstr
-      -> (z num, z num * 's, 'r, 'f) kinstr
+      * ((z num, n num) pair option, 's, 'r, 'f, _) kinstr
+      -> (z num, z num * 's, 'r, 'f, dynamic_cost) kinstr
   | KEdiv_intnat :
       (z num, n num * 's) kinfo
-      * ((z num, n num) pair option, 's, 'r, 'f) kinstr
-      -> (z num, n num * 's, 'r, 'f) kinstr
+      * ((z num, n num) pair option, 's, 'r, 'f, _) kinstr
+      -> (z num, n num * 's, 'r, 'f, dynamic_cost) kinstr
   | KEdiv_natint :
       (n num, z num * 's) kinfo
-      * ((z num, n num) pair option, 's, 'r, 'f) kinstr
-      -> (n num, z num * 's, 'r, 'f) kinstr
+      * ((z num, n num) pair option, 's, 'r, 'f, _) kinstr
+      -> (n num, z num * 's, 'r, 'f, dynamic_cost) kinstr
   | KEdiv_natnat :
       (n num, n num * 's) kinfo
-      * ((n num, n num) pair option, 's, 'r, 'f) kinstr
-      -> (n num, n num * 's, 'r, 'f) kinstr
+      * ((n num, n num) pair option, 's, 'r, 'f, _) kinstr
+      -> (n num, n num * 's, 'r, 'f, dynamic_cost) kinstr
   | KLsl_nat :
-      (n num, n num * 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> (n num, n num * 's, 'r, 'f) kinstr
+      (n num, n num * 's) kinfo * (n num, 's, 'r, 'f, _) kinstr
+      -> (n num, n num * 's, 'r, 'f, dynamic_cost) kinstr
   | KLsr_nat :
-      (n num, n num * 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> (n num, n num * 's, 'r, 'f) kinstr
+      (n num, n num * 's) kinfo * (n num, 's, 'r, 'f, _) kinstr
+      -> (n num, n num * 's, 'r, 'f, dynamic_cost) kinstr
   | KOr_nat :
-      (n num, n num * 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> (n num, n num * 's, 'r, 'f) kinstr
+      (n num, n num * 's) kinfo * (n num, 's, 'r, 'f, _) kinstr
+      -> (n num, n num * 's, 'r, 'f, dynamic_cost) kinstr
   | KAnd_nat :
-      (n num, n num * 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> (n num, n num * 's, 'r, 'f) kinstr
+      (n num, n num * 's) kinfo * (n num, 's, 'r, 'f, _) kinstr
+      -> (n num, n num * 's, 'r, 'f, dynamic_cost) kinstr
   | KAnd_int_nat :
-      (z num, n num * 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> (z num, n num * 's, 'r, 'f) kinstr
+      (z num, n num * 's) kinfo * (n num, 's, 'r, 'f, _) kinstr
+      -> (z num, n num * 's, 'r, 'f, dynamic_cost) kinstr
   | KXor_nat :
-      (n num, n num * 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> (n num, n num * 's, 'r, 'f) kinstr
+      (n num, n num * 's) kinfo * (n num, 's, 'r, 'f, _) kinstr
+      -> (n num, n num * 's, 'r, 'f, dynamic_cost) kinstr
   | KNot_nat :
-      (n num, 's) kinfo * (z num, 's, 'r, 'f) kinstr
-      -> (n num, 's, 'r, 'f) kinstr
+      (n num, 's) kinfo * (z num, 's, 'r, 'f, _) kinstr
+      -> (n num, 's, 'r, 'f, dynamic_cost) kinstr
   | KNot_int :
-      (z num, 's) kinfo * (z num, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
+      (z num, 's) kinfo * (z num, 's, 'r, 'f, _) kinstr
+      -> (z num, 's, 'r, 'f, dynamic_cost) kinstr
   (*
      Control
      -------
   *)
   | KIf :
-      (bool, 'a * 's) kinfo * ('a, 's, 'r, 'f) kinstr * ('a, 's, 'r, 'f) kinstr
-      -> (bool, 'a * 's, 'r, 'f) kinstr
+      (bool, 'a * 's) kinfo
+      * ('a, 's, 'r, 'f, _) kinstr
+      * ('a, 's, 'r, 'f, _) kinstr
+      -> (bool, 'a * 's, 'r, 'f, static_cost) kinstr
   | KLoop :
       (bool, 'a * 's) kinfo
-      * ('a, 's, bool, 'a * 's) kinstr
-      * ('a, 's, 'r, 'f) kinstr
-      -> (bool, 'a * 's, 'r, 'f) kinstr
+      * ('a, 's, bool, 'a * 's, _) kinstr
+      * ('a, 's, 'r, 'f, _) kinstr
+      -> (bool, 'a * 's, 'r, 'f, static_cost) kinstr
   | KLoop_left :
       (('a, 'b) union, 's) kinfo
-      * ('a, 's, ('a, 'b) union, 's) kinstr
-      * ('b, 's, 'r, 'f) kinstr
-      -> (('a, 'b) union, 's, 'r, 'f) kinstr
+      * ('a, 's, ('a, 'b) union, 's, _) kinstr
+      * ('b, 's, 'r, 'f, _) kinstr
+      -> (('a, 'b) union, 's, 'r, 'f, static_cost) kinstr
   | KDip :
       ('a, 'b * 's) kinfo
       * ('c, 't) kinfo
-      * ('b, 's, 'c, 't) kinstr
-      * ('a, 'c * 't, 'r, 'f) kinstr
-      -> ('a, 'b * 's, 'r, 'f) kinstr
+      * ('b, 's, 'c, 't, _) kinstr
+      * ('a, 'c * 't, 'r, 'f, _) kinstr
+      -> ('a, 'b * 's, 'r, 'f, static_cost) kinstr
   | KExec :
-      ('a, ('a, 'b) lambda * 's) kinfo * ('b, 's, 'r, 'f) kinstr
-      -> ('a, ('a, 'b) lambda * 's, 'r, 'f) kinstr
+      ('a, ('a, 'b) lambda * 's) kinfo * ('b, 's, 'r, 'f, _) kinstr
+      -> ('a, ('a, 'b) lambda * 's, 'r, 'f, static_cost) kinstr
   | KApply :
       ('a, ('a * 't, 'b) lambda * 's) kinfo
       * 'a ty
-      * (('t, 'b) lambda, 's, 'r, 'f) kinstr
-      -> ('a, ('a * 't, 'b) lambda * 's, 'r, 'f) kinstr
+      * (('t, 'b) lambda, 's, 'r, 'f, _) kinstr
+      -> ('a, ('a * 't, 'b) lambda * 's, 'r, 'f, static_cost) kinstr
   | KLambda :
       ('a, 's) kinfo
       * ('b, 'c) lambda
-      * (('b, 'c) lambda, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      * (('b, 'c) lambda, 'a * 's, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   | KFailwith :
-      ('a, 's) kinfo * Script.location * 'a ty * ('b, 't, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | KNop : ('a, 's) kinfo * ('a, 's, 'r, 'f) kinstr -> ('a, 's, 'r, 'f) kinstr
+      ('a, 's) kinfo * Script.location * 'a ty * ('b, 't, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
+  | KNop :
+      ('a, 's) kinfo * ('a, 's, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   (*
      Comparison
      ----------
   *)
   | KCompare :
-      ('a, 'a * 's) kinfo * 'a comparable_ty * (z num, 's, 'r, 'f) kinstr
-      -> ('a, 'a * 's, 'r, 'f) kinstr
+      ('a, 'a * 's) kinfo * 'a comparable_ty * (z num, 's, 'r, 'f, _) kinstr
+      -> ('a, 'a * 's, 'r, 'f, dynamic_cost) kinstr
   (*
      Comparators
      -----------
   *)
   | KEq :
-      (z num, 's) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
+      (z num, 's) kinfo * (bool, 's, 'r, 'f, _) kinstr
+      -> (z num, 's, 'r, 'f, static_cost) kinstr
   | KNeq :
-      (z num, 's) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
+      (z num, 's) kinfo * (bool, 's, 'r, 'f, _) kinstr
+      -> (z num, 's, 'r, 'f, static_cost) kinstr
   | KLt :
-      (z num, 's) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
+      (z num, 's) kinfo * (bool, 's, 'r, 'f, _) kinstr
+      -> (z num, 's, 'r, 'f, static_cost) kinstr
   | KGt :
-      (z num, 's) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
+      (z num, 's) kinfo * (bool, 's, 'r, 'f, _) kinstr
+      -> (z num, 's, 'r, 'f, static_cost) kinstr
   | KLe :
-      (z num, 's) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
+      (z num, 's) kinfo * (bool, 's, 'r, 'f, _) kinstr
+      -> (z num, 's, 'r, 'f, static_cost) kinstr
   | KGe :
-      (z num, 's) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
+      (z num, 's) kinfo * (bool, 's, 'r, 'f, _) kinstr
+      -> (z num, 's, 'r, 'f, static_cost) kinstr
   (*
      Protocol
      --------
   *)
   | KAddress :
-      ('a typed_contract, 's) kinfo * (address, 's, 'r, 'f) kinstr
-      -> ('a typed_contract, 's, 'r, 'f) kinstr
+      ('a typed_contract, 's) kinfo * (address, 's, 'r, 'f, _) kinstr
+      -> ('a typed_contract, 's, 'r, 'f, static_cost) kinstr
   | KContract :
       (address, 's) kinfo
       * 'a ty
       * string
-      * ('a typed_contract option, 's, 'r, 'f) kinstr
-      -> (address, 's, 'r, 'f) kinstr
+      * ('a typed_contract option, 's, 'r, 'f, _) kinstr
+      -> (address, 's, 'r, 'f, static_cost) kinstr
   | KTransfer_tokens :
       ('a, Tez.t * ('a typed_contract * 's)) kinfo
-      * (operation, 's, 'r, 'f) kinstr
-      -> ('a, Tez.t * ('a typed_contract * 's), 'r, 'f) kinstr
+      * (operation, 's, 'r, 'f, _) kinstr
+      -> ('a, Tez.t * ('a typed_contract * 's), 'r, 'f, static_cost) kinstr
   | KImplicit_account :
-      (public_key_hash, 's) kinfo * (unit typed_contract, 's, 'r, 'f) kinstr
-      -> (public_key_hash, 's, 'r, 'f) kinstr
+      (public_key_hash, 's) kinfo * (unit typed_contract, 's, 'r, 'f, _) kinstr
+      -> (public_key_hash, 's, 'r, 'f, static_cost) kinstr
   | KCreate_contract :
       (public_key_hash option, Tez.t * ('a * 's)) kinfo
       * 'a ty
       * 'b ty
       * ('b * 'a, operation boxed_list * 'a) lambda
       * field_annot option
-      * (operation, address * 's, 'r, 'f) kinstr
-      -> (public_key_hash option, Tez.t * ('a * 's), 'r, 'f) kinstr
+      * (operation, address * 's, 'r, 'f, _) kinstr
+      -> ( public_key_hash option,
+           Tez.t * ('a * 's),
+           'r,
+           'f,
+           static_cost )
+         kinstr
   | KSet_delegate :
-      (public_key_hash option, 's) kinfo * (operation, 's, 'r, 'f) kinstr
-      -> (public_key_hash option, 's, 'r, 'f) kinstr
+      (public_key_hash option, 's) kinfo * (operation, 's, 'r, 'f, _) kinstr
+      -> (public_key_hash option, 's, 'r, 'f, static_cost) kinstr
   | KNow :
-      ('a, 's) kinfo * (Script_timestamp.t, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      ('a, 's) kinfo * (Script_timestamp.t, 'a * 's, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   | KBalance :
-      ('a, 's) kinfo * (Tez.t, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      ('a, 's) kinfo * (Tez.t, 'a * 's, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   | KLevel :
-      ('a, 's) kinfo * (n num, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      ('a, 's) kinfo * (n num, 'a * 's, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   | KCheck_signature :
-      (public_key, signature * (bytes * 's)) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> (public_key, signature * (bytes * 's), 'r, 'f) kinstr
+      (public_key, signature * (bytes * 's)) kinfo
+      * (bool, 's, 'r, 'f, _) kinstr
+      -> (public_key, signature * (bytes * 's), 'r, 'f, dynamic_cost) kinstr
   | KHash_key :
-      (public_key, 's) kinfo * (public_key_hash, 's, 'r, 'f) kinstr
-      -> (public_key, 's, 'r, 'f) kinstr
+      (public_key, 's) kinfo * (public_key_hash, 's, 'r, 'f, _) kinstr
+      -> (public_key, 's, 'r, 'f, dynamic_cost) kinstr
   | KPack :
-      ('a, 's) kinfo * 'a ty * (bytes, 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      ('a, 's) kinfo * 'a ty * (bytes, 's, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   | KUnpack :
-      (bytes, 's) kinfo * 'a ty * ('a option, 's, 'r, 'f) kinstr
-      -> (bytes, 's, 'r, 'f) kinstr
+      (bytes, 's) kinfo * 'a ty * ('a option, 's, 'r, 'f, _) kinstr
+      -> (bytes, 's, 'r, 'f, static_cost) kinstr
   | KBlake2b :
-      (bytes, 's) kinfo * (bytes, 's, 'r, 'f) kinstr
-      -> (bytes, 's, 'r, 'f) kinstr
+      (bytes, 's) kinfo * (bytes, 's, 'r, 'f, _) kinstr
+      -> (bytes, 's, 'r, 'f, dynamic_cost) kinstr
   | KSha256 :
-      (bytes, 's) kinfo * (bytes, 's, 'r, 'f) kinstr
-      -> (bytes, 's, 'r, 'f) kinstr
+      (bytes, 's) kinfo * (bytes, 's, 'r, 'f, _) kinstr
+      -> (bytes, 's, 'r, 'f, dynamic_cost) kinstr
   | KSha512 :
-      (bytes, 's) kinfo * (bytes, 's, 'r, 'f) kinstr
-      -> (bytes, 's, 'r, 'f) kinstr
+      (bytes, 's) kinfo * (bytes, 's, 'r, 'f, _) kinstr
+      -> (bytes, 's, 'r, 'f, dynamic_cost) kinstr
   | KSource :
-      ('a, 's) kinfo * (address, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      ('a, 's) kinfo * (address, 'a * 's, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   | KSender :
-      ('a, 's) kinfo * (address, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      ('a, 's) kinfo * (address, 'a * 's, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   | KSelf :
       ('a, 's) kinfo
       * 'b ty
       * string
-      * ('b typed_contract, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      * ('b typed_contract, 'a * 's, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   | KSelf_address :
-      ('a, 's) kinfo * (address, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      ('a, 's) kinfo * (address, 'a * 's, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   | KAmount :
-      ('a, 's) kinfo * (Tez.t, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      ('a, 's) kinfo * (Tez.t, 'a * 's, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   | KSapling_empty_state :
       ('a, 's) kinfo
       * Sapling.Memo_size.t
-      * (Sapling.state, 'a * 's, 'b, 'f) kinstr
-      -> ('a, 's, 'b, 'f) kinstr
+      * (Sapling.state, 'a * 's, 'b, 'f, _) kinstr
+      -> ('a, 's, 'b, 'f, static_cost) kinstr
   | KSapling_verify_update :
       (Sapling.transaction, Sapling.state * 's) kinfo
-      * ((z num, Sapling.state) pair option, 's, 'r, 'f) kinstr
-      -> (Sapling.transaction, Sapling.state * 's, 'r, 'f) kinstr
+      * ((z num, Sapling.state) pair option, 's, 'r, 'f, _) kinstr
+      -> (Sapling.transaction, Sapling.state * 's, 'r, 'f, dynamic_cost) kinstr
   | KDig :
       ('a, 's) kinfo
       * int
       * ('b * 't, 't, 'a * 's, 'u) stack_prefix_preservation_witness
-      * ('b, 'u, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      * ('b, 'u, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   | KDug :
       ('a, 's) kinfo
       * int
       * ('t, 'a * 't, 's, 'b * 'u) stack_prefix_preservation_witness
-      * ('b, 'u, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      * ('b, 'u, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   | KDipn :
       ('a, 's) kinfo
       * int
       * ('c * 't, 'd * 'v, 'a * 's, 'b * 'u) kstack_prefix_preservation_witness
-      * ('c, 't, 'd, 'v) kinstr
-      * ('b, 'u, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      * ('c, 't, 'd, 'v, _) kinstr
+      * ('b, 'u, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   | KDropn :
       ('a, 's) kinfo
       * int
       * ('b * 'u, 'b * 'u, 'a * 's, 'a * 's) stack_prefix_preservation_witness
-      * ('b, 'u, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      * ('b, 'u, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   | KChainId :
-      ('a, 's) kinfo * (Chain_id.t, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      ('a, 's) kinfo * (Chain_id.t, 'a * 's, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   | KNever :
-      (never, 's) kinfo * ('b, 'u, 'r, 'f) kinstr
-      -> (never, 's, 'r, 'f) kinstr
+      (never, 's) kinfo * ('b, 'u, 'r, 'f, _) kinstr
+      -> (never, 's, 'r, 'f, static_cost) kinstr
   | KVoting_power :
-      (public_key_hash, 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> (public_key_hash, 's, 'r, 'f) kinstr
+      (public_key_hash, 's) kinfo * (n num, 's, 'r, 'f, _) kinstr
+      -> (public_key_hash, 's, 'r, 'f, static_cost) kinstr
   | KTotal_voting_power :
-      ('a, 's) kinfo * (n num, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      ('a, 's) kinfo * (n num, 'a * 's, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   | KKeccak :
-      (bytes, 's) kinfo * (bytes, 's, 'r, 'f) kinstr
-      -> (bytes, 's, 'r, 'f) kinstr
+      (bytes, 's) kinfo * (bytes, 's, 'r, 'f, _) kinstr
+      -> (bytes, 's, 'r, 'f, dynamic_cost) kinstr
   | KSha3 :
-      (bytes, 's) kinfo * (bytes, 's, 'r, 'f) kinstr
-      -> (bytes, 's, 'r, 'f) kinstr
+      (bytes, 's) kinfo * (bytes, 's, 'r, 'f, _) kinstr
+      -> (bytes, 's, 'r, 'f, dynamic_cost) kinstr
   | KAdd_bls12_381_g1 :
       (Bls12_381.G1.t, Bls12_381.G1.t * 's) kinfo
-      * (Bls12_381.G1.t, 's, 'r, 'f) kinstr
-      -> (Bls12_381.G1.t, Bls12_381.G1.t * 's, 'r, 'f) kinstr
+      * (Bls12_381.G1.t, 's, 'r, 'f, _) kinstr
+      -> (Bls12_381.G1.t, Bls12_381.G1.t * 's, 'r, 'f, static_cost) kinstr
   | KAdd_bls12_381_g2 :
       (Bls12_381.G2.t, Bls12_381.G2.t * 's) kinfo
-      * (Bls12_381.G2.t, 's, 'r, 'f) kinstr
-      -> (Bls12_381.G2.t, Bls12_381.G2.t * 's, 'r, 'f) kinstr
+      * (Bls12_381.G2.t, 's, 'r, 'f, _) kinstr
+      -> (Bls12_381.G2.t, Bls12_381.G2.t * 's, 'r, 'f, static_cost) kinstr
   | KAdd_bls12_381_fr :
       (Bls12_381.Fr.t, Bls12_381.Fr.t * 's) kinfo
-      * (Bls12_381.Fr.t, 's, 'r, 'f) kinstr
-      -> (Bls12_381.Fr.t, Bls12_381.Fr.t * 's, 'r, 'f) kinstr
+      * (Bls12_381.Fr.t, 's, 'r, 'f, _) kinstr
+      -> (Bls12_381.Fr.t, Bls12_381.Fr.t * 's, 'r, 'f, static_cost) kinstr
   | KMul_bls12_381_g1 :
       (Bls12_381.G1.t, Bls12_381.Fr.t * 's) kinfo
-      * (Bls12_381.G1.t, 's, 'r, 'f) kinstr
-      -> (Bls12_381.G1.t, Bls12_381.Fr.t * 's, 'r, 'f) kinstr
+      * (Bls12_381.G1.t, 's, 'r, 'f, _) kinstr
+      -> (Bls12_381.G1.t, Bls12_381.Fr.t * 's, 'r, 'f, static_cost) kinstr
   | KMul_bls12_381_g2 :
       (Bls12_381.G2.t, Bls12_381.Fr.t * 's) kinfo
-      * (Bls12_381.G2.t, 's, 'r, 'f) kinstr
-      -> (Bls12_381.G2.t, Bls12_381.Fr.t * 's, 'r, 'f) kinstr
+      * (Bls12_381.G2.t, 's, 'r, 'f, _) kinstr
+      -> (Bls12_381.G2.t, Bls12_381.Fr.t * 's, 'r, 'f, static_cost) kinstr
   | KMul_bls12_381_fr :
       (Bls12_381.Fr.t, Bls12_381.Fr.t * 's) kinfo
-      * (Bls12_381.Fr.t, 's, 'r, 'f) kinstr
-      -> (Bls12_381.Fr.t, Bls12_381.Fr.t * 's, 'r, 'f) kinstr
+      * (Bls12_381.Fr.t, 's, 'r, 'f, _) kinstr
+      -> (Bls12_381.Fr.t, Bls12_381.Fr.t * 's, 'r, 'f, static_cost) kinstr
   | KMul_bls12_381_z_fr :
-      (Bls12_381.Fr.t, 'a num * 's) kinfo * (Bls12_381.Fr.t, 's, 'r, 'f) kinstr
-      -> (Bls12_381.Fr.t, 'a num * 's, 'r, 'f) kinstr
+      (Bls12_381.Fr.t, 'a num * 's) kinfo
+      * (Bls12_381.Fr.t, 's, 'r, 'f, _) kinstr
+      -> (Bls12_381.Fr.t, 'a num * 's, 'r, 'f, static_cost) kinstr
   | KMul_bls12_381_fr_z :
-      ('a num, Bls12_381.Fr.t * 's) kinfo * (Bls12_381.Fr.t, 's, 'r, 'f) kinstr
-      -> ('a num, Bls12_381.Fr.t * 's, 'r, 'f) kinstr
+      ('a num, Bls12_381.Fr.t * 's) kinfo
+      * (Bls12_381.Fr.t, 's, 'r, 'f, _) kinstr
+      -> ('a num, Bls12_381.Fr.t * 's, 'r, 'f, static_cost) kinstr
   | KInt_bls12_381_fr :
-      (Bls12_381.Fr.t, 's) kinfo * (z num, 's, 'r, 'f) kinstr
-      -> (Bls12_381.Fr.t, 's, 'r, 'f) kinstr
+      (Bls12_381.Fr.t, 's) kinfo * (z num, 's, 'r, 'f, _) kinstr
+      -> (Bls12_381.Fr.t, 's, 'r, 'f, static_cost) kinstr
   | KNeg_bls12_381_g1 :
-      (Bls12_381.G1.t, 's) kinfo * (Bls12_381.G1.t, 's, 'r, 'f) kinstr
-      -> (Bls12_381.G1.t, 's, 'r, 'f) kinstr
+      (Bls12_381.G1.t, 's) kinfo * (Bls12_381.G1.t, 's, 'r, 'f, _) kinstr
+      -> (Bls12_381.G1.t, 's, 'r, 'f, static_cost) kinstr
   | KNeg_bls12_381_g2 :
-      (Bls12_381.G2.t, 's) kinfo * (Bls12_381.G2.t, 's, 'r, 'f) kinstr
-      -> (Bls12_381.G2.t, 's, 'r, 'f) kinstr
+      (Bls12_381.G2.t, 's) kinfo * (Bls12_381.G2.t, 's, 'r, 'f, _) kinstr
+      -> (Bls12_381.G2.t, 's, 'r, 'f, static_cost) kinstr
   | KNeg_bls12_381_fr :
-      (Bls12_381.Fr.t, 's) kinfo * (Bls12_381.Fr.t, 's, 'r, 'f) kinstr
-      -> (Bls12_381.Fr.t, 's, 'r, 'f) kinstr
+      (Bls12_381.Fr.t, 's) kinfo * (Bls12_381.Fr.t, 's, 'r, 'f, _) kinstr
+      -> (Bls12_381.Fr.t, 's, 'r, 'f, static_cost) kinstr
   | KPairing_check_bls12_381 :
       ((Bls12_381.G1.t, Bls12_381.G2.t) pair boxed_list, 's) kinfo
-      * (bool, 's, 'r, 'f) kinstr
-      -> ((Bls12_381.G1.t, Bls12_381.G2.t) pair boxed_list, 's, 'r, 'f) kinstr
+      * (bool, 's, 'r, 'f, _) kinstr
+      -> ( (Bls12_381.G1.t, Bls12_381.G2.t) pair boxed_list,
+           's,
+           'r,
+           'f,
+           dynamic_cost )
+         kinstr
   | KComb :
       ('a, 's) kinfo
       * int
       * ('a * 's, 'b * 'u) comb_gadt_witness
-      * ('b, 'u, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      * ('b, 'u, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   | KUncomb :
       ('a, 's) kinfo
       * int
       * ('a * 's, 'b * 'u) uncomb_gadt_witness
-      * ('b, 'u, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      * ('b, 'u, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   | KComb_get :
       ('t, 's) kinfo
       * int
       * ('t, 'v) comb_get_gadt_witness
-      * ('v, 's, 'r, 'f) kinstr
-      -> ('t, 's, 'r, 'f) kinstr
+      * ('v, 's, 'r, 'f, _) kinstr
+      -> ('t, 's, 'r, 'f, static_cost) kinstr
   | KComb_set :
       ('a, 'b * 's) kinfo
       * int
       * ('a, 'b, 'c) comb_set_gadt_witness
-      * ('c, 's, 'r, 'f) kinstr
-      -> ('a, 'b * 's, 'r, 'f) kinstr
+      * ('c, 's, 'r, 'f, _) kinstr
+      -> ('a, 'b * 's, 'r, 'f, static_cost) kinstr
   | KDup_n :
       ('a, 's) kinfo
       * int
       * ('a * 's, 't) dup_n_gadt_witness
-      * ('t, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      * ('t, 'a * 's, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
   | KTicket :
-      ('a, n num * 's) kinfo * ('a ticket, 's, 'r, 'f) kinstr
-      -> ('a, n num * 's, 'r, 'f) kinstr
+      ('a, n num * 's) kinfo * ('a ticket, 's, 'r, 'f, _) kinstr
+      -> ('a, n num * 's, 'r, 'f, static_cost) kinstr
   | KRead_ticket :
       ('a ticket, 's) kinfo
-      * (address * ('a * n num), 'a ticket * 's, 'r, 'f) kinstr
-      -> ('a ticket, 's, 'r, 'f) kinstr
+      * (address * ('a * n num), 'a ticket * 's, 'r, 'f, _) kinstr
+      -> ('a ticket, 's, 'r, 'f, static_cost) kinstr
   | KSplit_ticket :
       ('a ticket, (n num * n num) * 's) kinfo
-      * (('a ticket * 'a ticket) option, 's, 'r, 'f) kinstr
-      -> ('a ticket, (n num * n num) * 's, 'r, 'f) kinstr
+      * (('a ticket * 'a ticket) option, 's, 'r, 'f, _) kinstr
+      -> ('a ticket, (n num * n num) * 's, 'r, 'f, dynamic_cost) kinstr
   | KJoin_tickets :
       ('a ticket * 'a ticket, 's) kinfo
       * 'a comparable_ty
-      * ('a ticket option, 's, 'r, 'f) kinstr
-      -> ('a ticket * 'a ticket, 's, 'r, 'f) kinstr
-  | KHalt : ('a, 's) kinfo -> ('a, 's, 'a, 's) kinstr
+      * ('a ticket option, 's, 'r, 'f, _) kinstr
+      -> ('a ticket * 'a ticket, 's, 'r, 'f, dynamic_cost) kinstr
+  | KHalt : ('a, 's) kinfo -> ('a, 's, 'a, 's, static_cost) kinstr
+  | KPayGas :
+      ('a, 's) kinfo
+      * ('b, 't) kinfo
+      * Gas.cost
+      * ('a, 's, 'b, 't, _) kinstr
+      * ('b, 't, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
+  | KCountGas :
+      ('a, 's) kinfo * ('a, 's, 'r, 'f, _) kinstr
+      -> ('a, 's, 'r, 'f, static_cost) kinstr
 
 and ('bef, 'aft) kdescr =
   | KDescr : {
@@ -793,7 +845,7 @@ and ('bef, 'aft) kdescr =
       kaft : 'aft stack_ty;
       kli : ('bef, 'a * 's) lift;
       klo : ('aft, 'r * 'f) lift;
-      kinstr : ('a, 's, 'r, 'f) kinstr;
+      kinstr : ('a, 's, 'r, 'f, 'cost) kinstr;
     }
       -> ('bef, 'aft) kdescr
 
@@ -820,7 +872,20 @@ and ('bef, 'aft, 'bef_suffix, 'aft_suffix) kstack_prefix_preservation_witness =
       'bef is_lifted * 'aft is_lifted
       -> ('bef, 'aft, 'bef, 'aft) kstack_prefix_preservation_witness
 
-let kinfo_of_kinstr : type a s b f. (a, s, b, f) kinstr -> (a, s) kinfo =
+(*
+
+   A context is an instruction with a hole where a continuation can
+   be grafted. Contexts are useful to implement program rewritings.
+
+*)
+type ('a, 's, 'b, 't, 'c) kinstr_context = {
+  graft :
+    'r 'f 'c2. ('b, 't, 'r, 'f, 'c2) kinstr -> ('a, 's, 'r, 'f, 'c) kinstr;
+}
+[@@unboxed]
+
+let kinfo_of_kinstr :
+    type a s b f cost. (a, s, b, f, cost) kinstr -> (a, s) kinfo =
  fun i ->
   match i with
   | KDrop (kinfo, _) ->
@@ -887,7 +952,7 @@ let kinfo_of_kinstr : type a s b f. (a, s, b, f) kinstr -> (a, s) kinfo =
       kinfo
   | KMap_mapped (kinfo, _, _, _, _, _, _) ->
       kinfo
-  | KMap_iter (kinfo, _, _) ->
+  | KMap_iter (kinfo, _, _, _) ->
       kinfo
   | KMap_mem (kinfo, _) ->
       kinfo
@@ -1149,6 +1214,10 @@ let kinfo_of_kinstr : type a s b f. (a, s, b, f) kinstr -> (a, s) kinfo =
       kinfo
   | KHalt kinfo ->
       kinfo
+  | KPayGas (kinfo, _, _, _, _) ->
+      kinfo
+  | KCountGas (kinfo, _) ->
+      kinfo
 
 let rec lift : type s t. (s, t) lift -> s -> t =
  fun l s ->
@@ -1347,1187 +1416,1326 @@ let rec lift_uncomb_gadt_witness :
           let w = lift_uncomb_gadt_witness w (IndLift li) lo in
           Uncomb_succ w ) )
 
+type (_, _, _, _) exkinstr =
+  | ExKInstr : ('a, 's, 'r, 'f, 'c) kinstr -> ('a, 's, 'r, 'f) exkinstr
+
 let rec translate_instr :
-    type a b s t v u r f.
+    type a b s t v u r f c.
     (t, v) descr ->
     (t, a * s) lift ->
     (v, b * u) lift ->
-    (b, u, r, f) kinstr ->
-    (a, s, r, f) kinstr =
- fun i li lo k ->
-  let kstack_ty = lift_stack_ty li i.bef in
-  let kinfo = {kloc = i.loc; kstack_ty} in
-  match i.instr with
-  | Seq (i1, i2) -> (
-    match lift_type i1.aft with
-    | ExLift lii ->
-        let ki2 = translate_instr i2 lii lo k in
-        translate_instr i1 li lii ki2 )
-  | Drop -> (
-    match li with
-    | IndLift l -> (
-      match fun_lift l lo with Refl -> KDrop (kinfo, k) ) )
-  | Dup -> (
-    match li with
-    | IndLift li -> (
+    (b, u, r, f, c) kinstr ->
+    (a, s, r, f) exkinstr =
+  let return k = ExKInstr k in
+  fun i li lo k ->
+    let kstack_ty = lift_stack_ty li i.bef in
+    let kinfo = {kloc = i.loc; kstack_ty} in
+    match i.instr with
+    | Seq (i1, i2) -> (
+      match lift_type i1.aft with
+      | ExLift lii ->
+          let (ExKInstr ki2) = translate_instr i2 lii lo k in
+          translate_instr i1 li lii ki2 )
+    | Drop -> (
+      match li with
+      | IndLift l -> (
+        match fun_lift l lo with Refl -> return (KDrop (kinfo, k)) ) )
+    | Dup -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift lo li with Refl -> return @@ KDup (kinfo, k) ) ) ) )
+    | Swap -> (
       match lo with
       | IndLift lo -> (
         match lo with
         | IndLift lo -> (
-          match fun_lift lo li with Refl -> KDup (kinfo, k) ) ) ) )
-  | Swap -> (
-    match lo with
-    | IndLift lo -> (
+          match li with
+          | IndLift li -> (
+            match li with
+            | IndLift li -> (
+              match fun_lift lo li with Refl -> return @@ KSwap (kinfo, k) ) )
+          ) ) )
+    | Const ty -> (
       match lo with
       | IndLift lo -> (
+        match fun_lift lo li with Refl -> return @@ KConst (kinfo, ty, k) ) )
+    | Cons_pair -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift lo li with Refl -> return @@ KCons_pair (kinfo, k) )
+          ) ) )
+    | Car -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift lo li with Refl -> return @@ KCar (kinfo, k) ) ) )
+    | Cdr -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift lo li with Refl -> return @@ KCdr (kinfo, k) ) ) )
+    | Unpair -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift lo li with Refl -> return @@ KUnpair (kinfo, k) ) )
+        ) )
+    | Cons_some -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift lo li with Refl -> return @@ KCons_some (kinfo, k) ) )
+      )
+    | Cons_none ty -> (
+      match lo with
+      | IndLift lo -> (
+        match fun_lift lo li with Refl -> return @@ KCons_none (kinfo, ty, k) )
+      )
+    | If_none (i1, i2) -> (
+      match li with
+      | IndLift li' ->
+          let (ExKInstr ki1) = translate_instr i1 li' lo k in
+          let (ExKInstr ki2) = translate_instr i2 (coerce_lift li) lo k in
+          return @@ KIf_none (kinfo, ki1, ki2) )
+    | Cons_left -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift lo li with Refl -> return @@ KCons_left (kinfo, k) ) )
+      )
+    | Cons_right -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift lo li with Refl -> return @@ KCons_right (kinfo, k) )
+        ) )
+    | If_left (i1, i2) -> (
+      match li with
+      | IndLift _ ->
+          let (ExKInstr ki1) = translate_instr i1 (coerce_lift li) lo k in
+          let (ExKInstr ki2) = translate_instr i2 (coerce_lift li) lo k in
+          return @@ KIf_left (kinfo, ki1, ki2) )
+    | Cons_list -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift lo li with Refl -> return @@ KCons_list (kinfo, k) )
+          ) ) )
+    | Nil -> (
+      match lo with
+      | IndLift lo -> (
+        match fun_lift lo li with Refl -> return @@ KNil (kinfo, k) ) )
+    | If_cons (i1, i2) -> (
+      match li with
+      | IndLift li' ->
+          let (ExKInstr ki1) = translate_instr i1 (succ_lift li) lo k in
+          let (ExKInstr ki2) = translate_instr i2 li' lo k in
+          return @@ KIf_cons (kinfo, ki1, ki2) )
+    | List_map i -> (
+      match li with
+      | IndLift li' -> (
+        match lo with
+        | IndLift lo' -> (
+          match fun_lift li' lo' with
+          | Refl ->
+              let khalt =
+                KHalt
+                  {
+                    kloc = i.loc;
+                    kstack_ty = lift_stack_ty (coerce_lift lo) i.aft;
+                  }
+              in
+              let (ExKInstr ki) =
+                translate_instr i (coerce_lift li) (coerce_lift lo) khalt
+              in
+              return @@ KList_map (kinfo, ki, k) ) ) )
+    | List_iter i -> (
+      match li with
+      | IndLift li' -> (
+        match fun_lift li' lo with
+        | Refl ->
+            let kinfo' = {kloc = i.loc; kstack_ty = lift_stack_ty lo i.aft} in
+            let (ExKInstr ki) =
+              translate_instr i (coerce_lift li) lo (KHalt kinfo')
+            in
+            return @@ KList_iter (kinfo, kinfo', ki, k) ) )
+    | List_size -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with Refl -> return @@ KList_size (kinfo, k) ) )
+      )
+    | Empty_set ty -> (
+      match lo with
+      | IndLift lo -> (
+        match fun_lift li lo with Refl -> return @@ KEmpty_set (kinfo, ty, k) )
+      )
+    | Set_iter i -> (
+      match li with
+      | IndLift li' -> (
+        match fun_lift li' lo with
+        | Refl ->
+            let kinfo' = {kloc = i.loc; kstack_ty = lift_stack_ty lo i.aft} in
+            let (ExKInstr ki) =
+              translate_instr i (coerce_lift li) lo (KHalt kinfo')
+            in
+            return @@ KSet_iter (kinfo, kinfo', ki, k) ) )
+    | Set_mem -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with Refl -> return @@ KSet_mem (kinfo, k) ) )
+        ) )
+    | Set_update -> (
+      match li with
+      | IndLift li -> (
         match li with
         | IndLift li -> (
           match li with
           | IndLift li -> (
-            match fun_lift lo li with Refl -> KSwap (kinfo, k) ) ) ) ) )
-  | Const ty -> (
-    match lo with
-    | IndLift lo -> (
-      match fun_lift lo li with Refl -> KConst (kinfo, ty, k) ) )
-  | Cons_pair -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift lo li with Refl -> KCons_pair (kinfo, k) ) ) ) )
-  | Car -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift lo li with Refl -> KCar (kinfo, k) ) ) )
-  | Cdr -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift lo li with Refl -> KCdr (kinfo, k) ) ) )
-  | Unpair -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift lo li with Refl -> KUnpair (kinfo, k) ) ) ) )
-  | Cons_some -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift lo li with Refl -> KCons_some (kinfo, k) ) ) )
-  | Cons_none ty -> (
-    match lo with
-    | IndLift lo -> (
-      match fun_lift lo li with Refl -> KCons_none (kinfo, ty, k) ) )
-  | If_none (i1, i2) -> (
-    match li with
-    | IndLift li' ->
-        let ki1 = translate_instr i1 li' lo k
-        and ki2 = translate_instr i2 (coerce_lift li) lo k in
-        KIf_none (kinfo, ki1, ki2) )
-  | Cons_left -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift lo li with Refl -> KCons_left (kinfo, k) ) ) )
-  | Cons_right -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift lo li with Refl -> KCons_right (kinfo, k) ) ) )
-  | If_left (i1, i2) -> (
-    match li with
-    | IndLift _ ->
-        let ki1 = translate_instr i1 (coerce_lift li) lo k
-        and ki2 = translate_instr i2 (coerce_lift li) lo k in
-        KIf_left (kinfo, ki1, ki2) )
-  | Cons_list -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift lo li with Refl -> KCons_list (kinfo, k) ) ) ) )
-  | Nil -> (
-    match lo with
-    | IndLift lo -> (
-      match fun_lift lo li with Refl -> KNil (kinfo, k) ) )
-  | If_cons (i1, i2) -> (
-    match li with
-    | IndLift li' ->
-        let ki1 = translate_instr i1 (succ_lift li) lo k
-        and ki2 = translate_instr i2 li' lo k in
-        KIf_cons (kinfo, ki1, ki2) )
-  | List_map i -> (
-    match li with
-    | IndLift li' -> (
-      match lo with
-      | IndLift lo' -> (
-        match fun_lift li' lo' with
-        | Refl ->
-            let khalt =
-              KHalt
-                {
-                  kloc = i.loc;
-                  kstack_ty = lift_stack_ty (coerce_lift lo) i.aft;
-                }
-            in
-            let ki =
-              translate_instr i (coerce_lift li) (coerce_lift lo) khalt
-            in
-            KList_map (kinfo, ki, k) ) ) )
-  | List_iter i -> (
-    match li with
-    | IndLift li' -> (
-      match fun_lift li' lo with
-      | Refl ->
-          let kinfo' = {kloc = i.loc; kstack_ty = lift_stack_ty lo i.aft} in
-          let ki = translate_instr i (coerce_lift li) lo (KHalt kinfo') in
-          KList_iter (kinfo, kinfo', ki, k) ) )
-  | List_size -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KList_size (kinfo, k) ) ) )
-  | Empty_set ty -> (
-    match lo with
-    | IndLift lo -> (
-      match fun_lift li lo with Refl -> KEmpty_set (kinfo, ty, k) ) )
-  | Set_iter i -> (
-    match li with
-    | IndLift li' -> (
-      match fun_lift li' lo with
-      | Refl ->
-          let kinfo' = {kloc = i.loc; kstack_ty = lift_stack_ty lo i.aft} in
-          let ki = translate_instr i (coerce_lift li) lo (KHalt kinfo') in
-          KSet_iter (kinfo, kinfo', ki, k) ) )
-  | Set_mem -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KSet_mem (kinfo, k) ) ) ) )
-  | Set_update -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match li with
-        | IndLift li -> (
-          match lo with
-          | IndLift lo -> (
-            match fun_lift li lo with Refl -> KSet_update (kinfo, k) ) ) ) ) )
-  | Set_size -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KSet_size (kinfo, k) ) ) )
-  | Empty_map (cty, ty) -> (
-    match lo with
-    | IndLift lo -> (
-      match fun_lift li lo with Refl -> KEmpty_map (kinfo, cty, ty, k) ) )
-  | Map_map i -> (
-    match li with
-    | IndLift li' -> (
-      match lo with
-      | IndLift lo' -> (
-        match fun_lift li' lo' with
-        | Refl ->
-            let khalt =
-              KHalt
-                {
-                  kloc = i.loc;
-                  kstack_ty = lift_stack_ty (coerce_lift lo) i.aft;
-                }
-            in
-            let ki =
-              translate_instr i (coerce_lift li) (coerce_lift lo) khalt
-            in
-            let kinfo_mapped =
-              match (kinfo_of_kinstr k).kstack_ty with
-              | Item_t (ty, s, a) ->
-                  {kinfo with kstack_ty = Item_t (snd (unmap_ty ty), s, a)}
-            in
-            let kinfo_mapping =
-              match kinfo.kstack_ty with
-              | Item_t (_, kstack_ty, _) ->
-                  {kloc = kinfo.kloc; kstack_ty}
-            in
-            KMap_map (kinfo, kinfo_mapping, kinfo_mapped, ki, k) ) ) )
-  | Map_iter i -> (
-    match li with
-    | IndLift li' -> (
-      match fun_lift li' lo with
-      | Refl ->
-          let khalt =
-            KHalt {kloc = i.loc; kstack_ty = lift_stack_ty lo i.aft}
-          in
-          let ki = translate_instr i (coerce_lift li) lo khalt in
-          KMap_iter (kinfo, ki, k) ) )
-  | Map_mem -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KMap_mem (kinfo, k) ) ) ) )
-  | Map_get -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KMap_get (kinfo, k) ) ) ) )
-  | Map_update -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match li with
-        | IndLift li -> (
-          match lo with
-          | IndLift lo -> (
-            match fun_lift li lo with Refl -> KMap_update (kinfo, k) ) ) ) ) )
-  | Map_get_and_update -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match li with
-        | IndLift li -> (
-          match lo with
-          | IndLift lo -> (
-            match lo with
-            | IndLift lo -> (
-              match fun_lift li lo with Refl -> KMap_get_and_update (kinfo, k)
-              ) ) ) ) ) )
-  | Map_size -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KMap_size (kinfo, k) ) ) )
-  | Empty_big_map (cty, ty) -> (
-    match lo with
-    | IndLift lo -> (
-      match fun_lift li lo with Refl -> KEmpty_big_map (kinfo, cty, ty, k) ) )
-  | Big_map_mem -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KBig_map_mem (kinfo, k) ) ) ) )
-  | Big_map_get -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KBig_map_get (kinfo, k) ) ) ) )
-  | Big_map_get_and_update -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match li with
-        | IndLift li -> (
-          match lo with
-          | IndLift lo -> (
             match lo with
             | IndLift lo -> (
               match fun_lift li lo with
               | Refl ->
-                  KBig_map_get_and_update (kinfo, k) ) ) ) ) ) )
-  | Big_map_update -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match li with
-        | IndLift li -> (
-          match lo with
-          | IndLift lo -> (
-            match fun_lift li lo with Refl -> KBig_map_update (kinfo, k) ) ) )
-      ) )
-  | Concat_string -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KConcat_string (kinfo, k) ) ) )
-  | Concat_string_pair -> (
-    match li with
-    | IndLift li -> (
+                  return @@ KSet_update (kinfo, k) ) ) ) ) )
+    | Set_size -> (
       match li with
       | IndLift li -> (
         match lo with
         | IndLift lo -> (
-          match fun_lift li lo with Refl -> KConcat_string_pair (kinfo, k) ) )
-      ) )
-  | Slice_string -> (
-    match li with
-    | IndLift li -> (
+          match fun_lift li lo with Refl -> return @@ KSet_size (kinfo, k) ) )
+      )
+    | Empty_map (cty, ty) -> (
+      match lo with
+      | IndLift lo -> (
+        match fun_lift li lo with
+        | Refl ->
+            return @@ KEmpty_map (kinfo, cty, ty, k) ) )
+    | Map_map i -> (
+      match li with
+      | IndLift li' -> (
+        match lo with
+        | IndLift lo' -> (
+          match fun_lift li' lo' with
+          | Refl ->
+              let khalt =
+                KHalt
+                  {
+                    kloc = i.loc;
+                    kstack_ty = lift_stack_ty (coerce_lift lo) i.aft;
+                  }
+              in
+              let (ExKInstr ki) =
+                translate_instr i (coerce_lift li) (coerce_lift lo) khalt
+              in
+              let kinfo_mapped =
+                match (kinfo_of_kinstr k).kstack_ty with
+                | Item_t (ty, s, a) ->
+                    {kinfo with kstack_ty = Item_t (snd (unmap_ty ty), s, a)}
+              in
+              let kinfo_mapping =
+                match kinfo.kstack_ty with
+                | Item_t (_, kstack_ty, _) ->
+                    {kloc = kinfo.kloc; kstack_ty}
+              in
+              return @@ KMap_map (kinfo, kinfo_mapping, kinfo_mapped, ki, k) )
+        ) )
+    | Map_iter i -> (
+      match li with
+      | IndLift li' -> (
+        match fun_lift li' lo with
+        | Refl ->
+            let khalt =
+              KHalt {kloc = i.loc; kstack_ty = lift_stack_ty lo i.aft}
+            in
+            let (ExKInstr ki) = translate_instr i (coerce_lift li) lo khalt in
+            let kinfo_iter =
+              match kinfo.kstack_ty with
+              | Item_t (_, kstack_ty, _) ->
+                  {kinfo with kstack_ty}
+            in
+            return @@ KMap_iter (kinfo, kinfo_iter, ki, k) ) )
+    | Map_mem -> (
       match li with
       | IndLift li -> (
         match li with
         | IndLift li -> (
           match lo with
           | IndLift lo -> (
-            match fun_lift li lo with Refl -> KSlice_string (kinfo, k) ) ) ) )
-    )
-  | String_size -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KString_size (kinfo, k) ) ) )
-  | Concat_bytes -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KConcat_bytes (kinfo, k) ) ) )
-  | Concat_bytes_pair -> (
-    match li with
-    | IndLift li -> (
+            match fun_lift li lo with Refl -> return @@ KMap_mem (kinfo, k) ) )
+        ) )
+    | Map_get -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with Refl -> return @@ KMap_get (kinfo, k) ) )
+        ) )
+    | Map_update -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match li with
+          | IndLift li -> (
+            match lo with
+            | IndLift lo -> (
+              match fun_lift li lo with
+              | Refl ->
+                  return @@ KMap_update (kinfo, k) ) ) ) ) )
+    | Map_get_and_update -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match li with
+          | IndLift li -> (
+            match lo with
+            | IndLift lo -> (
+              match lo with
+              | IndLift lo -> (
+                match fun_lift li lo with
+                | Refl ->
+                    return @@ KMap_get_and_update (kinfo, k) ) ) ) ) ) )
+    | Map_size -> (
       match li with
       | IndLift li -> (
         match lo with
         | IndLift lo -> (
-          match fun_lift li lo with Refl -> KConcat_bytes_pair (kinfo, k) ) ) )
-    )
-  | Slice_bytes -> (
-    match li with
-    | IndLift li -> (
+          match fun_lift li lo with Refl -> return @@ KMap_size (kinfo, k) ) )
+      )
+    | Empty_big_map (cty, ty) -> (
+      match lo with
+      | IndLift lo -> (
+        match fun_lift li lo with
+        | Refl ->
+            return @@ KEmpty_big_map (kinfo, cty, ty, k) ) )
+    | Big_map_mem -> (
       match li with
       | IndLift li -> (
         match li with
         | IndLift li -> (
           match lo with
           | IndLift lo -> (
-            match fun_lift li lo with Refl -> KSlice_bytes (kinfo, k) ) ) ) ) )
-  | Bytes_size -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KBytes_size (kinfo, k) ) ) )
-  | Add_seconds_to_timestamp -> (
-    match li with
-    | IndLift li -> (
+            match fun_lift li lo with
+            | Refl ->
+                return @@ KBig_map_mem (kinfo, k) ) ) ) )
+    | Big_map_get -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with
+            | Refl ->
+                return @@ KBig_map_get (kinfo, k) ) ) ) )
+    | Big_map_get_and_update -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match li with
+          | IndLift li -> (
+            match lo with
+            | IndLift lo -> (
+              match lo with
+              | IndLift lo -> (
+                match fun_lift li lo with
+                | Refl ->
+                    return @@ KBig_map_get_and_update (kinfo, k) ) ) ) ) ) )
+    | Big_map_update -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match li with
+          | IndLift li -> (
+            match lo with
+            | IndLift lo -> (
+              match fun_lift li lo with
+              | Refl ->
+                  return @@ KBig_map_update (kinfo, k) ) ) ) ) )
+    | Concat_string -> (
       match li with
       | IndLift li -> (
         match lo with
         | IndLift lo -> (
           match fun_lift li lo with
           | Refl ->
-              KAdd_seconds_to_timestamp (kinfo, k) ) ) ) )
-  | Add_timestamp_to_seconds -> (
-    match li with
-    | IndLift li -> (
+              return @@ KConcat_string (kinfo, k) ) ) )
+    | Concat_string_pair -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with
+            | Refl ->
+                return @@ KConcat_string_pair (kinfo, k) ) ) ) )
+    | Slice_string -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match li with
+          | IndLift li -> (
+            match lo with
+            | IndLift lo -> (
+              match fun_lift li lo with
+              | Refl ->
+                  return @@ KSlice_string (kinfo, k) ) ) ) ) )
+    | String_size -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with Refl -> return @@ KString_size (kinfo, k) )
+        ) )
+    | Concat_bytes -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with Refl -> return @@ KConcat_bytes (kinfo, k)
+          ) ) )
+    | Concat_bytes_pair -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with
+            | Refl ->
+                return @@ KConcat_bytes_pair (kinfo, k) ) ) ) )
+    | Slice_bytes -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match li with
+          | IndLift li -> (
+            match lo with
+            | IndLift lo -> (
+              match fun_lift li lo with
+              | Refl ->
+                  return @@ KSlice_bytes (kinfo, k) ) ) ) ) )
+    | Bytes_size -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with Refl -> return @@ KBytes_size (kinfo, k) )
+        ) )
+    | Add_seconds_to_timestamp -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with
+            | Refl ->
+                return @@ KAdd_seconds_to_timestamp (kinfo, k) ) ) ) )
+    | Add_timestamp_to_seconds -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with
+            | Refl ->
+                return @@ KAdd_timestamp_to_seconds (kinfo, k) ) ) ) )
+    | Sub_timestamp_seconds -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with
+            | Refl ->
+                return @@ KSub_timestamp_seconds (kinfo, k) ) ) ) )
+    | Diff_timestamps -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with
+            | Refl ->
+                return @@ KDiff_timestamps (kinfo, k) ) ) ) )
+    | Add_tez -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with Refl -> return @@ KAdd_tez (kinfo, k) ) )
+        ) )
+    | Sub_tez -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with Refl -> return @@ KSub_tez (kinfo, k) ) )
+        ) )
+    | Mul_teznat -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with Refl -> return @@ KMul_teznat (kinfo, k)
+            ) ) ) )
+    | Mul_nattez -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with Refl -> return @@ KMul_nattez (kinfo, k)
+            ) ) ) )
+    | Ediv_teznat -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with
+            | Refl ->
+                return @@ KEdiv_teznat (kinfo, k) ) ) ) )
+    | Ediv_tez -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with Refl -> return @@ KEdiv_tez (kinfo, k) )
+          ) ) )
+    | Or -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with Refl -> return @@ KOr (kinfo, k) ) ) ) )
+    | And -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with Refl -> return @@ KAnd (kinfo, k) ) ) ) )
+    | Xor -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with Refl -> return @@ KXor (kinfo, k) ) ) ) )
+    | Not -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with Refl -> return @@ KNot (kinfo, k) ) ) )
+    | Is_nat -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with Refl -> return @@ KIs_nat (kinfo, k) ) ) )
+    | Neg_nat -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with Refl -> return @@ KNeg_nat (kinfo, k) ) ) )
+    | Neg_int -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with Refl -> return @@ KNeg_int (kinfo, k) ) ) )
+    | Abs_int -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with Refl -> return @@ KAbs_int (kinfo, k) ) ) )
+    | Int_bls12_381_fr -> (
       match li with
       | IndLift li -> (
         match lo with
         | IndLift lo -> (
           match fun_lift li lo with
           | Refl ->
-              KAdd_timestamp_to_seconds (kinfo, k) ) ) ) )
-  | Sub_timestamp_seconds -> (
-    match li with
-    | IndLift li -> (
+              return @@ KInt_bls12_381_fr (kinfo, k) ) ) )
+    | Int_nat -> (
       match li with
       | IndLift li -> (
         match lo with
         | IndLift lo -> (
-          match fun_lift li lo with Refl -> KSub_timestamp_seconds (kinfo, k) )
-        ) ) )
-  | Diff_timestamps -> (
-    match li with
-    | IndLift li -> (
+          match fun_lift li lo with Refl -> return @@ KInt_nat (kinfo, k) ) ) )
+    | Add_intint -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with Refl -> return @@ KAdd_intint (kinfo, k)
+            ) ) ) )
+    | Add_intnat -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with Refl -> return @@ KAdd_intnat (kinfo, k)
+            ) ) ) )
+    | Add_natint -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with Refl -> return @@ KAdd_natint (kinfo, k)
+            ) ) ) )
+    | Add_natnat -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with Refl -> return @@ KAdd_natnat (kinfo, k)
+            ) ) ) )
+    | Sub_int -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with Refl -> return @@ KSub_int (kinfo, k) ) )
+        ) )
+    | Mul_intint -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with Refl -> return @@ KMul_intint (kinfo, k)
+            ) ) ) )
+    | Mul_intnat -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with Refl -> return @@ KMul_intnat (kinfo, k)
+            ) ) ) )
+    | Mul_natint -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with Refl -> return @@ KMul_natint (kinfo, k)
+            ) ) ) )
+    | Mul_natnat -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with Refl -> return @@ KMul_natnat (kinfo, k)
+            ) ) ) )
+    | Ediv_intint -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with
+            | Refl ->
+                return @@ KEdiv_intint (kinfo, k) ) ) ) )
+    | Ediv_intnat -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with
+            | Refl ->
+                return @@ KEdiv_intnat (kinfo, k) ) ) ) )
+    | Ediv_natint -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with
+            | Refl ->
+                return @@ KEdiv_natint (kinfo, k) ) ) ) )
+    | Ediv_natnat -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with
+            | Refl ->
+                return @@ KEdiv_natnat (kinfo, k) ) ) ) )
+    | Lsl_nat -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with Refl -> return @@ KLsl_nat (kinfo, k) ) )
+        ) )
+    | Lsr_nat -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with Refl -> return @@ KLsr_nat (kinfo, k) ) )
+        ) )
+    | Or_nat -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with Refl -> return @@ KOr_nat (kinfo, k) ) )
+        ) )
+    | And_nat -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with Refl -> return @@ KAnd_nat (kinfo, k) ) )
+        ) )
+    | And_int_nat -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with
+            | Refl ->
+                return @@ KAnd_int_nat (kinfo, k) ) ) ) )
+    | Xor_nat -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with Refl -> return @@ KXor_nat (kinfo, k) ) )
+        ) )
+    | Not_nat -> (
       match li with
       | IndLift li -> (
         match lo with
         | IndLift lo -> (
-          match fun_lift li lo with Refl -> KDiff_timestamps (kinfo, k) ) ) ) )
-  | Add_tez -> (
-    match li with
-    | IndLift li -> (
+          match fun_lift li lo with Refl -> return @@ KNot_nat (kinfo, k) ) ) )
+    | Not_int -> (
       match li with
       | IndLift li -> (
         match lo with
         | IndLift lo -> (
-          match fun_lift li lo with Refl -> KAdd_tez (kinfo, k) ) ) ) )
-  | Sub_tez -> (
-    match li with
-    | IndLift li -> (
+          match fun_lift li lo with Refl -> return @@ KNot_int (kinfo, k) ) ) )
+    | If (i1, i2) -> (
       match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KSub_tez (kinfo, k) ) ) ) )
-  | Mul_teznat -> (
-    match li with
-    | IndLift li -> (
+      | IndLift li ->
+          let (ExKInstr ki1) = translate_instr i1 li lo k in
+          let (ExKInstr ki2) = translate_instr i2 li lo k in
+          return @@ KIf (kinfo, ki1, ki2) )
+    | Loop i -> (
       match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KMul_teznat (kinfo, k) ) ) ) )
-  | Mul_nattez -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KMul_nattez (kinfo, k) ) ) ) )
-  | Ediv_teznat -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KEdiv_teznat (kinfo, k) ) ) ) )
-  | Ediv_tez -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KEdiv_tez (kinfo, k) ) ) ) )
-  | Or -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KOr (kinfo, k) ) ) ) )
-  | And -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KAnd (kinfo, k) ) ) ) )
-  | Xor -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KXor (kinfo, k) ) ) ) )
-  | Not -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KNot (kinfo, k) ) ) )
-  | Is_nat -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KIs_nat (kinfo, k) ) ) )
-  | Neg_nat -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KNeg_nat (kinfo, k) ) ) )
-  | Neg_int -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KNeg_int (kinfo, k) ) ) )
-  | Abs_int -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KAbs_int (kinfo, k) ) ) )
-  | Int_bls12_381_fr -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KInt_bls12_381_fr (kinfo, k) ) ) )
-  | Int_nat -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KInt_nat (kinfo, k) ) ) )
-  | Add_intint -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KAdd_intint (kinfo, k) ) ) ) )
-  | Add_intnat -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KAdd_intnat (kinfo, k) ) ) ) )
-  | Add_natint -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KAdd_natint (kinfo, k) ) ) ) )
-  | Add_natnat -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KAdd_natnat (kinfo, k) ) ) ) )
-  | Sub_int -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KSub_int (kinfo, k) ) ) ) )
-  | Mul_intint -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KMul_intint (kinfo, k) ) ) ) )
-  | Mul_intnat -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KMul_intnat (kinfo, k) ) ) ) )
-  | Mul_natint -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KMul_natint (kinfo, k) ) ) ) )
-  | Mul_natnat -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KMul_natnat (kinfo, k) ) ) ) )
-  | Ediv_intint -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KEdiv_intint (kinfo, k) ) ) ) )
-  | Ediv_intnat -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KEdiv_intnat (kinfo, k) ) ) ) )
-  | Ediv_natint -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KEdiv_natint (kinfo, k) ) ) ) )
-  | Ediv_natnat -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KEdiv_natnat (kinfo, k) ) ) ) )
-  | Lsl_nat -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KLsl_nat (kinfo, k) ) ) ) )
-  | Lsr_nat -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KLsr_nat (kinfo, k) ) ) ) )
-  | Or_nat -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KOr_nat (kinfo, k) ) ) ) )
-  | And_nat -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KAnd_nat (kinfo, k) ) ) ) )
-  | And_int_nat -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KAnd_int_nat (kinfo, k) ) ) ) )
-  | Xor_nat -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KXor_nat (kinfo, k) ) ) ) )
-  | Not_nat -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KNot_nat (kinfo, k) ) ) )
-  | Not_int -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KNot_int (kinfo, k) ) ) )
-  | If (i1, i2) -> (
-    match li with
-    | IndLift li ->
-        let ki1 = translate_instr i1 li lo k
-        and ki2 = translate_instr i2 li lo k in
-        KIf (kinfo, ki1, ki2) )
-  | Loop i -> (
-    match li with
-    | IndLift li' -> (
-      match fun_lift li' lo with
-      | Refl ->
-          let khalt =
-            KHalt {kloc = i.loc; kstack_ty = lift_stack_ty li i.aft}
-          in
-          let ki = translate_instr i li' li khalt in
-          KLoop (kinfo, ki, k) ) )
-  | Loop_left i -> (
-    match li with
-    | IndLift li' -> (
-      match lo with
-      | IndLift lo' -> (
-        match fun_lift li' lo' with
+      | IndLift li' -> (
+        match fun_lift li' lo with
         | Refl ->
             let khalt =
               KHalt {kloc = i.loc; kstack_ty = lift_stack_ty li i.aft}
             in
-            let ki = translate_instr i (coerce_lift li) li khalt in
-            KLoop_left (kinfo, ki, k) ) ) )
-  | Dip i -> (
-    match li with
-    | IndLift li' -> (
-      match lo with
-      | IndLift lo ->
-          let kinfo_const =
-            {kloc = i.loc; kstack_ty = lift_stack_ty lo i.aft}
-          in
-          let ki = translate_instr i li' lo (KHalt kinfo_const) in
-          KDip (kinfo, kinfo_const, ki, k) ) )
-  | Exec -> (
-    match li with
-    | IndLift li -> (
+            let (ExKInstr ki) = translate_instr i li' li khalt in
+            return @@ KLoop (kinfo, ki, k) ) )
+    | Loop_left i -> (
       match li with
-      | IndLift li -> (
+      | IndLift li' -> (
         match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KExec (kinfo, k) ) ) ) )
-  | Apply f -> (
-    match li with
-    | IndLift li -> (
+        | IndLift lo' -> (
+          match fun_lift li' lo' with
+          | Refl ->
+              let khalt =
+                KHalt {kloc = i.loc; kstack_ty = lift_stack_ty li i.aft}
+              in
+              let (ExKInstr ki) =
+                translate_instr i (coerce_lift li) li khalt
+              in
+              return @@ KLoop_left (kinfo, ki, k) ) ) )
+    | Dip i -> (
       match li with
-      | IndLift li -> (
+      | IndLift li' -> (
         match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KApply (kinfo, f, k) ) ) ) )
-  | Lambda b -> (
-    match lo with
-    | IndLift lo -> (
-      match fun_lift li lo with Refl -> KLambda (kinfo, b, k) ) )
-  | Failwith e -> (
-    match li with IndLift _ -> KFailwith (kinfo, i.loc, e, k) )
-  | Nop -> (
-    match fun_lift li lo with Refl -> KNop (kinfo, k) )
-  | Compare c -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KCompare (kinfo, c, k) ) ) ) )
-  | Eq -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KEq (kinfo, k) ) ) )
-  | Neq -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KNeq (kinfo, k) ) ) )
-  | Lt -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KLt (kinfo, k) ) ) )
-  | Gt -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KGt (kinfo, k) ) ) )
-  | Le -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KLe (kinfo, k) ) ) )
-  | Ge -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KGe (kinfo, k) ) ) )
-  | Address -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KAddress (kinfo, k) ) ) )
-  | Contract (a, b) -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KContract (kinfo, a, b, k) ) ) )
-  | Transfer_tokens -> (
-    match li with
-    | IndLift li -> (
+        | IndLift lo ->
+            let kinfo_const =
+              {kloc = i.loc; kstack_ty = lift_stack_ty lo i.aft}
+            in
+            let (ExKInstr ki) = translate_instr i li' lo (KHalt kinfo_const) in
+            return @@ KDip (kinfo, kinfo_const, ki, k) ) )
+    | Exec -> (
       match li with
       | IndLift li -> (
         match li with
         | IndLift li -> (
           match lo with
           | IndLift lo -> (
-            match fun_lift li lo with Refl -> KTransfer_tokens (kinfo, k) ) ) )
-      ) )
-  | Implicit_account -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KImplicit_account (kinfo, k) ) ) )
-  | Create_contract (a, b, c, d) -> (
-    match li with
-    | IndLift li -> (
+            match fun_lift li lo with Refl -> return @@ KExec (kinfo, k) ) ) )
+      )
+    | Apply f -> (
       match li with
       | IndLift li -> (
         match li with
         | IndLift li -> (
           match lo with
           | IndLift lo -> (
+            match fun_lift li lo with Refl -> return @@ KApply (kinfo, f, k) )
+          ) ) )
+    | Lambda b -> (
+      match lo with
+      | IndLift lo -> (
+        match fun_lift li lo with Refl -> return @@ KLambda (kinfo, b, k) ) )
+    | Failwith e -> (
+      match li with IndLift _ -> return @@ KFailwith (kinfo, i.loc, e, k) )
+    | Nop -> (
+      match fun_lift li lo with Refl -> return @@ KNop (kinfo, k) )
+    | Compare c -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with Refl -> return @@ KCompare (kinfo, c, k)
+            ) ) ) )
+    | Eq -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with Refl -> return @@ KEq (kinfo, k) ) ) )
+    | Neq -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with Refl -> return @@ KNeq (kinfo, k) ) ) )
+    | Lt -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with Refl -> return @@ KLt (kinfo, k) ) ) )
+    | Gt -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with Refl -> return @@ KGt (kinfo, k) ) ) )
+    | Le -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with Refl -> return @@ KLe (kinfo, k) ) ) )
+    | Ge -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with Refl -> return @@ KGe (kinfo, k) ) ) )
+    | Address -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with Refl -> return @@ KAddress (kinfo, k) ) ) )
+    | Contract (a, b) -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with
+          | Refl ->
+              return @@ KContract (kinfo, a, b, k) ) ) )
+    | Transfer_tokens -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match li with
+          | IndLift li -> (
             match lo with
             | IndLift lo -> (
               match fun_lift li lo with
               | Refl ->
-                  KCreate_contract (kinfo, a, b, c, d, k) ) ) ) ) ) )
-  | Set_delegate -> (
-    match li with
-    | IndLift li -> (
+                  return @@ KTransfer_tokens (kinfo, k) ) ) ) ) )
+    | Implicit_account -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with
+          | Refl ->
+              return @@ KImplicit_account (kinfo, k) ) ) )
+    | Create_contract (a, b, c, d) -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match li with
+          | IndLift li -> (
+            match lo with
+            | IndLift lo -> (
+              match lo with
+              | IndLift lo -> (
+                match fun_lift li lo with
+                | Refl ->
+                    return @@ KCreate_contract (kinfo, a, b, c, d, k) ) ) ) ) )
+      )
+    | Set_delegate -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with Refl -> return @@ KSet_delegate (kinfo, k)
+          ) ) )
+    | Now -> (
       match lo with
       | IndLift lo -> (
-        match fun_lift li lo with Refl -> KSet_delegate (kinfo, k) ) ) )
-  | Now -> (
-    match lo with
-    | IndLift lo -> (
-      match fun_lift li lo with Refl -> KNow (kinfo, k) ) )
-  | Balance -> (
-    match lo with
-    | IndLift lo -> (
-      match fun_lift li lo with Refl -> KBalance (kinfo, k) ) )
-  | Level -> (
-    match lo with
-    | IndLift lo -> (
-      match fun_lift li lo with Refl -> KLevel (kinfo, k) ) )
-  | Check_signature -> (
-    match li with
-    | IndLift li -> (
+        match fun_lift li lo with Refl -> return @@ KNow (kinfo, k) ) )
+    | Balance -> (
+      match lo with
+      | IndLift lo -> (
+        match fun_lift li lo with Refl -> return @@ KBalance (kinfo, k) ) )
+    | Level -> (
+      match lo with
+      | IndLift lo -> (
+        match fun_lift li lo with Refl -> return @@ KLevel (kinfo, k) ) )
+    | Check_signature -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match li with
+          | IndLift li -> (
+            match lo with
+            | IndLift lo -> (
+              match fun_lift li lo with
+              | Refl ->
+                  return @@ KCheck_signature (kinfo, k) ) ) ) ) )
+    | Hash_key -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with Refl -> return @@ KHash_key (kinfo, k) ) )
+      )
+    | Pack ty -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with Refl -> return @@ KPack (kinfo, ty, k) ) )
+      )
+    | Unpack ty -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with Refl -> return @@ KUnpack (kinfo, ty, k) )
+        ) )
+    | Blake2b -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with Refl -> return @@ KBlake2b (kinfo, k) ) ) )
+    | Sha256 -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with Refl -> return @@ KSha256 (kinfo, k) ) ) )
+    | Sha512 -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with Refl -> return @@ KSha512 (kinfo, k) ) ) )
+    | Source -> (
+      match lo with
+      | IndLift lo -> (
+        match fun_lift li lo with Refl -> return @@ KSource (kinfo, k) ) )
+    | Sender -> (
+      match lo with
+      | IndLift lo -> (
+        match fun_lift li lo with Refl -> return @@ KSender (kinfo, k) ) )
+    | Self (a, b) -> (
+      match lo with
+      | IndLift lo -> (
+        match fun_lift li lo with Refl -> return @@ KSelf (kinfo, a, b, k) ) )
+    | Self_address -> (
+      match lo with
+      | IndLift lo -> (
+        match fun_lift li lo with Refl -> return @@ KSelf_address (kinfo, k) )
+      )
+    | Amount -> (
+      match lo with
+      | IndLift lo -> (
+        match fun_lift li lo with Refl -> return @@ KAmount (kinfo, k) ) )
+    | Sapling_empty_state m -> (
+      match lo with
+      | IndLift lo -> (
+        match fun_lift li lo with
+        | Refl ->
+            return @@ KSapling_empty_state (kinfo, m.memo_size, k) ) )
+    | Sapling_verify_update -> (
       match li with
       | IndLift li -> (
         match li with
         | IndLift li -> (
           match lo with
           | IndLift lo -> (
-            match fun_lift li lo with Refl -> KCheck_signature (kinfo, k) ) ) )
-      ) )
-  | Hash_key -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KHash_key (kinfo, k) ) ) )
-  | Pack ty -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KPack (kinfo, ty, k) ) ) )
-  | Unpack ty -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KUnpack (kinfo, ty, k) ) ) )
-  | Blake2b -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KBlake2b (kinfo, k) ) ) )
-  | Sha256 -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KSha256 (kinfo, k) ) ) )
-  | Sha512 -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KSha512 (kinfo, k) ) ) )
-  | Source -> (
-    match lo with
-    | IndLift lo -> (
-      match fun_lift li lo with Refl -> KSource (kinfo, k) ) )
-  | Sender -> (
-    match lo with
-    | IndLift lo -> (
-      match fun_lift li lo with Refl -> KSender (kinfo, k) ) )
-  | Self (a, b) -> (
-    match lo with
-    | IndLift lo -> (
-      match fun_lift li lo with Refl -> KSelf (kinfo, a, b, k) ) )
-  | Self_address -> (
-    match lo with
-    | IndLift lo -> (
-      match fun_lift li lo with Refl -> KSelf_address (kinfo, k) ) )
-  | Amount -> (
-    match lo with
-    | IndLift lo -> (
-      match fun_lift li lo with Refl -> KAmount (kinfo, k) ) )
-  | Sapling_empty_state m -> (
-    match lo with
-    | IndLift lo -> (
-      match fun_lift li lo with
-      | Refl ->
-          KSapling_empty_state (kinfo, m.memo_size, k) ) )
-  | Sapling_verify_update -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KSapling_verify_update (kinfo, k) )
-        ) ) )
-  | Dig (n, w) -> (
-    match lo with
-    | IndLift lo' -> (
-      match lift_stack_prefix_preservation_witness w li lo' with
-      | ExLiftStackPrefixPreservationWitness (lds, ldu, w') -> (
-        match lds with
-        | IndLift lds -> (
-          match fun_lift lds ldu with Refl -> KDig (kinfo, n, w', k) ) ) ) )
-  | Dug (n, w) -> (
-    match li with
-    | IndLift li' -> (
-      match lift_stack_prefix_preservation_witness w li' lo with
-      | ExLiftStackPrefixPreservationWitness (lds, ldu, w') -> (
-        match ldu with
-        | IndLift ldu -> (
-          match fun_lift lds ldu with Refl -> KDug (kinfo, n, w', k) ) ) ) )
-  | Dipn (n, w, i') -> (
-    match lift_stack_prefix_preservation_witness w li lo with
-    | ExLiftStackPrefixPreservationWitness (lds, ldu, _) -> (
-      match inverse_lift lds with
-      | ExLiftInverse Refl -> (
-        match inverse_lift ldu with
-        | ExLiftInverse Refl ->
-            let hinfo = {kloc = i.loc; kstack_ty = lift_stack_ty ldu i'.aft} in
-            let ki' = translate_instr i' lds ldu (KHalt hinfo) in
-            let sty = lift_stack_ty lo i.aft in
-            let l = i.loc in
-            let w = kstack_prefix_preservation_witness l sty w li lo lds ldu in
-            KDipn (kinfo, n, w, ki', k) ) ) )
-  | Dropn (n, w) -> (
-    match lift_stack_prefix_preservation_witness w li li with
-    | ExLiftStackPrefixPreservationWitness (lds, ldu, w') -> (
-      match inverse_lift lds with
-      | ExLiftInverse Refl -> (
-        match inverse_lift ldu with
-        | ExLiftInverse Refl -> (
-          match fun_lift lds ldu with
-          | Refl -> (
-            match fun_lift lo lds with Refl -> KDropn (kinfo, n, w', k) ) ) ) )
-    )
-  | ChainId -> (
-    match lo with
-    | IndLift lo -> (
-      match fun_lift li lo with Refl -> KChainId (kinfo, k) ) )
-  | Never -> (
-    match li with IndLift _ -> KNever (kinfo, k) )
-  | Voting_power -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KVoting_power (kinfo, k) ) ) )
-  | Total_voting_power -> (
-    match lo with
-    | IndLift lo -> (
-      match fun_lift li lo with Refl -> KTotal_voting_power (kinfo, k) ) )
-  | Keccak -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KKeccak (kinfo, k) ) ) )
-  | Sha3 -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KSha3 (kinfo, k) ) ) )
-  | Add_bls12_381_g1 -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KAdd_bls12_381_g1 (kinfo, k) ) ) )
-    )
-  | Add_bls12_381_g2 -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KAdd_bls12_381_g2 (kinfo, k) ) ) )
-    )
-  | Add_bls12_381_fr -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KAdd_bls12_381_fr (kinfo, k) ) ) )
-    )
-  | Mul_bls12_381_g1 -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KMul_bls12_381_g1 (kinfo, k) ) ) )
-    )
-  | Mul_bls12_381_g2 -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KMul_bls12_381_g2 (kinfo, k) ) ) )
-    )
-  | Mul_bls12_381_z_fr -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KMul_bls12_381_z_fr (kinfo, k) ) )
-      ) )
-  | Mul_bls12_381_fr_z -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KMul_bls12_381_fr_z (kinfo, k) ) )
-      ) )
-  | Mul_bls12_381_fr -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KMul_bls12_381_fr (kinfo, k) ) ) )
-    )
-  | Neg_bls12_381_g1 -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KNeg_bls12_381_g1 (kinfo, k) ) ) )
-  | Neg_bls12_381_g2 -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KNeg_bls12_381_g2 (kinfo, k) ) ) )
-  | Neg_bls12_381_fr -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KNeg_bls12_381_fr (kinfo, k) ) ) )
-  | Pairing_check_bls12_381 -> (
-    match li with
-    | IndLift li -> (
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KPairing_check_bls12_381 (kinfo, k) )
-      ) )
-  | Dup_n (n, i) -> (
-      let i = lift_dup_n_gadt_witness i li in
-      match lo with
-      | IndLift lo -> (
-        match fun_lift li lo with Refl -> KDup_n (kinfo, n, i, k) ) )
-  | Comb (n, w) ->
-      let w = lift_comb_gadt_witness w li lo in
-      KComb (kinfo, n, w, k)
-  | Uncomb (n, w) ->
-      let w = lift_uncomb_gadt_witness w li lo in
-      KUncomb (kinfo, n, w, k)
-  | Comb_get (n, w) -> (
-    match li with
-    | IndLift li' -> (
+            match fun_lift li lo with
+            | Refl ->
+                return @@ KSapling_verify_update (kinfo, k) ) ) ) )
+    | Dig (n, w) -> (
       match lo with
       | IndLift lo' -> (
-        match fun_lift li' lo' with Refl -> KComb_get (kinfo, n, w, k) ) ) )
-  | Comb_set (n, w) -> (
-    match li with
-    | IndLift li -> (
+        match lift_stack_prefix_preservation_witness w li lo' with
+        | ExLiftStackPrefixPreservationWitness (lds, ldu, w') -> (
+          match lds with
+          | IndLift lds -> (
+            match fun_lift lds ldu with
+            | Refl ->
+                return @@ KDig (kinfo, n, w', k) ) ) ) )
+    | Dug (n, w) -> (
       match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KComb_set (kinfo, n, w, k) ) ) ) )
-  | Ticket -> (
-    match li with
-    | IndLift li -> (
-      match li with
-      | IndLift li -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KTicket (kinfo, k) ) ) ) )
-  | Read_ticket -> (
-    match li with
-    | IndLift li -> (
+      | IndLift li' -> (
+        match lift_stack_prefix_preservation_witness w li' lo with
+        | ExLiftStackPrefixPreservationWitness (lds, ldu, w') -> (
+          match ldu with
+          | IndLift ldu -> (
+            match fun_lift lds ldu with
+            | Refl ->
+                return @@ KDug (kinfo, n, w', k) ) ) ) )
+    | Dipn (n, w, i') -> (
+      match lift_stack_prefix_preservation_witness w li lo with
+      | ExLiftStackPrefixPreservationWitness (lds, ldu, _) -> (
+        match inverse_lift lds with
+        | ExLiftInverse Refl -> (
+          match inverse_lift ldu with
+          | ExLiftInverse Refl ->
+              let hinfo =
+                {kloc = i.loc; kstack_ty = lift_stack_ty ldu i'.aft}
+              in
+              let (ExKInstr ki') = translate_instr i' lds ldu (KHalt hinfo) in
+              let sty = lift_stack_ty lo i.aft in
+              let l = i.loc in
+              let w =
+                kstack_prefix_preservation_witness l sty w li lo lds ldu
+              in
+              return @@ KDipn (kinfo, n, w, ki', k) ) ) )
+    | Dropn (n, w) -> (
+      match lift_stack_prefix_preservation_witness w li li with
+      | ExLiftStackPrefixPreservationWitness (lds, ldu, w') -> (
+        match inverse_lift lds with
+        | ExLiftInverse Refl -> (
+          match inverse_lift ldu with
+          | ExLiftInverse Refl -> (
+            match fun_lift lds ldu with
+            | Refl -> (
+              match fun_lift lo lds with
+              | Refl ->
+                  return @@ KDropn (kinfo, n, w', k) ) ) ) ) )
+    | ChainId -> (
       match lo with
       | IndLift lo -> (
-        match lo with
-        | IndLift lo -> (
-          match fun_lift li lo with Refl -> KRead_ticket (kinfo, k) ) ) ) )
-  | Split_ticket -> (
-    match li with
-    | IndLift li -> (
+        match fun_lift li lo with Refl -> return @@ KChainId (kinfo, k) ) )
+    | Never -> (
+      match li with IndLift _ -> return @@ KNever (kinfo, k) )
+    | Voting_power -> (
       match li with
       | IndLift li -> (
         match lo with
         | IndLift lo -> (
-          match fun_lift li lo with Refl -> KSplit_ticket (kinfo, k) ) ) ) )
-  | Join_tickets cty -> (
-    match li with
-    | IndLift li -> (
+          match fun_lift li lo with Refl -> return @@ KVoting_power (kinfo, k)
+          ) ) )
+    | Total_voting_power -> (
       match lo with
       | IndLift lo -> (
-        match fun_lift li lo with Refl -> KJoin_tickets (kinfo, cty, k) ) ) )
+        match fun_lift li lo with
+        | Refl ->
+            return @@ KTotal_voting_power (kinfo, k) ) )
+    | Keccak -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with Refl -> return @@ KKeccak (kinfo, k) ) ) )
+    | Sha3 -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with Refl -> return @@ KSha3 (kinfo, k) ) ) )
+    | Add_bls12_381_g1 -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with
+            | Refl ->
+                return @@ KAdd_bls12_381_g1 (kinfo, k) ) ) ) )
+    | Add_bls12_381_g2 -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with
+            | Refl ->
+                return @@ KAdd_bls12_381_g2 (kinfo, k) ) ) ) )
+    | Add_bls12_381_fr -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with
+            | Refl ->
+                return @@ KAdd_bls12_381_fr (kinfo, k) ) ) ) )
+    | Mul_bls12_381_g1 -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with
+            | Refl ->
+                return @@ KMul_bls12_381_g1 (kinfo, k) ) ) ) )
+    | Mul_bls12_381_g2 -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with
+            | Refl ->
+                return @@ KMul_bls12_381_g2 (kinfo, k) ) ) ) )
+    | Mul_bls12_381_z_fr -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with
+            | Refl ->
+                return @@ KMul_bls12_381_z_fr (kinfo, k) ) ) ) )
+    | Mul_bls12_381_fr_z -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with
+            | Refl ->
+                return @@ KMul_bls12_381_fr_z (kinfo, k) ) ) ) )
+    | Mul_bls12_381_fr -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with
+            | Refl ->
+                return @@ KMul_bls12_381_fr (kinfo, k) ) ) ) )
+    | Neg_bls12_381_g1 -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with
+          | Refl ->
+              return @@ KNeg_bls12_381_g1 (kinfo, k) ) ) )
+    | Neg_bls12_381_g2 -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with
+          | Refl ->
+              return @@ KNeg_bls12_381_g2 (kinfo, k) ) ) )
+    | Neg_bls12_381_fr -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with
+          | Refl ->
+              return @@ KNeg_bls12_381_fr (kinfo, k) ) ) )
+    | Pairing_check_bls12_381 -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with
+          | Refl ->
+              return @@ KPairing_check_bls12_381 (kinfo, k) ) ) )
+    | Dup_n (n, i) -> (
+        let i = lift_dup_n_gadt_witness i li in
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with Refl -> return @@ KDup_n (kinfo, n, i, k) )
+        )
+    | Comb (n, w) ->
+        let w = lift_comb_gadt_witness w li lo in
+        return @@ KComb (kinfo, n, w, k)
+    | Uncomb (n, w) ->
+        let w = lift_uncomb_gadt_witness w li lo in
+        return @@ KUncomb (kinfo, n, w, k)
+    | Comb_get (n, w) -> (
+      match li with
+      | IndLift li' -> (
+        match lo with
+        | IndLift lo' -> (
+          match fun_lift li' lo' with
+          | Refl ->
+              return @@ KComb_get (kinfo, n, w, k) ) ) )
+    | Comb_set (n, w) -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with
+            | Refl ->
+                return @@ KComb_set (kinfo, n, w, k) ) ) ) )
+    | Ticket -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with Refl -> return @@ KTicket (kinfo, k) ) )
+        ) )
+    | Read_ticket -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with
+            | Refl ->
+                return @@ KRead_ticket (kinfo, k) ) ) ) )
+    | Split_ticket -> (
+      match li with
+      | IndLift li -> (
+        match li with
+        | IndLift li -> (
+          match lo with
+          | IndLift lo -> (
+            match fun_lift li lo with
+            | Refl ->
+                return @@ KSplit_ticket (kinfo, k) ) ) ) )
+    | Join_tickets cty -> (
+      match li with
+      | IndLift li -> (
+        match lo with
+        | IndLift lo -> (
+          match fun_lift li lo with
+          | Refl ->
+              return @@ KJoin_tickets (kinfo, cty, k) ) ) )
 
 let translate : type bef aft. (bef, aft) descr -> (bef, aft) kdescr =
  fun d ->
   match (lift_type d.bef, lift_type d.aft) with
   | (ExLift kli, ExLift klo) ->
       let khalt = KHalt {kloc = d.loc; kstack_ty = lift_stack_ty klo d.aft} in
-      KDescr
-        {
-          kloc = d.loc;
-          kbef = d.bef;
-          kaft = d.aft;
-          kli;
-          klo;
-          kinstr = translate_instr d kli klo khalt;
-        }
+      let (ExKInstr kinstr) = translate_instr d kli klo khalt in
+      KDescr {kloc = d.loc; kbef = d.bef; kaft = d.aft; kli; klo; kinstr}

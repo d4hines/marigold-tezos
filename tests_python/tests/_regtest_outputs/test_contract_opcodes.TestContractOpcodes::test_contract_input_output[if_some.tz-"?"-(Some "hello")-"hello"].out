@@ -15,17 +15,17 @@ trace
   - location: 10 (remaining gas: 1039992.028 units remaining)
     [ "hello"  	@parameter.some
       Unit  	 ]
-  - location: 15 (remaining gas: 1039991.958 units remaining)
+  - location: 15 (remaining gas: 1039991.658 units remaining)
     [ "hello"  	
       Unit  	 ]
-  - location: 9 (remaining gas: 1039991.888 units remaining)
+  - location: 9 (remaining gas: 1039991.658 units remaining)
     [ "hello"  	
       Unit  	 ]
-  - location: 16 (remaining gas: 1039991.808 units remaining)
+  - location: 16 (remaining gas: 1039991.658 units remaining)
     [ {}  	
       "hello"  	
       Unit  	 ]
-  - location: 18 (remaining gas: 1039991.728 units remaining)
+  - location: 18 (remaining gas: 1039991.658 units remaining)
     [ (Pair {} "hello")  	
       Unit  	 ]
   - location: -1 (remaining gas: 1039991.658 units remaining)

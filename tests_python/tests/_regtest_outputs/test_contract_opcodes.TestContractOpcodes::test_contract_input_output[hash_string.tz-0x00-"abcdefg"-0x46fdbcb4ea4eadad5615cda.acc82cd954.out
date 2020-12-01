@@ -18,11 +18,11 @@ trace
   - location: 9 (remaining gas: 1039981.070 units remaining)
     [ 0x46fdbcb4ea4eadad5615cdaa17d67f783e01e21149ce2b27de497600b4cd8f4e  	
       Unit  	 ]
-  - location: 10 (remaining gas: 1039980.990 units remaining)
+  - location: 10 (remaining gas: 1039980.840 units remaining)
     [ {}  	
       0x46fdbcb4ea4eadad5615cdaa17d67f783e01e21149ce2b27de497600b4cd8f4e  	
       Unit  	 ]
-  - location: 12 (remaining gas: 1039980.910 units remaining)
+  - location: 12 (remaining gas: 1039980.840 units remaining)
     [ (Pair {} 0x46fdbcb4ea4eadad5615cdaa17d67f783e01e21149ce2b27de497600b4cd8f4e)  	
       Unit  	 ]
   - location: -1 (remaining gas: 1039980.840 units remaining)

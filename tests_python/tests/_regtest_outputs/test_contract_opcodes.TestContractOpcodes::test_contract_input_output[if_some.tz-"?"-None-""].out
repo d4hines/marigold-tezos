@@ -14,20 +14,20 @@ trace
       Unit  	 ]
   - location: 10 (remaining gas: 1039992.332 units remaining)
     [ Unit  	 ]
-  - location: 12 (remaining gas: 1039992.252 units remaining)
+  - location: 12 (remaining gas: 1039991.882 units remaining)
     [ ""  	
       Unit  	 ]
-  - location: 11 (remaining gas: 1039992.182 units remaining)
+  - location: 11 (remaining gas: 1039991.882 units remaining)
     [ ""  	
       Unit  	 ]
-  - location: 9 (remaining gas: 1039992.112 units remaining)
+  - location: 9 (remaining gas: 1039991.882 units remaining)
     [ ""  	
       Unit  	 ]
-  - location: 16 (remaining gas: 1039992.032 units remaining)
+  - location: 16 (remaining gas: 1039991.882 units remaining)
     [ {}  	
       ""  	
       Unit  	 ]
-  - location: 18 (remaining gas: 1039991.952 units remaining)
+  - location: 18 (remaining gas: 1039991.882 units remaining)
     [ (Pair {} "")  	
       Unit  	 ]
   - location: -1 (remaining gas: 1039991.882 units remaining)

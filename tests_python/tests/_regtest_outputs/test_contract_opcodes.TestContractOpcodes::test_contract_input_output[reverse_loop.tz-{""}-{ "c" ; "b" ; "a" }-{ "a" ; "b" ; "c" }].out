@@ -9,14 +9,14 @@ big_map diff
 trace
   - location: 8 (remaining gas: 1039981.974 units remaining)
     [ (Pair { "c" ; "b" ; "a" } { "" })  	 ]
-  - location: 9 (remaining gas: 1039981.894 units remaining)
+  - location: 9 (remaining gas: 1039981.664 units remaining)
     [ { "c" ; "b" ; "a" }  	@parameter
       Unit  	 ]
-  - location: 10 (remaining gas: 1039981.814 units remaining)
+  - location: 10 (remaining gas: 1039981.664 units remaining)
     [ {}  	
       { "c" ; "b" ; "a" }  	@parameter
       Unit  	 ]
-  - location: 12 (remaining gas: 1039981.744 units remaining)
+  - location: 12 (remaining gas: 1039981.664 units remaining)
     [ { "c" ; "b" ; "a" }  	@parameter
       {}  	
       Unit  	 ]
@@ -49,9 +49,6 @@ trace
   - location: 22 (remaining gas: 1039981.164 units remaining)
     [ { "c" }  	
       Unit  	 ]
-  - location: 22 (remaining gas: 1039981.164 units remaining)
-    [ { "c" }  	
-      Unit  	 ]
   - location: 22 (remaining gas: 1039981.084 units remaining)
     [ { "b" ; "a" }  	@parameter.tl
       { "c" }  	
@@ -69,11 +66,6 @@ trace
   - location: 17 (remaining gas: 1039980.864 units remaining)
     [ True  	
       { "b" ; "a" }  	
-      { "c" }  	
-      Unit  	 ]
-  - location: 17 (remaining gas: 1039980.864 units remaining)
-    [ True  	
-      { "b" ; "a" }  	@parameter
       { "c" }  	
       Unit  	 ]
   - location: 16 (remaining gas: 1039980.794 units remaining)
@@ -100,9 +92,6 @@ trace
   - location: 22 (remaining gas: 1039980.364 units remaining)
     [ { "b" ; "c" }  	
       Unit  	 ]
-  - location: 22 (remaining gas: 1039980.364 units remaining)
-    [ { "b" ; "c" }  	
-      Unit  	 ]
   - location: 22 (remaining gas: 1039980.284 units remaining)
     [ { "a" }  	@parameter.tl
       { "b" ; "c" }  	
@@ -120,11 +109,6 @@ trace
   - location: 17 (remaining gas: 1039980.064 units remaining)
     [ True  	
       { "a" }  	
-      { "b" ; "c" }  	
-      Unit  	 ]
-  - location: 17 (remaining gas: 1039980.064 units remaining)
-    [ True  	
-      { "a" }  	@parameter
       { "b" ; "c" }  	
       Unit  	 ]
   - location: 16 (remaining gas: 1039979.994 units remaining)
@@ -151,9 +135,6 @@ trace
   - location: 22 (remaining gas: 1039979.564 units remaining)
     [ { "a" ; "b" ; "c" }  	
       Unit  	 ]
-  - location: 22 (remaining gas: 1039979.564 units remaining)
-    [ { "a" ; "b" ; "c" }  	
-      Unit  	 ]
   - location: 22 (remaining gas: 1039979.484 units remaining)
     [ {}  	@parameter.tl
       { "a" ; "b" ; "c" }  	
@@ -171,11 +152,6 @@ trace
   - location: 17 (remaining gas: 1039979.264 units remaining)
     [ True  	
       {}  	
-      { "a" ; "b" ; "c" }  	
-      Unit  	 ]
-  - location: 17 (remaining gas: 1039979.264 units remaining)
-    [ True  	
-      {}  	@parameter
       { "a" ; "b" ; "c" }  	
       Unit  	 ]
   - location: 16 (remaining gas: 1039979.194 units remaining)
@@ -204,23 +180,18 @@ trace
       {}  	
       { "a" ; "b" ; "c" }  	
       Unit  	 ]
-  - location: 17 (remaining gas: 1039978.784 units remaining)
-    [ False  	
-      {}  	@parameter
-      { "a" ; "b" ; "c" }  	
-      Unit  	 ]
   - location: 16 (remaining gas: 1039978.714 units remaining)
     [ {}  	@parameter
       { "a" ; "b" ; "c" }  	
       Unit  	 ]
-  - location: 33 (remaining gas: 1039978.634 units remaining)
+  - location: 33 (remaining gas: 1039978.404 units remaining)
     [ { "a" ; "b" ; "c" }  	
       Unit  	 ]
-  - location: 34 (remaining gas: 1039978.554 units remaining)
+  - location: 34 (remaining gas: 1039978.404 units remaining)
     [ {}  	
       { "a" ; "b" ; "c" }  	
       Unit  	 ]
-  - location: 36 (remaining gas: 1039978.474 units remaining)
+  - location: 36 (remaining gas: 1039978.404 units remaining)
     [ (Pair {} { "a" ; "b" ; "c" })  	
       Unit  	 ]
   - location: -1 (remaining gas: 1039978.404 units remaining)

@@ -14,11 +14,11 @@ trace
   - location: 9 (remaining gas: 1039994.420 units remaining)
     [ {}  	@sapling
       Unit  	 ]
-  - location: 11 (remaining gas: 1039994.340 units remaining)
+  - location: 11 (remaining gas: 1039994.190 units remaining)
     [ {}  	
       {}  	@sapling
       Unit  	 ]
-  - location: 13 (remaining gas: 1039994.260 units remaining)
+  - location: 13 (remaining gas: 1039994.190 units remaining)
     [ (Pair {} {})  	
       Unit  	 ]
   - location: -1 (remaining gas: 1039994.190 units remaining)

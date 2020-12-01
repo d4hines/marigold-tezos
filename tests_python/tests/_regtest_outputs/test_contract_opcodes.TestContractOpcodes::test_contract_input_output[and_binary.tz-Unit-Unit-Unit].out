@@ -9,9 +9,9 @@ big_map diff
 trace
   - location: 6 (remaining gas: 1039955.820 units remaining)
     [ (Pair Unit Unit)  	 ]
-  - location: 7 (remaining gas: 1039955.740 units remaining)
+  - location: 7 (remaining gas: 1039955.580 units remaining)
     [ Unit  	 ]
-  - location: 8 (remaining gas: 1039955.660 units remaining)
+  - location: 8 (remaining gas: 1039955.580 units remaining)
     [ 5  	
       Unit  	 ]
   - location: 11 (remaining gas: 1039955.580 units remaining)

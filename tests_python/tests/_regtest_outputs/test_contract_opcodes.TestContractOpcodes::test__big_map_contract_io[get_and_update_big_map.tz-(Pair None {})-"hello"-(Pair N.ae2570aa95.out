@@ -10,14 +10,14 @@ big_map diff
 trace
   - location: 11 (remaining gas: 1039988.891 units remaining)
     [ (Pair "hello" None {})  	 ]
-  - location: 13 (remaining gas: 1039988.811 units remaining)
+  - location: 13 (remaining gas: 1039988.561 units remaining)
     [ "hello"  	@parameter
       (Pair None {})  	@storage
       Unit  	 ]
-  - location: 14 (remaining gas: 1039988.711 units remaining)
+  - location: 14 (remaining gas: 1039988.561 units remaining)
     [ (Pair None {})  	@storage
       Unit  	 ]
-  - location: 16 (remaining gas: 1039988.631 units remaining)
+  - location: 16 (remaining gas: 1039988.561 units remaining)
     [ None  	
       {}  	
       Unit  	 ]
@@ -26,34 +26,30 @@ trace
       {}  	
       Unit  	 ]
   - location: 15 (remaining gas: 1039988.561 units remaining)
-    [ None  	
-      {}  	
-      Unit  	 ]
-  - location: 15 (remaining gas: 1039988.481 units remaining)
     [ "hello"  	@parameter
       None  	
       {}  	
       Unit  	 ]
-  - location: -1 (remaining gas: 1039988.411 units remaining)
+  - location: -1 (remaining gas: 1039988.491 units remaining)
     [ "hello"  	@parameter
       None  	
       {}  	
       Unit  	 ]
-  - location: 17 (remaining gas: 1039988.251 units remaining)
+  - location: 17 (remaining gas: 1039988.331 units remaining)
     [ None  	
       {}  	
       Unit  	 ]
-  - location: 18 (remaining gas: 1039988.171 units remaining)
+  - location: 18 (remaining gas: 1039988.251 units remaining)
     [ (Pair None {})  	
       Unit  	 ]
-  - location: 19 (remaining gas: 1039988.091 units remaining)
+  - location: 19 (remaining gas: 1039988.171 units remaining)
     [ {}  	
       (Pair None {})  	
       Unit  	 ]
-  - location: 21 (remaining gas: 1039988.011 units remaining)
+  - location: 21 (remaining gas: 1039988.091 units remaining)
     [ (Pair {} None {})  	
       Unit  	 ]
-  - location: -1 (remaining gas: 1039987.941 units remaining)
+  - location: -1 (remaining gas: 1039988.021 units remaining)
     [ (Pair {} None {})  	
       Unit  	 ]
 

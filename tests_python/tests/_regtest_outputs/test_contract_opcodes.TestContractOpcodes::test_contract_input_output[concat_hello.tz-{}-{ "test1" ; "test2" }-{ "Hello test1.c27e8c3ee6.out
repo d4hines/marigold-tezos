@@ -12,11 +12,6 @@ trace
   - location: 9 (remaining gas: 1039991.598 units remaining)
     [ { "test1" ; "test2" }  	@parameter
       Unit  	 ]
-  - location: 10 (remaining gas: 1039991.074 units remaining)
-    [ Unit  	 ]
-  - location: 10 (remaining gas: 1039991.074 units remaining)
-    [ "test1"  	@parameter.elt
-      Unit  	 ]
   - location: 12 (remaining gas: 1039990.994 units remaining)
     [ "Hello "  	@hello
       "test1"  	@parameter.elt
@@ -26,14 +21,6 @@ trace
       Unit  	 ]
   - location: -1 (remaining gas: 1039990.844 units remaining)
     [ "Hello test1"  	
-      Unit  	 ]
-  - location: 11 (remaining gas: 1039990.844 units remaining)
-    [ "Hello test1"  	
-      Unit  	 ]
-  - location: 10 (remaining gas: 1039990.844 units remaining)
-    [ Unit  	 ]
-  - location: 10 (remaining gas: 1039990.844 units remaining)
-    [ "test2"  	@parameter.elt
       Unit  	 ]
   - location: 12 (remaining gas: 1039990.764 units remaining)
     [ "Hello "  	@hello
@@ -45,19 +32,11 @@ trace
   - location: -1 (remaining gas: 1039990.614 units remaining)
     [ "Hello test2"  	
       Unit  	 ]
-  - location: 11 (remaining gas: 1039990.614 units remaining)
-    [ "Hello test2"  	
-      Unit  	 ]
-  - location: 10 (remaining gas: 1039990.614 units remaining)
-    [ Unit  	 ]
-  - location: 10 (remaining gas: 1039990.614 units remaining)
-    [ { "Hello test1" ; "Hello test2" }  	
-      Unit  	 ]
-  - location: 16 (remaining gas: 1039990.534 units remaining)
+  - location: 16 (remaining gas: 1039990.384 units remaining)
     [ {}  	
       { "Hello test1" ; "Hello test2" }  	
       Unit  	 ]
-  - location: 18 (remaining gas: 1039990.454 units remaining)
+  - location: 18 (remaining gas: 1039990.384 units remaining)
     [ (Pair {} { "Hello test1" ; "Hello test2" })  	
       Unit  	 ]
   - location: -1 (remaining gas: 1039990.384 units remaining)

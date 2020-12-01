@@ -9,7 +9,7 @@ big_map diff
 trace
   - location: 8 (remaining gas: 1039987.192 units remaining)
     [ (Pair 15 { Elt "bar" 5 ; Elt "foo" 1 })  	 ]
-  - location: 9 (remaining gas: 1039987.112 units remaining)
+  - location: 9 (remaining gas: 1039987.042 units remaining)
     [ 15  	@parameter
       { Elt "bar" 5 ; Elt "foo" 1 }  	@storage
       Unit  	 ]
@@ -17,21 +17,14 @@ trace
     [ { Elt "bar" 5 ; Elt "foo" 1 }  	@storage
       15  	@parameter
       Unit  	 ]
-  - location: 11 (remaining gas: 1039985.440 units remaining)
-    [ 15  	@parameter
-      Unit  	 ]
-  - location: 11 (remaining gas: 1039985.440 units remaining)
-    [ (Pair "bar" 5)  	
-      15  	@parameter
-      Unit  	 ]
-  - location: 13 (remaining gas: 1039985.360 units remaining)
+  - location: 13 (remaining gas: 1039985.110 units remaining)
     [ 5  	@elt
       15  	@parameter
       Unit  	 ]
-  - location: 14 (remaining gas: 1039985.260 units remaining)
+  - location: 14 (remaining gas: 1039985.110 units remaining)
     [ 15  	@parameter
       Unit  	 ]
-  - location: 16 (remaining gas: 1039985.180 units remaining)
+  - location: 16 (remaining gas: 1039985.110 units remaining)
     [ 15  	@parameter
       15  	@parameter
       Unit  	 ]
@@ -40,96 +33,64 @@ trace
       15  	@parameter
       Unit  	 ]
   - location: 15 (remaining gas: 1039985.110 units remaining)
-    [ 15  	@parameter
-      15  	@parameter
-      Unit  	 ]
-  - location: 15 (remaining gas: 1039985.030 units remaining)
     [ 5  	@elt
       15  	@parameter
       15  	@parameter
       Unit  	 ]
-  - location: 17 (remaining gas: 1039984.950 units remaining)
+  - location: 17 (remaining gas: 1039985.030 units remaining)
     [ 20  	
       15  	@parameter
       Unit  	 ]
-  - location: -1 (remaining gas: 1039984.880 units remaining)
+  - location: -1 (remaining gas: 1039984.960 units remaining)
     [ 20  	
       15  	@parameter
       Unit  	 ]
-  - location: 12 (remaining gas: 1039984.880 units remaining)
-    [ 20  	
-      15  	@parameter
-      Unit  	 ]
-  - location: 11 (remaining gas: 1039984.880 units remaining)
-    [ 15  	@parameter
-      Unit  	 ]
-  - location: 11 (remaining gas: 1039984.880 units remaining)
-    [ (Pair "foo" 1)  	
-      15  	@parameter
-      Unit  	 ]
-  - location: 13 (remaining gas: 1039984.800 units remaining)
+  - location: 13 (remaining gas: 1039984.630 units remaining)
     [ 1  	@elt
       15  	@parameter
       Unit  	 ]
-  - location: 14 (remaining gas: 1039984.700 units remaining)
+  - location: 14 (remaining gas: 1039984.630 units remaining)
     [ 15  	@parameter
       Unit  	 ]
-  - location: 16 (remaining gas: 1039984.620 units remaining)
-    [ 15  	@parameter
-      15  	@parameter
-      Unit  	 ]
-  - location: 15 (remaining gas: 1039984.550 units remaining)
+  - location: 16 (remaining gas: 1039984.630 units remaining)
     [ 15  	@parameter
       15  	@parameter
       Unit  	 ]
-  - location: 15 (remaining gas: 1039984.550 units remaining)
+  - location: 15 (remaining gas: 1039984.630 units remaining)
     [ 15  	@parameter
       15  	@parameter
       Unit  	 ]
-  - location: 15 (remaining gas: 1039984.470 units remaining)
+  - location: 15 (remaining gas: 1039984.630 units remaining)
     [ 1  	@elt
       15  	@parameter
       15  	@parameter
       Unit  	 ]
-  - location: 17 (remaining gas: 1039984.390 units remaining)
+  - location: 17 (remaining gas: 1039984.550 units remaining)
     [ 16  	
       15  	@parameter
       Unit  	 ]
-  - location: -1 (remaining gas: 1039984.320 units remaining)
+  - location: -1 (remaining gas: 1039984.480 units remaining)
     [ 16  	
       15  	@parameter
       Unit  	 ]
-  - location: 12 (remaining gas: 1039984.320 units remaining)
-    [ 16  	
-      15  	@parameter
-      Unit  	 ]
-  - location: 11 (remaining gas: 1039984.320 units remaining)
+  - location: 18 (remaining gas: 1039984 units remaining)
     [ 15  	@parameter
       Unit  	 ]
-  - location: 11 (remaining gas: 1039984.320 units remaining)
-    [ { Elt "bar" 20 ; Elt "foo" 16 }  	
-      15  	@parameter
-      Unit  	 ]
-  - location: 18 (remaining gas: 1039984.220 units remaining)
-    [ 15  	@parameter
-      Unit  	 ]
-  - location: 20 (remaining gas: 1039984.140 units remaining)
+  - location: 20 (remaining gas: 1039984 units remaining)
     [ Unit  	 ]
-  - location: 19 (remaining gas: 1039984.070 units remaining)
+  - location: 19 (remaining gas: 1039984 units remaining)
     [ Unit  	 ]
-  - location: 19 (remaining gas: 1039984.070 units remaining)
-    [ Unit  	 ]
-  - location: 19 (remaining gas: 1039983.990 units remaining)
+  - location: 19 (remaining gas: 1039984 units remaining)
     [ { Elt "bar" 20 ; Elt "foo" 16 }  	
       Unit  	 ]
-  - location: 21 (remaining gas: 1039983.910 units remaining)
+  - location: 21 (remaining gas: 1039984 units remaining)
     [ {}  	
       { Elt "bar" 20 ; Elt "foo" 16 }  	
       Unit  	 ]
-  - location: 23 (remaining gas: 1039983.830 units remaining)
+  - location: 23 (remaining gas: 1039984 units remaining)
     [ (Pair {} { Elt "bar" 20 ; Elt "foo" 16 })  	
       Unit  	 ]
-  - location: -1 (remaining gas: 1039983.760 units remaining)
+  - location: -1 (remaining gas: 1039984 units remaining)
     [ (Pair {} { Elt "bar" 20 ; Elt "foo" 16 })  	
       Unit  	 ]
 
