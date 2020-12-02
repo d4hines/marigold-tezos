@@ -45,6 +45,8 @@ let pyinit () =
   let interpreter =
     if Sys.file_exists "venv/bin/python3" then "venv/bin/python3"
     else if Sys.file_exists "/usr/bin/python3" then "/usr/bin/python3"
+    else if Sys.file_exists "/home/opam/.pyenv/shims/python3" then
+      "/home/opam/.pyenv/shims/python3"
     else Stdlib.failwith "python3 interpreter not found"
   in
   if not (Py.is_initialized ()) then (
