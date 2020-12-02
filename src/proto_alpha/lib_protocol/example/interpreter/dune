@@ -1,9 +1,12 @@
 (executable
  (name main)
+ (package tezos-protocol-alpha-tests)
  (public_name tezos-protocol-alpha-example-interpreter)
  (libraries tezos-protocol-alpha tezos-alpha-test-helpers))
 
 (rule
  (alias runtest_lint)
- (deps (glob_files *.ml{,i}))
- (action (run %{lib:tezos-tooling:lint.sh} %{deps})))
+ (deps
+  (glob_files *.ml{,i}))
+ (action
+  (run %{lib:tezos-tooling:lint.sh} %{deps})))
