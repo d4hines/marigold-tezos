@@ -661,7 +661,7 @@ module type Type = sig
   end
 
   module Script_typed_ir :
-    Script_typed_ir.S
+    Script_typed_ir_functor.S
       with type tez = Tez.t
        and type 't num = 't Script_int.num
        and type z = Script_int.z

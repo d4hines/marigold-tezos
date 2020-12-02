@@ -76,6 +76,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
    script_typed_ir_parameters.ml
+   script_typed_ir_functor.ml
    script_typed_ir.ml
    script_tc_errors.ml
    michelson_v1_gas.mli michelson_v1_gas.ml
@@ -84,6 +85,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    script_tc_errors_registration.ml
    script_interpreter_cost.mli script_interpreter_cost.ml
    script_interpreter_parameters.ml
+   script_interpreter_functor.ml
    script_interpreter.ml
    baking.mli baking.ml
    amendment.mli amendment.ml
@@ -163,6 +165,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
    script_typed_ir_parameters.ml
+   script_typed_ir_functor.ml
    script_typed_ir.ml
    script_tc_errors.ml
    michelson_v1_gas.mli michelson_v1_gas.ml
@@ -171,6 +174,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    script_tc_errors_registration.ml
    script_interpreter_cost.mli script_interpreter_cost.ml
    script_interpreter_parameters.ml
+   script_interpreter_functor.ml
    script_interpreter.ml
    baking.mli baking.ml
    amendment.mli amendment.ml
@@ -250,6 +254,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
    script_typed_ir_parameters.ml
+   script_typed_ir_functor.ml
    script_typed_ir.ml
    script_tc_errors.ml
    michelson_v1_gas.mli michelson_v1_gas.ml
@@ -258,6 +263,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    script_tc_errors_registration.ml
    script_interpreter_cost.mli script_interpreter_cost.ml
    script_interpreter_parameters.ml
+   script_interpreter_functor.ml
    script_interpreter.ml
    baking.mli baking.ml
    amendment.mli amendment.ml
@@ -357,6 +363,7 @@ include Tezos_raw_protocol_alpha.Main
    Sapling_validator
    Alpha_context
    Script_typed_ir_parameters
+   Script_typed_ir_functor
    Script_typed_ir
    Script_tc_errors
    Michelson_v1_gas
@@ -365,6 +372,7 @@ include Tezos_raw_protocol_alpha.Main
    Script_tc_errors_registration
    Script_interpreter_cost
    Script_interpreter_parameters
+   Script_interpreter_functor
    Script_interpreter
    Baking
    Amendment
@@ -480,6 +488,7 @@ include Tezos_raw_protocol_alpha.Main
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
    script_typed_ir_parameters.ml
+   script_typed_ir_functor.ml
    script_typed_ir.ml
    script_tc_errors.ml
    michelson_v1_gas.mli michelson_v1_gas.ml
@@ -488,6 +497,7 @@ include Tezos_raw_protocol_alpha.Main
    script_tc_errors_registration.ml
    script_interpreter_cost.mli script_interpreter_cost.ml
    script_interpreter_parameters.ml
+   script_interpreter_functor.ml
    script_interpreter.ml
    baking.mli baking.ml
    amendment.mli amendment.ml
