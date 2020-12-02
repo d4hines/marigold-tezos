@@ -37,6 +37,8 @@ val cost_encoding : cost Data_encoding.encoding
 
 val pp_cost : Format.formatter -> cost -> unit
 
+(* [raw_consume gas_level cost] returns [Some (gas_level - cost)]
+   if [gas_level > cost] and [None] otherwise. *)
 val raw_consume : Arith.fp -> cost -> Arith.fp option
 
 val free : cost
