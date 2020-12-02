@@ -133,6 +133,12 @@ val gas_level : t -> Gas_limit_repr.t
 
 val gas_consumed : since:t -> until:t -> Gas_limit_repr.Arith.fp
 
+val gas_counter : t -> Gas_limit_repr.Arith.fp
+
+val update_gas_counter : t -> Gas_limit_repr.Arith.fp -> t
+
+val gas_exhausted_error : t -> 'a tzresult
+
 val block_gas_level : t -> Gas_limit_repr.Arith.fp
 
 val init_storage_space_to_pay : t -> t
@@ -236,8 +242,16 @@ module type T = sig
       from partial key relative a view. *)
   val absolute_key : context -> key -> key
 
+  (** Raised if block gas quota is exhausted during gas
+     consumption. *)
+  type error += Block_quota_exceeded
+
+  (** Raised if operation gas quota is exhausted during gas
+     consumption. *)
+  type error += Operation_quota_exceeded
+
   (** Internally used in {!Storage_functors} to consume gas from
-      within a view. *)
+      within a view. May raise {!Block_quota_exceeded} or {!Operation_quota_exceeded}. *)
   val consume_gas : context -> Gas_limit_repr.cost -> context tzresult
 
   (** Check if consume_gas will fail *)

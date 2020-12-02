@@ -1,0 +1,52 @@
+tests/test_contract_opcodes.py::TestContractOpcodes::test_contract_input_output[slice_bytes.tz-Some 0xaabbcc-Pair 0 0-(Some 0x)]
+
+storage
+  (Some 0x)
+emitted operations
+  
+big_map diff
+  
+trace
+  - location: 9 (remaining gas: 1039988.075 units remaining)
+    [ (Pair (Pair 0 0) (Some 0xaabbcc))  	 ]
+  - location: 10 (remaining gas: 1039987.925 units remaining)
+    [ (Pair 0 0)  	@parameter
+      (Some 0xaabbcc)  	@storage
+      Unit  	 ]
+  - location: 11 (remaining gas: 1039987.925 units remaining)
+    [ (Some 0xaabbcc)  	@storage
+      (Pair 0 0)  	@parameter
+      Unit  	 ]
+  - location: 13 (remaining gas: 1039987.845 units remaining)
+    [ 0xaabbcc  	@storage.some
+      (Pair 0 0)  	@parameter
+      Unit  	 ]
+  - location: 19 (remaining gas: 1039987.695 units remaining)
+    [ (Pair 0 0)  	@parameter
+      0xaabbcc  	@storage.some
+      Unit  	 ]
+  - location: 20 (remaining gas: 1039987.695 units remaining)
+    [ 0  	
+      0  	
+      0xaabbcc  	@storage.some
+      Unit  	 ]
+  - location: 21 (remaining gas: 1039987.615 units remaining)
+    [ (Some 0x)  	@storage.some.slice
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039987.245 units remaining)
+    [ (Some 0x)  	
+      Unit  	 ]
+  - location: 12 (remaining gas: 1039987.245 units remaining)
+    [ (Some 0x)  	
+      Unit  	 ]
+  - location: 22 (remaining gas: 1039987.245 units remaining)
+    [ {}  	
+      (Some 0x)  	
+      Unit  	 ]
+  - location: 24 (remaining gas: 1039987.245 units remaining)
+    [ (Pair {} (Some 0x))  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039987.245 units remaining)
+    [ (Pair {} (Some 0x))  	
+      Unit  	 ]
+

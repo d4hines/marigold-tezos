@@ -1,0 +1,189 @@
+tests/test_contract_opcodes.py::TestContractOpcodes::test_big_map_magic[(Right Unit)-(Right (Right (Left (Pair { Pair "foo" "bar" } { Pair "gaz" "baz" }) )))-(Left (Pair 0 1))-big_map_diff3]
+
+storage
+  (Left (Pair 0 1))
+emitted operations
+  
+big_map diff
+  New map(1) of type (big_map string string)
+  Set map(1)["gaz"] to "baz"
+  New map(0) of type (big_map string string)
+  Set map(0)["foo"] to "bar"
+trace
+  - location: 42 (remaining gas: 1039922.719 units remaining)
+    [ (Pair (Right (Right (Left (Pair { Pair "foo" "bar" } { Pair "gaz" "baz" })))) (Right Unit))  	 ]
+  - location: 43 (remaining gas: 1039922.639 units remaining)
+    [ (Right (Right (Left (Pair { Pair "foo" "bar" } { Pair "gaz" "baz" }))))  	@parameter
+      (Right Unit)  	@storage
+      Unit  	 ]
+  - location: 44 (remaining gas: 1039922.549 units remaining)
+    [ (Right (Left (Pair { Pair "foo" "bar" } { Pair "gaz" "baz" })))  	@parameter.right
+      (Right Unit)  	@storage
+      Unit  	 ]
+  - location: 60 (remaining gas: 1039922.459 units remaining)
+    [ (Left (Pair { Pair "foo" "bar" } { Pair "gaz" "baz" }))  	@parameter.right.right
+      (Right Unit)  	@storage
+      Unit  	 ]
+  - location: 65 (remaining gas: 1039922.369 units remaining)
+    [ (Pair { Pair "foo" "bar" } { Pair "gaz" "baz" })  	@parameter.right.right.import
+      (Right Unit)  	@storage
+      Unit  	 ]
+  - location: 67 (remaining gas: 1039922.269 units remaining)
+    [ (Right Unit)  	@storage
+      Unit  	 ]
+  - location: 70 (remaining gas: 1039922.179 units remaining)
+    [ Unit  	@storage.right
+      Unit  	 ]
+  - location: 75 (remaining gas: 1039922.109 units remaining)
+    [ Unit  	@storage.right
+      Unit  	 ]
+  - location: 69 (remaining gas: 1039922.039 units remaining)
+    [ Unit  	@storage.right
+      Unit  	 ]
+  - location: 76 (remaining gas: 1039921.959 units remaining)
+    [ Unit  	 ]
+  - location: -1 (remaining gas: 1039921.889 units remaining)
+    [ Unit  	 ]
+  - location: 68 (remaining gas: 1039921.809 units remaining)
+    [ (Pair { Pair "foo" "bar" } { Pair "gaz" "baz" })  	@parameter.right.right.import
+      Unit  	 ]
+  - location: 77 (remaining gas: 1039921.729 units remaining)
+    [ { Pair "foo" "bar" }  	
+      { Pair "gaz" "baz" }  	
+      Unit  	 ]
+  - location: 78 (remaining gas: 1039921.629 units remaining)
+    [ { Pair "gaz" "baz" }  	
+      Unit  	 ]
+  - location: 80 (remaining gas: 1039921.389 units remaining)
+    [ {}  	
+      { Pair "gaz" "baz" }  	
+      Unit  	 ]
+  - location: 79 (remaining gas: 1039921.319 units remaining)
+    [ {}  	
+      { Pair "gaz" "baz" }  	
+      Unit  	 ]
+  - location: 79 (remaining gas: 1039921.239 units remaining)
+    [ { Pair "foo" "bar" }  	
+      {}  	
+      { Pair "gaz" "baz" }  	
+      Unit  	 ]
+  - location: 85 (remaining gas: 1039920.652 units remaining)
+    [ "foo"  	
+      "bar"  	
+      {}  	
+      { Pair "gaz" "baz" }  	
+      Unit  	 ]
+  - location: 86 (remaining gas: 1039920.552 units remaining)
+    [ "bar"  	
+      {}  	
+      { Pair "gaz" "baz" }  	
+      Unit  	 ]
+  - location: 88 (remaining gas: 1039920.472 units remaining)
+    [ (Some "bar")  	
+      {}  	
+      { Pair "gaz" "baz" }  	
+      Unit  	 ]
+  - location: 87 (remaining gas: 1039920.402 units remaining)
+    [ (Some "bar")  	
+      {}  	
+      { Pair "gaz" "baz" }  	
+      Unit  	 ]
+  - location: 87 (remaining gas: 1039920.322 units remaining)
+    [ "foo"  	
+      (Some "bar")  	
+      {}  	
+      { Pair "gaz" "baz" }  	
+      Unit  	 ]
+  - location: 89 (remaining gas: 1039920.242 units remaining)
+    [ { Elt "foo" "bar" }  	
+      { Pair "gaz" "baz" }  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039920.172 units remaining)
+    [ { Elt "foo" "bar" }  	
+      { Pair "gaz" "baz" }  	
+      Unit  	 ]
+  - location: 90 (remaining gas: 1039920.102 units remaining)
+    [ { Pair "gaz" "baz" }  	
+      { Elt "foo" "bar" }  	
+      Unit  	 ]
+  - location: 91 (remaining gas: 1039920.002 units remaining)
+    [ { Elt "foo" "bar" }  	
+      Unit  	 ]
+  - location: 93 (remaining gas: 1039919.762 units remaining)
+    [ {}  	
+      { Elt "foo" "bar" }  	
+      Unit  	 ]
+  - location: 92 (remaining gas: 1039919.692 units remaining)
+    [ {}  	
+      { Elt "foo" "bar" }  	
+      Unit  	 ]
+  - location: 92 (remaining gas: 1039919.612 units remaining)
+    [ { Pair "gaz" "baz" }  	
+      {}  	
+      { Elt "foo" "bar" }  	
+      Unit  	 ]
+  - location: 98 (remaining gas: 1039919.025 units remaining)
+    [ "gaz"  	
+      "baz"  	
+      {}  	
+      { Elt "foo" "bar" }  	
+      Unit  	 ]
+  - location: 99 (remaining gas: 1039918.925 units remaining)
+    [ "baz"  	
+      {}  	
+      { Elt "foo" "bar" }  	
+      Unit  	 ]
+  - location: 101 (remaining gas: 1039918.845 units remaining)
+    [ (Some "baz")  	
+      {}  	
+      { Elt "foo" "bar" }  	
+      Unit  	 ]
+  - location: 100 (remaining gas: 1039918.775 units remaining)
+    [ (Some "baz")  	
+      {}  	
+      { Elt "foo" "bar" }  	
+      Unit  	 ]
+  - location: 100 (remaining gas: 1039918.695 units remaining)
+    [ "gaz"  	
+      (Some "baz")  	
+      {}  	
+      { Elt "foo" "bar" }  	
+      Unit  	 ]
+  - location: 102 (remaining gas: 1039918.615 units remaining)
+    [ { Elt "gaz" "baz" }  	
+      { Elt "foo" "bar" }  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039918.545 units remaining)
+    [ { Elt "gaz" "baz" }  	
+      { Elt "foo" "bar" }  	
+      Unit  	 ]
+  - location: 103 (remaining gas: 1039918.475 units remaining)
+    [ { Elt "foo" "bar" }  	
+      { Elt "gaz" "baz" }  	
+      Unit  	 ]
+  - location: 104 (remaining gas: 1039918.395 units remaining)
+    [ (Pair { Elt "foo" "bar" } { Elt "gaz" "baz" })  	
+      Unit  	 ]
+  - location: 105 (remaining gas: 1039918.315 units remaining)
+    [ (Left (Pair { Elt "foo" "bar" } { Elt "gaz" "baz" }))  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039918.245 units remaining)
+    [ (Left (Pair { Elt "foo" "bar" } { Elt "gaz" "baz" }))  	
+      Unit  	 ]
+  - location: 64 (remaining gas: 1039918.175 units remaining)
+    [ (Left (Pair { Elt "foo" "bar" } { Elt "gaz" "baz" }))  	
+      Unit  	 ]
+  - location: 59 (remaining gas: 1039918.105 units remaining)
+    [ (Left (Pair { Elt "foo" "bar" } { Elt "gaz" "baz" }))  	
+      Unit  	 ]
+  - location: 151 (remaining gas: 1039918.025 units remaining)
+    [ {}  	
+      (Left (Pair { Elt "foo" "bar" } { Elt "gaz" "baz" }))  	
+      Unit  	 ]
+  - location: 153 (remaining gas: 1039917.945 units remaining)
+    [ (Pair {} (Left (Pair { Elt "foo" "bar" } { Elt "gaz" "baz" })))  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039917.875 units remaining)
+    [ (Pair {} (Left (Pair { Elt "foo" "bar" } { Elt "gaz" "baz" })))  	
+      Unit  	 ]
+

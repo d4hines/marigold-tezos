@@ -1,0 +1,421 @@
+tests/test_contract_opcodes.py::TestContractOpcodes::test_contract_input_output[pexec_2.tz-{ 0 ; 1 ; 2 ; 3}-4-{ 0 ; 7 ; 14 ; 21 }]
+
+storage
+  { 0 ; 7 ; 14 ; 21 }
+emitted operations
+  
+big_map diff
+  
+trace
+  - location: 7 (remaining gas: 1039978.900 units remaining)
+    [ (Pair 4 { 0 ; 1 ; 2 ; 3 })  	 ]
+  - location: 8 (remaining gas: 1039978.670 units remaining)
+    [ 4  	@p
+      { 0 ; 1 ; 2 ; 3 }  	@s
+      Unit  	 ]
+  - location: 9 (remaining gas: 1039978.670 units remaining)
+    [ { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL }  	
+      4  	@p
+      { 0 ; 1 ; 2 ; 3 }  	@s
+      Unit  	 ]
+  - location: 23 (remaining gas: 1039978.670 units remaining)
+    [ 4  	@p
+      { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL }  	
+      { 0 ; 1 ; 2 ; 3 }  	@s
+      Unit  	 ]
+  - location: 24 (remaining gas: 1039977.345 units remaining)
+    [ { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } }  	
+      { 0 ; 1 ; 2 ; 3 }  	@s
+      Unit  	 ]
+  - location: 25 (remaining gas: 1039977.265 units remaining)
+    [ 3  	
+      { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } }  	
+      { 0 ; 1 ; 2 ; 3 }  	@s
+      Unit  	 ]
+  - location: 28 (remaining gas: 1039975.940 units remaining)
+    [ { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      { 0 ; 1 ; 2 ; 3 }  	@s
+      Unit  	 ]
+  - location: 29 (remaining gas: 1039975.870 units remaining)
+    [ { 0 ; 1 ; 2 ; 3 }  	@s
+      { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      Unit  	 ]
+  - location: 32 (remaining gas: 1039975.222 units remaining)
+    [ { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      Unit  	 ]
+  - location: 34 (remaining gas: 1039975.142 units remaining)
+    [ { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      Unit  	 ]
+  - location: 33 (remaining gas: 1039975.072 units remaining)
+    [ { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      Unit  	 ]
+  - location: 33 (remaining gas: 1039974.992 units remaining)
+    [ 0  	@s.elt
+      { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039974.892 units remaining)
+    [ 0  	 ]
+  - location: 16 (remaining gas: 1039974.242 units remaining)
+    [ 3  	
+      0  	
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039974.242 units remaining)
+    [ (Pair 3 0)  	
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039974.242 units remaining)
+    [ 4  	
+      (Pair 3 0)  	
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039974.242 units remaining)
+    [ (Pair 4 3 0)  	@arg
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039974.242 units remaining)
+    [ 4  	
+      (Pair 3 0)  	
+      Unit  	 ]
+  - location: 18 (remaining gas: 1039974.242 units remaining)
+    [ (Pair 3 0)  	
+      Unit  	 ]
+  - location: 20 (remaining gas: 1039974.242 units remaining)
+    [ 3  	
+      0  	
+      Unit  	 ]
+  - location: 19 (remaining gas: 1039974.242 units remaining)
+    [ 3  	
+      0  	
+      Unit  	 ]
+  - location: 19 (remaining gas: 1039974.242 units remaining)
+    [ 4  	
+      3  	
+      0  	
+      Unit  	 ]
+  - location: 21 (remaining gas: 1039974.162 units remaining)
+    [ 7  	
+      0  	
+      Unit  	 ]
+  - location: 22 (remaining gas: 1039974.080 units remaining)
+    [ 0  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039974.010 units remaining)
+    [ 0  	
+      Unit  	 ]
+  - location: 35 (remaining gas: 1039974.010 units remaining)
+    [ 0  	
+      { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039973.940 units remaining)
+    [ 0  	
+      { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      Unit  	 ]
+  - location: 32 (remaining gas: 1039973.840 units remaining)
+    [ { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      Unit  	 ]
+  - location: 34 (remaining gas: 1039973.760 units remaining)
+    [ { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      Unit  	 ]
+  - location: 33 (remaining gas: 1039973.690 units remaining)
+    [ { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      Unit  	 ]
+  - location: 33 (remaining gas: 1039973.610 units remaining)
+    [ 1  	@s.elt
+      { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039973.510 units remaining)
+    [ 1  	 ]
+  - location: 16 (remaining gas: 1039972.860 units remaining)
+    [ 3  	
+      1  	
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039972.860 units remaining)
+    [ (Pair 3 1)  	
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039972.860 units remaining)
+    [ 4  	
+      (Pair 3 1)  	
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039972.860 units remaining)
+    [ (Pair 4 3 1)  	@arg
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039972.860 units remaining)
+    [ 4  	
+      (Pair 3 1)  	
+      Unit  	 ]
+  - location: 18 (remaining gas: 1039972.860 units remaining)
+    [ (Pair 3 1)  	
+      Unit  	 ]
+  - location: 20 (remaining gas: 1039972.860 units remaining)
+    [ 3  	
+      1  	
+      Unit  	 ]
+  - location: 19 (remaining gas: 1039972.860 units remaining)
+    [ 3  	
+      1  	
+      Unit  	 ]
+  - location: 19 (remaining gas: 1039972.860 units remaining)
+    [ 4  	
+      3  	
+      1  	
+      Unit  	 ]
+  - location: 21 (remaining gas: 1039972.780 units remaining)
+    [ 7  	
+      1  	
+      Unit  	 ]
+  - location: 22 (remaining gas: 1039972.694 units remaining)
+    [ 7  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039972.624 units remaining)
+    [ 7  	
+      Unit  	 ]
+  - location: 35 (remaining gas: 1039972.624 units remaining)
+    [ 7  	
+      { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039972.554 units remaining)
+    [ 7  	
+      { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      Unit  	 ]
+  - location: 32 (remaining gas: 1039972.454 units remaining)
+    [ { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      Unit  	 ]
+  - location: 34 (remaining gas: 1039972.374 units remaining)
+    [ { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      Unit  	 ]
+  - location: 33 (remaining gas: 1039972.304 units remaining)
+    [ { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      Unit  	 ]
+  - location: 33 (remaining gas: 1039972.224 units remaining)
+    [ 2  	@s.elt
+      { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039972.124 units remaining)
+    [ 2  	 ]
+  - location: 16 (remaining gas: 1039971.474 units remaining)
+    [ 3  	
+      2  	
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039971.474 units remaining)
+    [ (Pair 3 2)  	
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039971.474 units remaining)
+    [ 4  	
+      (Pair 3 2)  	
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039971.474 units remaining)
+    [ (Pair 4 3 2)  	@arg
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039971.474 units remaining)
+    [ 4  	
+      (Pair 3 2)  	
+      Unit  	 ]
+  - location: 18 (remaining gas: 1039971.474 units remaining)
+    [ (Pair 3 2)  	
+      Unit  	 ]
+  - location: 20 (remaining gas: 1039971.474 units remaining)
+    [ 3  	
+      2  	
+      Unit  	 ]
+  - location: 19 (remaining gas: 1039971.474 units remaining)
+    [ 3  	
+      2  	
+      Unit  	 ]
+  - location: 19 (remaining gas: 1039971.474 units remaining)
+    [ 4  	
+      3  	
+      2  	
+      Unit  	 ]
+  - location: 21 (remaining gas: 1039971.394 units remaining)
+    [ 7  	
+      2  	
+      Unit  	 ]
+  - location: 22 (remaining gas: 1039971.308 units remaining)
+    [ 14  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039971.238 units remaining)
+    [ 14  	
+      Unit  	 ]
+  - location: 35 (remaining gas: 1039971.238 units remaining)
+    [ 14  	
+      { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039971.168 units remaining)
+    [ 14  	
+      { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      Unit  	 ]
+  - location: 32 (remaining gas: 1039971.068 units remaining)
+    [ { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      Unit  	 ]
+  - location: 34 (remaining gas: 1039970.988 units remaining)
+    [ { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      Unit  	 ]
+  - location: 33 (remaining gas: 1039970.918 units remaining)
+    [ { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      Unit  	 ]
+  - location: 33 (remaining gas: 1039970.838 units remaining)
+    [ 3  	@s.elt
+      { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039970.738 units remaining)
+    [ 3  	 ]
+  - location: 16 (remaining gas: 1039970.088 units remaining)
+    [ 3  	
+      3  	
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039970.088 units remaining)
+    [ (Pair 3 3)  	
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039970.088 units remaining)
+    [ 4  	
+      (Pair 3 3)  	
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039970.088 units remaining)
+    [ (Pair 4 3 3)  	@arg
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039970.088 units remaining)
+    [ 4  	
+      (Pair 3 3)  	
+      Unit  	 ]
+  - location: 18 (remaining gas: 1039970.088 units remaining)
+    [ (Pair 3 3)  	
+      Unit  	 ]
+  - location: 20 (remaining gas: 1039970.088 units remaining)
+    [ 3  	
+      3  	
+      Unit  	 ]
+  - location: 19 (remaining gas: 1039970.088 units remaining)
+    [ 3  	
+      3  	
+      Unit  	 ]
+  - location: 19 (remaining gas: 1039970.088 units remaining)
+    [ 4  	
+      3  	
+      3  	
+      Unit  	 ]
+  - location: 21 (remaining gas: 1039970.008 units remaining)
+    [ 7  	
+      3  	
+      Unit  	 ]
+  - location: 22 (remaining gas: 1039969.922 units remaining)
+    [ 21  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039969.852 units remaining)
+    [ 21  	
+      Unit  	 ]
+  - location: 35 (remaining gas: 1039969.852 units remaining)
+    [ 21  	
+      { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039969.782 units remaining)
+    [ 21  	
+      { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      Unit  	 ]
+  - location: 36 (remaining gas: 1039969.682 units remaining)
+    [ { PUSH int 3 ;
+        PAIR ;
+        { PUSH int 4 ; PAIR ; { UNPAIR ; DIP { UNPAIR } ; ADD ; MUL } } }  	
+      Unit  	 ]
+  - location: 38 (remaining gas: 1039969.602 units remaining)
+    [ Unit  	 ]
+  - location: 37 (remaining gas: 1039969.532 units remaining)
+    [ Unit  	 ]
+  - location: 37 (remaining gas: 1039969.452 units remaining)
+    [ { 0 ; 7 ; 14 ; 21 }  	
+      Unit  	 ]
+  - location: 39 (remaining gas: 1039969.372 units remaining)
+    [ {}  	
+      { 0 ; 7 ; 14 ; 21 }  	
+      Unit  	 ]
+  - location: 41 (remaining gas: 1039969.292 units remaining)
+    [ (Pair {} { 0 ; 7 ; 14 ; 21 })  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039969.222 units remaining)
+    [ (Pair {} { 0 ; 7 ; 14 ; 21 })  	
+      Unit  	 ]
+

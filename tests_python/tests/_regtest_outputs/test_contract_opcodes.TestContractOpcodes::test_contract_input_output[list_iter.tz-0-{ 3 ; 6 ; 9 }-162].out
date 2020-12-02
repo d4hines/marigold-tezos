@@ -1,0 +1,51 @@
+tests/test_contract_opcodes.py::TestContractOpcodes::test_contract_input_output[list_iter.tz-0-{ 3 ; 6 ; 9 }-162]
+
+storage
+  162
+emitted operations
+  
+big_map diff
+  
+trace
+  - location: 7 (remaining gas: 1039991.060 units remaining)
+    [ (Pair { 3 ; 6 ; 9 } 0)  	 ]
+  - location: 8 (remaining gas: 1039990.830 units remaining)
+    [ { 3 ; 6 ; 9 }  	@parameter
+      Unit  	 ]
+  - location: 9 (remaining gas: 1039990.830 units remaining)
+    [ 1  	
+      { 3 ; 6 ; 9 }  	@parameter
+      Unit  	 ]
+  - location: 12 (remaining gas: 1039990.830 units remaining)
+    [ { 3 ; 6 ; 9 }  	@parameter
+      1  	
+      Unit  	 ]
+  - location: 15 (remaining gas: 1039990.223 units remaining)
+    [ 3  	
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039990.153 units remaining)
+    [ 3  	
+      Unit  	 ]
+  - location: 15 (remaining gas: 1039990.067 units remaining)
+    [ 18  	
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039989.997 units remaining)
+    [ 18  	
+      Unit  	 ]
+  - location: 15 (remaining gas: 1039989.911 units remaining)
+    [ 162  	
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039989.841 units remaining)
+    [ 162  	
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039989.611 units remaining)
+    [ {}  	
+      162  	
+      Unit  	 ]
+  - location: 18 (remaining gas: 1039989.611 units remaining)
+    [ (Pair {} 162)  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039989.611 units remaining)
+    [ (Pair {} 162)  	
+      Unit  	 ]
+

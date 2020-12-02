@@ -14,6 +14,7 @@
         "Period_repr",
         "Time_repr",
         "Fixed_point_repr",
+        "Saturation_repr",
         "Gas_limit_repr",
         "Constants_repr",
         "Fitness_repr",
@@ -64,6 +65,7 @@
         "Alpha_context",
 
         "Script_typed_ir",
+        "Script_typed_cps_ir",
         "Script_tc_errors",
         "Michelson_v1_gas",
         "Script_ir_annot",

@@ -94,5 +94,3 @@ end
 module type Decimals = sig
   val decimals : int
 end
-
-module Make (Arg : Decimals) : Full

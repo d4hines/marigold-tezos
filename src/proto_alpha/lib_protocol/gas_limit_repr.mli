@@ -23,7 +23,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module Arith : Fixed_point_repr.Full
+module Arith : Fixed_point_repr.Full with type 'a t = Saturation_repr.t
 
 type t = Unaccounted | Limited of {remaining : Arith.fp}
 
@@ -31,36 +31,32 @@ val encoding : t Data_encoding.encoding
 
 val pp : Format.formatter -> t -> unit
 
-type cost = Z.t
+type cost = Saturation_repr.t
 
 val cost_encoding : cost Data_encoding.encoding
 
 val pp_cost : Format.formatter -> cost -> unit
 
-type error += Block_quota_exceeded (* `Temporary *)
-
-type error += Operation_quota_exceeded (* `Temporary *)
-
-val raw_consume : Arith.fp -> t -> cost -> (Arith.fp * t) tzresult
-
-val raw_check_enough : Arith.fp -> t -> cost -> unit tzresult
+(* [raw_consume gas_level cost] returns [Some (gas_level - cost)]
+   if [gas_level > cost] and [None] otherwise. *)
+val raw_consume : Arith.fp -> cost -> Arith.fp option
 
 val free : cost
 
-val atomic_step_cost : Z.t -> cost
+val atomic_step_cost : Saturation_repr.t -> cost
 
-val step_cost : Z.t -> cost
+val step_cost : Saturation_repr.t -> cost
 
-val alloc_cost : Z.t -> cost
+val alloc_cost : Saturation_repr.t -> cost
 
 val alloc_bytes_cost : int -> cost
 
 val alloc_mbytes_cost : int -> cost
 
-val read_bytes_cost : Z.t -> cost
+val read_bytes_cost : Saturation_repr.t -> cost
 
-val write_bytes_cost : Z.t -> cost
+val write_bytes_cost : Saturation_repr.t -> cost
 
-val ( *@ ) : Z.t -> cost -> cost
+val ( *@ ) : Saturation_repr.t -> cost -> cost
 
 val ( +@ ) : cost -> cost -> cost

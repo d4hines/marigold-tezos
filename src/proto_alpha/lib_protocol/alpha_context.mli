@@ -161,7 +161,7 @@ module Cycle : sig
 end
 
 module Gas : sig
-  module Arith : Fixed_point_repr.Safe
+  module Arith : Fixed_point_repr.Safe with type 'a t = Saturation_repr.t
 
   type t = private Unaccounted | Limited of {remaining : Arith.fp}
 
@@ -169,7 +169,7 @@ module Gas : sig
 
   val pp : Format.formatter -> t -> unit
 
-  type cost
+  type cost = private Saturation_repr.t
 
   val cost_encoding : cost Data_encoding.encoding
 
@@ -183,21 +183,21 @@ module Gas : sig
 
   val free : cost
 
-  val atomic_step_cost : Z.t -> cost
+  val atomic_step_cost : Saturation_repr.t -> cost
 
-  val step_cost : Z.t -> cost
+  val step_cost : Saturation_repr.t -> cost
 
-  val alloc_cost : Z.t -> cost
+  val alloc_cost : Saturation_repr.t -> cost
 
   val alloc_bytes_cost : int -> cost
 
   val alloc_mbytes_cost : int -> cost
 
-  val read_bytes_cost : Z.t -> cost
+  val read_bytes_cost : Saturation_repr.t -> cost
 
-  val write_bytes_cost : Z.t -> cost
+  val write_bytes_cost : Saturation_repr.t -> cost
 
-  val ( *@ ) : Z.t -> cost -> cost
+  val ( *@ ) : Saturation_repr.t -> cost -> cost
 
   val ( +@ ) : cost -> cost -> cost
 
@@ -208,6 +208,12 @@ module Gas : sig
   val set_unlimited : context -> context
 
   val consume : context -> cost -> context tzresult
+
+  val gas_counter : context -> Arith.fp
+
+  val update_gas_counter : context -> Arith.fp -> context
+
+  val gas_exhausted_error : context -> 'a tzresult
 
   val check_enough : context -> cost -> unit tzresult
 

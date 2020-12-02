@@ -1,0 +1,35 @@
+tests/test_contract_opcodes.py::TestContractOpcodes::test_contract_input_output[concat_hello.tz-{}-{ "World!" }-{ "Hello World!" }]
+
+storage
+  { "Hello World!" }
+emitted operations
+  
+big_map diff
+  
+trace
+  - location: 8 (remaining gas: 1039991.972 units remaining)
+    [ (Pair { "World!" } {})  	 ]
+  - location: 9 (remaining gas: 1039991.892 units remaining)
+    [ { "World!" }  	@parameter
+      Unit  	 ]
+  - location: 12 (remaining gas: 1039991.300 units remaining)
+    [ "Hello "  	@hello
+      "World!"  	@parameter.elt
+      Unit  	 ]
+  - location: 15 (remaining gas: 1039991.220 units remaining)
+    [ "Hello World!"  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039991.150 units remaining)
+    [ "Hello World!"  	
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039990.920 units remaining)
+    [ {}  	
+      { "Hello World!" }  	
+      Unit  	 ]
+  - location: 18 (remaining gas: 1039990.920 units remaining)
+    [ (Pair {} { "Hello World!" })  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039990.920 units remaining)
+    [ (Pair {} { "Hello World!" })  	
+      Unit  	 ]
+
