@@ -133,6 +133,12 @@ val gas_level : t -> Gas_limit_repr.t
 
 val gas_consumed : since:t -> until:t -> Gas_limit_repr.Arith.fp
 
+val gas_counter : t -> Gas_limit_repr.Arith.fp
+
+val update_gas_counter : t -> Gas_limit_repr.Arith.fp -> t
+
+val gas_exhausted_error : t -> 'a tzresult
+
 val block_gas_level : t -> Gas_limit_repr.Arith.fp
 
 val init_storage_space_to_pay : t -> t
