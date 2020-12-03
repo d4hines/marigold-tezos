@@ -1631,7 +1631,7 @@ let extract_deps :
     a * t * Alpha_context.t =
   fun (type b a) ctxt step_constants (descr : (b, a) descr) (stack : b) ->
    let trace = ref [] in
-   let module Logger : Script_interpreter.STEP_LOGGER = struct
+   (* let module Logger : Script_interpreter.STEP_LOGGER = struct
      let log_interp _ctxt _descr _stack = ()
 
      let log_entry ctxt descr stack =
@@ -1640,10 +1640,10 @@ let extract_deps :
      let log_exit _ctxt _descr _stack = ()
 
      let get_log () = Environment.Error_monad.return_none
-   end in
+   end in *)
    let res =
      Lwt_main.run
-       (Script_interpreter.step (module Logger) ctxt step_constants descr stack)
+       (Script_interpreter.step (*(module Logger)*) None ctxt step_constants descr stack)
    in
    match res with
    | Error errs ->

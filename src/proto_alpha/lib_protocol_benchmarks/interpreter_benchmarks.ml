@@ -130,7 +130,7 @@ module Default_boilerplate = struct
   let tags = [Tags.interpreter]
 end
 
-module No_trace : Script_interpreter.STEP_LOGGER = struct
+(* module No_trace : Script_interpreter.STEP_LOGGER = struct
   open Environment.Error_monad
 
   let log_interp _ctxt _descr _stack = ()
@@ -140,7 +140,7 @@ module No_trace : Script_interpreter.STEP_LOGGER = struct
   let log_exit _ctxt _descr _stack = ()
 
   let get_log () = return_none
-end
+end *)
 
 let create_benchmark rng_state instr stack_ty stack =
   let open Error_monad in
@@ -167,13 +167,13 @@ let create_benchmark rng_state instr stack_ty stack =
     match jdg with
     | Script_ir_translator.Typed descr ->
         let (_, workload, _) =
-          Interpreter_workload.extract_deps ctxt step_constants descr stack
+          assert false
         in
         let ctxt = Gas_helpers.set_limit ctxt in
         let closure () =
           ignore @@ Lwt_main.run
           @@ Script_interpreter.step
-               (module No_trace)
+               None
                ctxt
                step_constants
                descr
@@ -2320,7 +2320,7 @@ module MyFirstBenchmark = struct
           let closure () =
             ignore @@ Lwt_main.run
             @@ Script_interpreter.step
-                 (module No_trace)
+                 None
                  ctxt
                  step_constants
                  descr

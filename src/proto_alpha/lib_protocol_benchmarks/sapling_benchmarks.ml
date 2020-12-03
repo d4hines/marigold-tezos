@@ -48,7 +48,7 @@ module Verify_update : Benchmark.S = struct
 
   let models = models (Some N_Sapling_verify_update)
 
-  open Interpreter_benchmarks
+  (* open Interpreter_benchmarks *)
 
   let benchmark_tx (config : config) sapling_transition () =
     (* Reproduce the rng used to cook the bootstrap pkhs, hence the anti-replays *)
@@ -89,12 +89,14 @@ module Verify_update : Benchmark.S = struct
       | Script_ir_translator.Typed descr ->
           let stack = (sapling_transition.sapling_tx, (state, ())) in
           let (_, workload, _) =
-            Interpreter_workload.extract_deps ctxt step_constants descr stack
+            (* Interpreter_workload.extract_deps ctxt step_constants descr stack *)
+            assert false
           in
           let closure () =
             ignore @@ Lwt_main.run
             @@ Script_interpreter.step
-                 (module No_trace)
+                 (* (module No_trace) *)
+                 None
                  ctxt
                  step_constants
                  descr
