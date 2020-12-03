@@ -319,10 +319,10 @@ class TestContracts:
     @pytest.mark.parametrize("contract,error_pattern", [
         # operations cannot be PACKed
         ("pack_operation.tz",
-         r'operation type forbidden in parameter, storage and constants'),
+         r'operation type forbidden in parameter, storage, log and constants'),
         # operations cannot be LOGed
         ("log_operation.tz",
-         r'operation type forbidden in parameter, storage and constants'),
+         r'operation type forbidden in parameter, storage, log and constants'),
         # big_maps cannot be PACKed
         ("pack_big_map.tz",
          r'big_map or sapling_state type not expected here'),

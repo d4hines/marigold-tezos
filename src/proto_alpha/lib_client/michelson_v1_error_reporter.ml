@@ -328,7 +328,7 @@ let report_errors ~details ~show_source ?parsed ppf errs =
     | Environment.Ecoproto_error (Unexpected_operation loc) :: rest ->
         Format.fprintf
           ppf
-          "%aoperation type forbidden in parameter, storage and constants"
+          "%aoperation type forbidden in parameter, storage, log and constants"
           print_loc
           loc ;
         if rest <> [] then Format.fprintf ppf "@," ;
