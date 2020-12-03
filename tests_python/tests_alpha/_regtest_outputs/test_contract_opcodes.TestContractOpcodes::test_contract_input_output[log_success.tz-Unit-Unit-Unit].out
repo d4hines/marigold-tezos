@@ -1,0 +1,29 @@
+tests/test_contract_opcodes.py::TestContractOpcodes::test_contract_input_output[log_success.tz-Unit-Unit-Unit]
+
+storage
+  Unit
+emitted operations
+  
+big_map diff
+  
+trace
+  - location: 6 (remaining gas: 1039992.016 units remaining)
+    [ (Pair Unit Unit)  	 ]
+  - location: 7 (remaining gas: 1039991.876 units remaining)
+    [  ]
+  - location: 8 (remaining gas: 1039991.736 units remaining)
+    [ "dummy"  	 ]
+  - location: 11 (remaining gas: 1039979.436 units remaining)
+    [ 0x05010000000564756d6d79  	@packed ]
+  - location: 12 (remaining gas: 1039964.336 units remaining)
+    [  ]
+  - location: 13 (remaining gas: 1039964.196 units remaining)
+    [ Unit  	 ]
+  - location: 14 (remaining gas: 1039964.056 units remaining)
+    [ {}  	@noop
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039963.916 units remaining)
+    [ (Pair {} Unit)  	 ]
+  - location: -1 (remaining gas: 1039963.846 units remaining)
+    [ (Pair {} Unit)  	 ]
+
