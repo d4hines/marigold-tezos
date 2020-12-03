@@ -104,4 +104,8 @@ module type Type = sig
       type t
     end
   end
+
+  type ('elt_ty, 'elt) set
+
+  type ('key_ty, 'key, 'value) map
 end

@@ -24,10 +24,47 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+module type Boxed_set = sig
+  type elt
+
+  type elt_ty
+
+  val elt_ty : elt_ty
+
+  module OPS : S.SET with type elt = elt
+
+  val boxed : OPS.t
+
+  val size : int
+end
+
+module type Boxed_map = sig
+  type key
+
+  type value
+
+  type key_ty
+
+  val key_ty : key_ty
+
+  module OPS : S.MAP with type key = key
+
+  val boxed : value OPS.t * int
+end
+
 include Script_typed_ir_functor.Make (struct
   include Alpha_context
   module Operation = Alpha_context
   module Chain_id = Chain_id
   module Signature = Signature
   module Bls12_381 = Bls12_381
+
+  type ('elt_ty, 'elt) set =
+    (module Boxed_set with type elt = 'elt and type elt_ty = 'elt_ty)
+
+  type ('key_ty, 'key, 'value) map =
+    (module Boxed_map
+       with type key = 'key
+        and type value = 'value
+        and type key_ty = 'key_ty)
 end)

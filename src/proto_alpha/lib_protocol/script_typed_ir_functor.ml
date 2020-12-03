@@ -112,34 +112,11 @@ module Make (P : Script_typed_ir_parameters.Type) = struct
         'v comparable_ty * type_annot option
         -> 'v option comparable_ty
 
-  module type Boxed_set = sig
-    type elt
-
-    val elt_ty : elt comparable_ty
-
-    module OPS : S.SET with type elt = elt
-
-    val boxed : OPS.t
-
-    val size : int
-  end
-
-  type 'elt set = (module Boxed_set with type elt = 'elt)
-
-  module type Boxed_map = sig
-    type key
-
-    type value
-
-    val key_ty : key comparable_ty
-
-    module OPS : S.MAP with type key = key
-
-    val boxed : value OPS.t * int
-  end
+  type 'elt set = Set_box of ('elt comparable_ty, 'elt) P.set [@@unboxed]
 
   type ('key, 'value) map =
-    (module Boxed_map with type key = 'key and type value = 'value)
+    | Map_box of ('key comparable_ty, 'key, 'value) P.map
+  [@@unboxed]
 
   type operation = packed_internal_operation * diffs option
 
@@ -661,4 +638,8 @@ module type S = module type of Make (struct
       type t
     end
   end
+
+  type ('elt_ty, 'elt) set
+
+  type ('key_ty, 'key, 'value) map
 end)
