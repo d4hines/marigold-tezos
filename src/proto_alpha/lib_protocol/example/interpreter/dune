@@ -1,8 +1,27 @@
 (executable
  (name main)
- (package tezos-protocol-alpha-tests)
- (public_name tezos-protocol-alpha-example-interpreter)
- (libraries tezos-protocol-alpha tezos-alpha-test-helpers))
+ (modules main)
+ (libraries interpreter_example_functor tezos-protocol-alpha
+   tezos-alpha-test-helpers))
+
+(library
+ (name interpreter_example_functor)
+ (flags (:standard -nopervasives -nostdlib))
+ (modules Script_typed_ir_functor Script_typed_ir_parameters
+   Script_interpreter_functor Script_interpreter_parameters))
+
+(rule
+ (copy ../../script_typed_ir_functor.ml script_typed_ir_functor.ml))
+
+(rule
+ (copy ../../script_typed_ir_parameters.ml script_typed_ir_parameters.ml))
+
+(rule
+ (copy ../../script_interpreter_functor.ml script_interpreter_functor.ml))
+
+(rule
+ (copy ../../script_interpreter_parameters.ml
+   script_interpreter_parameters.ml))
 
 (rule
  (alias runtest_lint)

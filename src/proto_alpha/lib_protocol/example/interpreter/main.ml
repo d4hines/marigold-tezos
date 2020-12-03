@@ -55,7 +55,8 @@ module Error_monad_with_counter = struct
     ()
 end
 
-module Script_interpreter = Script_interpreter_functor.Make (struct
+module Script_interpreter =
+Interpreter_example_functor.Script_interpreter_functor.Make (struct
   include Dummy
   module Error_monad = Error_monad_with_counter
 end)
