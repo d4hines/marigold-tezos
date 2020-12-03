@@ -7,4 +7,16 @@ code { DROP;
        PACK;
        LOG;
 
+       # int
+       PUSH int 1;
+       LOG;
+
+       # lambda
+       PUSH (lambda unit unit) { };
+       LOG;
+
+       # map
+       EMPTY_MAP string int;
+       LOG;
+       
        UNIT; NIL @noop operation; PAIR; };
