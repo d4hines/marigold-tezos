@@ -1246,7 +1246,6 @@ module Cost_of = struct
     let cost_N_Log = Z.of_int 800 (* TODO *)
 
     let log = atomic_step_cost cost_N_Log
-    
   end
 
   module Typechecking = struct
@@ -1465,6 +1464,5 @@ module Cost_of = struct
       (*       let size = Data_encoding.Binary.length Sapling.diff_encoding d in *)
       (*       string_cost size *)
       Gas.free
-
   end
 end

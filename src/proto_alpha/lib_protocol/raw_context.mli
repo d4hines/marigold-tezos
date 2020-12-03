@@ -94,6 +94,7 @@ val current_fitness : context -> Int64.t
 val set_current_fitness : context -> Int64.t -> t
 
 val get_events : context -> Event_repr.t list
+
 val set_events : context -> Event_repr.t list -> context
 
 val constants : context -> Constants_repr.parametric

@@ -44,7 +44,6 @@ let error_encoding =
             json)
        ~binary:Error_monad.error_encoding
 
-
 type _ successful_manager_operation_result =
   | Reveal_result : {
       consumed_gas : Gas.Arith.fp;
@@ -59,7 +58,7 @@ type _ successful_manager_operation_result =
       storage_size : Z.t;
       paid_storage_size_diff : Z.t;
       allocated_destination_contract : bool;
-      events: Event.t list;
+      events : Event.t list;
     }
       -> Kind.transaction successful_manager_operation_result
   | Origination_result : {
@@ -198,27 +197,24 @@ module Manager_result = struct
     make
       ~op_case:Operation.Encoding.Manager_operations.transaction_case
       ~encoding:
-      (merge_objs
-        (obj10
-           (opt "storage" Script.expr_encoding)
-           (opt
-              (* The field [big_map_diff] is deprecated since 008, use [lazy_storage_diff] instead.
+        (merge_objs
+           (obj10
+              (opt "storage" Script.expr_encoding)
+              (opt
+                 (* The field [big_map_diff] is deprecated since 008, use [lazy_storage_diff] instead.
                  Is it kept here for a transition period, for tool like indexers to update.
                  TODO(009): remove it. *)
-              "big_map_diff"
-              Lazy_storage.legacy_big_map_diff_encoding)
-           (dft "balance_updates" Delegate.balance_updates_encoding [])
-           (dft "originated_contracts" (list Contract.encoding) [])
-           (dft "consumed_gas" Gas.Arith.n_integral_encoding Gas.Arith.zero)
-           (dft "consumed_milligas" Gas.Arith.n_fp_encoding Gas.Arith.zero)
-           (dft "storage_size" z Z.zero)
-           (dft "paid_storage_size_diff" z Z.zero)
-           (dft "allocated_destination_contract" bool false)
-           (opt "lazy_storage_diff" Lazy_storage.encoding))
-        (obj1
-          (dft "events" (list Event.encoding) [])
-        )
-      )
+                 "big_map_diff"
+                 Lazy_storage.legacy_big_map_diff_encoding)
+              (dft "balance_updates" Delegate.balance_updates_encoding [])
+              (dft "originated_contracts" (list Contract.encoding) [])
+              (dft "consumed_gas" Gas.Arith.n_integral_encoding Gas.Arith.zero)
+              (dft "consumed_milligas" Gas.Arith.n_fp_encoding Gas.Arith.zero)
+              (dft "storage_size" z Z.zero)
+              (dft "paid_storage_size_diff" z Z.zero)
+              (dft "allocated_destination_contract" bool false)
+              (opt "lazy_storage_diff" Lazy_storage.encoding))
+           (obj1 (dft "events" (list Event.encoding) [])))
       ~iselect:(function
         | Internal_operation_result
             (({operation = Transaction _; _} as op), res) ->
@@ -241,30 +237,30 @@ module Manager_result = struct
               storage_size;
               paid_storage_size_diff;
               allocated_destination_contract;
-              events;} ->
-            ( (storage,
-              lazy_storage_diff,
-              balance_updates,
-              originated_contracts,
-              Gas.Arith.ceil consumed_gas,
-              consumed_gas,
-              storage_size,
-              paid_storage_size_diff,
-              allocated_destination_contract,
-              lazy_storage_diff),
-              events))
+              events } ->
+            ( ( storage,
+                lazy_storage_diff,
+                balance_updates,
+                originated_contracts,
+                Gas.Arith.ceil consumed_gas,
+                consumed_gas,
+                storage_size,
+                paid_storage_size_diff,
+                allocated_destination_contract,
+                lazy_storage_diff ),
+              events ))
       ~inj:
-        (fun ( (storage,
-               legacy_lazy_storage_diff,
-               balance_updates,
-               originated_contracts,
-               consumed_gas,
-               consumed_milligas,
-               storage_size,
-               paid_storage_size_diff,
-               allocated_destination_contract,
-               lazy_storage_diff),
-               events) ->
+        (fun ( ( storage,
+                 legacy_lazy_storage_diff,
+                 balance_updates,
+                 originated_contracts,
+                 consumed_gas,
+                 consumed_milligas,
+                 storage_size,
+                 paid_storage_size_diff,
+                 allocated_destination_contract,
+                 lazy_storage_diff ),
+               events ) ->
         assert (Gas.Arith.(equal (ceil consumed_milligas) consumed_gas)) ;
         let lazy_storage_diff =
           Option.first_some lazy_storage_diff legacy_lazy_storage_diff
