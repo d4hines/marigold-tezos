@@ -393,6 +393,11 @@ class TestContracts:
                 "pack_operation.tz",
                 r'operation type forbidden in parameter, storage and constants',
             ),
+            # operations cannot be LOGed
+            (
+                "log_operation.tz",
+                r'operation type forbidden in parameter, storage and constants'
+            ),
             # big_maps cannot be PACKed
             (
                 "pack_big_map.tz",
@@ -403,6 +408,11 @@ class TestContracts:
                 r'Contract has no entrypoint named D',
             ),
             ("contract_annotation_default.tz", r'unexpected annotation'),
+            # big_maps cannot be LOGed
+            (
+                "log_big_map.tz",
+                r'big_map or sapling_state type not expected here'
+            ),
             # Missing field
             (
                 "missing_only_storage_field.tz",
@@ -1146,7 +1156,8 @@ class TestComparables:
                                 Elt (Pair 1 "foo") Unit}',
             '(map (pair nat string) unit)',
         )
-        client.typecheck_data('{}', '(map (pair nat (pair string bytes)) unit)')
+        client.typecheck_data(
+            '{}', '(map (pair nat (pair string bytes)) unit)')
 
         client.typecheck_data('{}', '(big_map (pair nat string) unit)')
         client.typecheck_data(
