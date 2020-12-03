@@ -23,11 +23,16 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-
 (* Event source , Event content *)
 type t = Contract_repr.t * bytes
 
-let encoding : t Data_encoding.t = Data_encoding.(tup2 (Contract_repr.encoding) bytes)
+let encoding : t Data_encoding.t =
+  Data_encoding.(tup2 Contract_repr.encoding bytes)
 
-let pp ppf ((source , content) : t) =
-  Format.fprintf ppf "%a : %s" Contract_repr.pp source (Bytes.to_string content)
+let pp ppf ((source, content) : t) =
+  Format.fprintf
+    ppf
+    "%a : %s"
+    Contract_repr.pp
+    source
+    (Bytes.to_string content)

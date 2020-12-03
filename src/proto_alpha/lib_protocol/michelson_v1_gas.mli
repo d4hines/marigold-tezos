@@ -361,7 +361,6 @@ module Cost_of : sig
     val contract_exists : Gas.cost
 
     val proof_argument : int -> Gas.cost
-
   end
 
   module Unparsing : sig

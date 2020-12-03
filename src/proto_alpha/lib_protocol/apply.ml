@@ -605,7 +605,7 @@ let apply_manager_operation_content :
                   storage_size = Z.zero;
                   paid_storage_size_diff = Z.zero;
                   allocated_destination_contract;
-                  events=[];
+                  events = [];
                 }
             in
             (ctxt, result, []) )

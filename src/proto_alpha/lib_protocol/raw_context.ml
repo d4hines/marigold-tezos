@@ -99,7 +99,7 @@ type back = {
   internal_nonce : int;
   internal_nonces_used : Int_set.t;
   gas_counter_status : gas_counter_status;
-  events: Event_repr.t list;
+  events : Event_repr.t list;
 }
 
 (*
@@ -697,7 +697,7 @@ let get_constants ctxt =
 
 let get_events ctxt = ctxt.events
 
-let set_events ctxt events = { ctxt with events }
+let set_events ctxt events = {ctxt with events}
 
 let patch_constants ctxt f =
   let constants = f (constants ctxt) in

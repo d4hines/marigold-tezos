@@ -142,6 +142,7 @@ module Event : sig
   include module type of Event_repr
 
   val clear : context -> t list * context
+
   val push : context -> t -> context
 end
 
