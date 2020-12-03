@@ -320,6 +320,9 @@ class TestContracts:
         # operations cannot be PACKed
         ("pack_operation.tz",
          r'operation type forbidden in parameter, storage and constants'),
+        # operations cannot be LOGed
+        ("log_operation.tz",
+         r'operation type forbidden in parameter, storage and constants'),
         # big_maps cannot be PACKed
         ("pack_big_map.tz",
          r'big_map or sapling_state type not expected here'),
@@ -327,6 +330,9 @@ class TestContracts:
          r'Contract has no entrypoint named D'),
         ("contract_annotation_default.tz",
          r'unexpected annotation'),
+        # big_maps cannot be LOGed
+        ("log_big_map.tz",
+         r'big_map or sapling_state type not expected here'),
         # Missing field
         ("missing_only_storage_field.tz",
          r'Missing contract field: storage'),
