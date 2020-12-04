@@ -24,7 +24,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(* interpreter type *)
+(* ---- Parametrized interpreter interface ------------------------------------*)
 module type S = sig
   (* type parameters*)
   type script
@@ -137,6 +137,7 @@ module type S = sig
     execution_result tzresult lwt
 end
 
+(* ---- Parametrized interpreter implementation -------------------------------*)
 module Make (P : Script_interpreter_parameters.Type) :
   S
     with type script = P.Script.t
@@ -164,7 +165,7 @@ module Make (P : Script_interpreter_parameters.Type) :
   open Michelson_v1_primitives
   open Operation
 
-  (* type parameters*)
+  (* ---- Parametrized types --------------------------------------------------*)
   type script = Script.t
 
   type location = Script.location

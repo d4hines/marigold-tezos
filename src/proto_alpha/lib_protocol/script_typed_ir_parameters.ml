@@ -24,6 +24,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(* ---- Expected parameters to instantiate the typed IR -----------------------*)
 module type Type = sig
   module Tez : sig
     type t

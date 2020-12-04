@@ -24,7 +24,9 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(* ---- Parametrized typed IR implementation ----------------------------------*)
 module Make (P : Script_typed_ir_parameters.Type) = struct
+  (* ---- Parametrized types --------------------------------------------------*)
   type tez = P.Tez.t
 
   type 't num = 't P.Script_int.num
@@ -558,6 +560,7 @@ module Make (P : Script_typed_ir_parameters.Type) = struct
   }
 end
 
+(* ---- Parametrized typed IR signature --------------------------------------*)
 module type S = module type of Make (struct
   module Tez = struct
     type t
