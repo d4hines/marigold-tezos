@@ -26,7 +26,15 @@ module Dummy = struct
   module Alpha_context = Alpha_context
   module Script_ir_translator = Script_ir_translator
   module Script_typed_ir = Script_typed_ir
-  module Script_interpreter_cost = Script_interpreter_cost
+
+  module Script_interpreter_cost = struct
+    let cost_of_instr _ _ = Gas.free
+
+    let unpack_failed _ = Gas.free
+
+    let concat_string _ = Gas.free
+  end
+
   module Operation = Alpha_context
 end
 
