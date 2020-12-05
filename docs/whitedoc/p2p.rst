@@ -87,7 +87,7 @@ will decide how this new connection must be handled.
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The welcome worker takes care of filtering all incoming connections using two
-static lists of addresses handled either by ``tezos-admin-client`` and a system
+static lists of addresses handled by ``tezos-admin-client`` and a system
 table that is handled automatically by the P2P layer. The node administrator can
 block or whitelist individual IP addresses, while the P2P layer is in charge of
 temporarily banning IP addresses and peers who misbehave. The delay to remove an
