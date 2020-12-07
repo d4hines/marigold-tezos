@@ -83,8 +83,6 @@ module type Type = sig
   end
 
   module Bytes : sig
-    type t = bytes
-
     val sub : bytes -> int -> int -> bytes
 
     external length : bytes -> int = "%bytes_length"
@@ -219,8 +217,6 @@ module type Type = sig
     val fold_left : ('a -> 'b -> 'a) -> 'a -> 'b list -> 'a
 
     val flatten : 'a list list -> 'a list
-
-    val length : 'a list -> int
   end
 
   module Format : sig
@@ -266,21 +262,10 @@ module type Type = sig
 
     type 'a tzresult = ('a, error trace) result
 
-    val ok_none : ('a option, 'b) result
-
-    val ok_nil : ('a list, 'b) result
-
-    val trace_eval :
-      (unit -> ('err, 'err trace) result Lwt.t) ->
-      ('b, 'err trace) result Lwt.t ->
-      ('b, 'err trace) result Lwt.t
-
     val trace :
       'err -> ('b, 'err trace) result Lwt.t -> ('b, 'err trace) result Lwt.t
 
     val return_none : ('a option, 'trace) result Lwt.t
-
-    val return_nil : ('a list, 'trace) result Lwt.t
 
     val return : 'a -> ('a, 'trace) result Lwt.t
 
@@ -295,40 +280,12 @@ module type Type = sig
       ('err -> error) ->
       unit
 
-    val record_trace_eval :
-      (unit -> ('err, 'err trace) result) ->
-      ('a, 'err trace) result ->
-      ('a, 'err trace) result
-
     val record_trace :
       'err -> ('a, 'err trace) result -> ('a, 'err trace) result
 
-    val ok_unit : (unit, 'trace) result
-
     val ok : 'a -> ('a, 'trace) result
 
-    val map_s :
-      ('a -> ('b, 'trace) result Lwt.t) ->
-      'a list ->
-      ('b list, 'trace) result Lwt.t
-
-    val fold_right_s :
-      ('a -> 'b -> ('b, 'trace) result Lwt.t) ->
-      'a list ->
-      'b ->
-      ('b, 'trace) result Lwt.t
-
-    val fold_left_s :
-      ('a -> 'b -> ('a, 'trace) result Lwt.t) ->
-      'a ->
-      'b list ->
-      ('a, 'trace) result Lwt.t
-
     val fail : 'err -> ('a, 'err trace) result Lwt.t
-
-    val error_unless : bool -> 'err -> (unit, 'err trace) result
-
-    val error : 'err -> ('a, 'err trace) result
 
     val ( >|? ) : ('a, 'trace) result -> ('a -> 'b) -> ('b, 'trace) result
 
@@ -347,8 +304,6 @@ module type Type = sig
       ('a, 'trace) result Lwt.t ->
       ('a -> ('b, 'trace) result Lwt.t) ->
       ('b, 'trace) result Lwt.t
-
-    val ( >>= ) : 'a Lwt.t -> ('a -> 'b Lwt.t) -> 'b Lwt.t
 
     val ( >|= ) : 'a Lwt.t -> ('a -> 'b) -> 'b Lwt.t
   end
@@ -518,12 +473,6 @@ module type Type = sig
     type t
 
     type cost
-
-    val set_unlimited : Raw_context.t -> Raw_context.t
-
-    val level : Raw_context.t -> t
-
-    val free : cost
 
     val encoding : t Data_encoding.t
 
