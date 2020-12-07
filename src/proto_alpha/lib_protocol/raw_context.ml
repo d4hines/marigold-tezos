@@ -25,6 +25,10 @@
 
 module Int_set = Set.Make (Compare.Int)
 
+module CacheMap = struct
+ include Map.Make (Compare.List (Compare.String))
+end
+
 (*
 
    Gas levels maintainance
@@ -78,6 +82,7 @@ type gas_counter_status =
    Here are the fields on the [back] of the context:
 
  *)
+
 type back = {
   context : Context.t;
   constants : Constants_repr.parametric;
@@ -99,6 +104,7 @@ type back = {
   internal_nonce : int;
   internal_nonces_used : Int_set.t;
   gas_counter_status : gas_counter_status;
+  carbonated_cache : bytes CacheMap.t;
 }
 
 (*
@@ -164,6 +170,8 @@ let[@inline] allocated_contracts ctxt = ctxt.back.allocated_contracts
 let[@inline] temporary_lazy_storage_ids ctxt =
   ctxt.back.temporary_lazy_storage_ids
 
+let[@inline] carbonated_cache ctxt = ctxt.back.carbonated_cache
+
 let[@inline] gas_counter ctxt = ctxt.gas_counter
 
 let[@inline] update_gas_counter ctxt gas_counter = {ctxt with gas_counter}
@@ -214,6 +222,10 @@ let[@inline] update_fees ctxt fees = update_back ctxt {ctxt.back with fees}
 let[@inline] update_temporary_lazy_storage_ids ctxt temporary_lazy_storage_ids
     =
   update_back ctxt {ctxt.back with temporary_lazy_storage_ids}
+
+let[@inline] update_carbonated_cache ctxt cc
+    =
+  update_back ctxt {ctxt.back with cc}
 
 let record_endorsement ctxt k =
   match
@@ -325,6 +337,8 @@ let get_deposits = deposits
 let get_rewards = rewards
 
 let get_fees = fees
+
+let get_carbonated_cache ctx = CacheMap.bindings (carbonated_cache ctx)
 
 type error += Undefined_operation_nonce (* `Permanent *)
 
@@ -753,6 +767,7 @@ let prepare ~level ~predecessor_timestamp ~timestamp ~fitness ctxt =
         internal_nonce = 0;
         internal_nonces_used = Int_set.empty;
         gas_counter_status = Unlimited_operation_gas;
+        decarbonated_cache = CacheMap.empty;
       };
   }
 
@@ -858,6 +873,16 @@ module type T = sig
   val check_enough_gas : context -> Gas_limit_repr.cost -> unit tzresult
 
   val description : context Storage_description.t
+
+  val carbonated_cache_init : context -> context
+
+  val carbonated_cache_mem : context -> key -> bool
+
+  val carbonated_cache_find_option : context -> key -> value option
+
+  val carbonated_cache_add : context -> key -> value -> context
+
+  val carbonated_cache_remove : context -> key -> context
 end
 
 let mem ctxt k = Context.mem (context ctxt) k
@@ -934,6 +959,22 @@ let project x = x
 let absolute_key _ k = k
 
 let description = Storage_description.create ()
+
+let carbonated_cache_init ctx =
+  update_carbonated_cache ctx CacheMap.empty
+
+let carbonated_cache_mem ctx key = CacheMap.mem key (carbonated_cache ctx)
+
+let carbonated_cache_find_option ctx key =
+  CacheMap.find_opt key (carbonated_cache ctx)
+
+let carbonated_cache_add ctx key value =
+  let cm = CacheMap.add key value (carbonated_cache ctx) in
+  update_carbonated_cache ctx cm
+
+let carbonated_cache_remove ctx key =
+  let cm = CacheMap.remove key (carbonated_cache ctx) in
+  update_carbonated_cache ctx cm
 
 let fold_map_temporary_lazy_storage_ids ctxt f =
   f (temporary_lazy_storage_ids ctxt)
