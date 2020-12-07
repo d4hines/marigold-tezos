@@ -482,6 +482,8 @@ module type Type = sig
     type t
 
     type context = t
+
+    val fresh_internal_nonce : t -> (t * int) tzresult
   end
 
   module Sapling : sig
@@ -515,10 +517,10 @@ module type Type = sig
     val implicit_contract : Signature.Public_key_hash.t -> contract
 
     val get_balance_carbonated :
-      Raw_context.context -> t -> (Raw_context.context * Tez.t) tzresult Lwt.t
+      Raw_context.t -> t -> (Raw_context.t * Tez.t) tzresult Lwt.t
 
     val fresh_contract_from_current_nonce :
-      Raw_context.context -> (Raw_context.context * t) tzresult
+      Raw_context.t -> (Raw_context.t * t) tzresult
 
     val encoding : contract Data_encoding.t
 
@@ -536,17 +538,17 @@ module type Type = sig
 
     type cost
 
-    val set_unlimited : Raw_context.context -> Raw_context.context
+    val set_unlimited : Raw_context.t -> Raw_context.t
 
-    val level : Raw_context.context -> t
+    val level : Raw_context.t -> t
 
     val free : cost
 
     val encoding : t Data_encoding.encoding
 
-    val consume : Raw_context.context -> cost -> Raw_context.context tzresult
+    val consume : Raw_context.t -> cost -> Raw_context.t tzresult
 
-    val check_enough : Raw_context.context -> cost -> unit tzresult
+    val check_enough : Raw_context.t -> cost -> unit tzresult
   end
 
   module Script_timestamp : sig
@@ -554,7 +556,7 @@ module type Type = sig
 
     val sub_delta : t -> Script_int.z Script_int.num -> t
 
-    val now : Raw_context.context -> t
+    val now : Raw_context.t -> t
 
     val diff : t -> t -> Script_int.z Script_int.num
 
@@ -597,9 +599,7 @@ module type Type = sig
     val lazy_expr : expr -> lazy_expr
 
     val force_decode_in_context :
-      Raw_context.context ->
-      lazy_expr ->
-      (expr * Raw_context.context, error trace) result
+      Raw_context.t -> lazy_expr -> (expr * Raw_context.t, error trace) result
 
     val expr_encoding : expr Data_encoding.t
 
@@ -655,36 +655,30 @@ module type Type = sig
           -> packed_internal_operation
   end
 
-  module Alpha_context : sig
-    val fresh_internal_nonce :
-      Raw_context.context -> (Raw_context.context * int) tzresult
+  module Vote : sig
+    val get_voting_power :
+      Raw_context.t ->
+      Signature.Public_key_hash.t ->
+      (Raw_context.t * int32) tzresult Lwt.t
 
-    type context = Raw_context.t
+    val get_total_voting_power :
+      Raw_context.t -> (Raw_context.t * int32) tzresult Lwt.t
+  end
 
-    module Vote : sig
-      val get_voting_power :
-        context ->
-        Signature.Public_key_hash.t ->
-        (context * int32) tzresult Lwt.t
+  module Cycle : sig
+    type t
+  end
 
-      val get_total_voting_power : context -> (context * int32) tzresult Lwt.t
-    end
+  module Level : sig
+    type t = private {
+      level : Raw_level.t;
+      level_position : int32;
+      cycle : Cycle.t;
+      cycle_position : int32;
+      expected_commitment : bool;
+    }
 
-    module Cycle : sig
-      type t
-    end
-
-    module Level : sig
-      type t = private {
-        level : Raw_level.t;
-        level_position : int32;
-        cycle : Cycle.t;
-        cycle_position : int32;
-        expected_commitment : bool;
-      }
-
-      val current : context -> t
-    end
+    val current : Raw_context.t -> t
   end
 
   module Script_typed_ir :
@@ -727,16 +721,16 @@ module type Type = sig
     type ex_ty = Ex_ty : 'a Script_typed_ir.ty -> ex_ty
 
     val unparse_ty :
-      Alpha_context.context ->
+      Raw_context.t ->
       'a Script_typed_ir.ty ->
-      (Script.node * Alpha_context.context) tzresult
+      (Script.node * Raw_context.t) tzresult
 
     val unparse_data :
-      Alpha_context.context ->
+      Raw_context.t ->
       unparsing_mode ->
       'a Script_typed_ir.ty ->
       'a ->
-      (Script.node * Alpha_context.context) tzresult Lwt.t
+      (Script.node * Raw_context.t) tzresult Lwt.t
 
     val set_update :
       'a -> bool -> 'a Script_typed_ir.set -> 'a Script_typed_ir.set
@@ -750,37 +744,35 @@ module type Type = sig
 
     val parse_script :
       ?type_logger:type_logger ->
-      Alpha_context.context ->
+      Raw_context.t ->
       legacy:bool ->
       allow_forged_in_storage:bool ->
       Script.t ->
-      (ex_script * Alpha_context.context) tzresult Lwt.t
+      (ex_script * Raw_context.t) tzresult Lwt.t
 
     val parse_data :
       ?type_logger:type_logger ->
-      Alpha_context.context ->
+      Raw_context.t ->
       legacy:bool ->
       allow_forged:bool ->
       'a Script_typed_ir.ty ->
       Script.node ->
-      ('a * Alpha_context.context) tzresult Lwt.t
+      ('a * Raw_context.t) tzresult Lwt.t
 
     val parse_contract_for_script :
       legacy:bool ->
-      Alpha_context.context ->
+      Raw_context.t ->
       Script.location ->
       'a Script_typed_ir.ty ->
       Contract.t ->
       entrypoint:string ->
-      (Alpha_context.context * 'a Script_typed_ir.typed_contract option)
-      tzresult
-      Lwt.t
+      (Raw_context.t * 'a Script_typed_ir.typed_contract option) tzresult Lwt.t
 
     val pack_data :
-      Alpha_context.context ->
+      Raw_context.t ->
       'a Script_typed_ir.ty ->
       'a ->
-      (bytes * Alpha_context.context) tzresult Lwt.t
+      (bytes * Raw_context.t) tzresult Lwt.t
 
     val no_lazy_storage_id : lazy_storage_ids
 
@@ -817,14 +809,14 @@ module type Type = sig
       ((Script.node -> Script.node) * ex_ty) tzresult
 
     val extract_lazy_storage_diff :
-      Alpha_context.context ->
+      Raw_context.t ->
       unparsing_mode ->
       temporary:bool ->
       to_duplicate:lazy_storage_ids ->
       to_update:lazy_storage_ids ->
       'a Script_typed_ir.ty ->
       'a ->
-      ('a * Lazy_storage.diffs option * Alpha_context.context) tzresult Lwt.t
+      ('a * Lazy_storage.diffs option * Raw_context.t) tzresult Lwt.t
 
     val empty_set : 'a Script_typed_ir.comparable_ty -> 'a Script_typed_ir.set
 
@@ -840,10 +832,10 @@ module type Type = sig
       'a Script_typed_ir.comparable_ty -> 'a -> 'a -> int
 
     val collect_lazy_storage :
-      Alpha_context.context ->
+      Raw_context.t ->
       'a Script_typed_ir.ty ->
       'a ->
-      (lazy_storage_ids * Alpha_context.context) tzresult
+      (lazy_storage_ids * Raw_context.t) tzresult
 
     val big_map_update :
       'key ->
@@ -852,16 +844,16 @@ module type Type = sig
       ('key, 'value) Script_typed_ir.big_map
 
     val big_map_mem :
-      Alpha_context.context ->
+      Raw_context.t ->
       'key ->
       ('key, 'value) Script_typed_ir.big_map ->
-      (bool * Alpha_context.context) tzresult Lwt.t
+      (bool * Raw_context.t) tzresult Lwt.t
 
     val big_map_get :
-      Alpha_context.context ->
+      Raw_context.t ->
       'key ->
       ('key, 'value) Script_typed_ir.big_map ->
-      ('value option * Alpha_context.context) tzresult Lwt.t
+      ('value option * Raw_context.t) tzresult Lwt.t
 
     val add_field_annot :
       Script_typed_ir.field_annot option ->

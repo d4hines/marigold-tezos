@@ -145,7 +145,7 @@ module Make (P : Script_interpreter_parameters.Type) :
      and type expr = P.Script.expr
      and type gas = P.Gas.t
      and type contract = P.Contract.t
-     and type context = P.Alpha_context.context
+     and type context = P.Raw_context.t
      and type storage_diffs = P.Lazy_storage.diffs
      and type tez = P.Tez.t
      and type packed_internal_operation = P.Operation.packed_internal_operation
@@ -158,7 +158,7 @@ module Make (P : Script_interpreter_parameters.Type) :
   open P
   open Pervasives
   open Error_monad
-  open Alpha_context
+  open Raw_context
   open Script
   open Script_typed_ir
   open Script_ir_translator
@@ -176,7 +176,7 @@ module Make (P : Script_interpreter_parameters.Type) :
 
   type contract = Contract.t
 
-  type context = Alpha_context.context
+  type context = Raw_context.t
 
   type storage_diffs = Lazy_storage.diffs
 
