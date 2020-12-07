@@ -230,38 +230,31 @@ module type Type = sig
   module Data_encoding : sig
     type 'a t
 
-    type 'a encoding = 'a t
-
     type 'a lazy_t
 
     type 'a field
 
     module Binary : sig
-      val of_bytes : 'a encoding -> bytes -> 'a option
+      val of_bytes : 'a t -> bytes -> 'a option
     end
 
-    val empty : unit encoding
+    val empty : unit t
 
-    val list : ?max_length:int -> 'a encoding -> 'a list encoding
+    val list : ?max_length:int -> 'a t -> 'a list t
 
     val opt :
-      ?title:string ->
-      ?description:string ->
-      string ->
-      't encoding ->
-      't option field
+      ?title:string -> ?description:string -> string -> 't t -> 't option field
 
-    val string : string encoding
+    val string : string t
 
-    val obj1 : 'f1 field -> 'f1 encoding
+    val obj1 : 'f1 field -> 'f1 t
 
-    val obj2 : 'f1 field -> 'f2 field -> ('f1 * 'f2) encoding
+    val obj2 : 'f1 field -> 'f2 field -> ('f1 * 'f2) t
 
-    val obj3 :
-      'f1 field -> 'f2 field -> 'f3 field -> ('f1 * 'f2 * 'f3) encoding
+    val obj3 : 'f1 field -> 'f2 field -> 'f3 field -> ('f1 * 'f2 * 'f3) t
 
     val req :
-      ?title:string -> ?description:string -> string -> 't encoding -> 't field
+      ?title:string -> ?description:string -> string -> 't t -> 't field
   end
 
   module Error_monad : sig
@@ -364,33 +357,27 @@ module type Type = sig
 
   module Compare : sig
     module Z : sig
-      type t = Z.t
+      val ( <= ) : Z.t -> Z.t -> bool
 
-      val ( <= ) : t -> t -> bool
-
-      val ( < ) : t -> t -> bool
+      val ( < ) : Z.t -> Z.t -> bool
     end
 
     module Int : sig
-      type t = int
+      val ( >= ) : int -> int -> bool
 
-      val ( >= ) : t -> t -> bool
+      val ( > ) : int -> int -> bool
 
-      val ( > ) : t -> t -> bool
+      val ( = ) : int -> int -> bool
 
-      val ( = ) : t -> t -> bool
+      val ( <> ) : int -> int -> bool
 
-      val ( <> ) : t -> t -> bool
+      val ( <= ) : int -> int -> bool
 
-      val ( <= ) : t -> t -> bool
-
-      val ( < ) : t -> t -> bool
+      val ( < ) : int -> int -> bool
     end
 
     module Bool : sig
-      type t = bool
-
-      val ( <> ) : t -> t -> bool
+      val ( <> ) : bool -> bool -> bool
     end
   end
 
@@ -465,8 +452,6 @@ module type Type = sig
   module Tez : sig
     type t
 
-    type tez = t
-
     val to_mutez : t -> int64
 
     val of_mutez : int64 -> t option
@@ -480,8 +465,6 @@ module type Type = sig
 
   module Raw_context : sig
     type t
-
-    type context = t
 
     val fresh_internal_nonce : t -> (t * int) tzresult
   end
@@ -512,9 +495,7 @@ module type Type = sig
   module Contract : sig
     type t
 
-    type contract = t
-
-    val implicit_contract : Signature.Public_key_hash.t -> contract
+    val implicit_contract : Signature.Public_key_hash.t -> t
 
     val get_balance_carbonated :
       Raw_context.t -> t -> (Raw_context.t * Tez.t) tzresult Lwt.t
@@ -522,9 +503,9 @@ module type Type = sig
     val fresh_contract_from_current_nonce :
       Raw_context.t -> (Raw_context.t * t) tzresult
 
-    val encoding : contract Data_encoding.t
+    val encoding : t Data_encoding.t
 
-    val to_b58check : contract -> string
+    val to_b58check : t -> string
   end
 
   module Raw_level : sig
@@ -544,7 +525,7 @@ module type Type = sig
 
     val free : cost
 
-    val encoding : t Data_encoding.encoding
+    val encoding : t Data_encoding.t
 
     val consume : Raw_context.t -> cost -> Raw_context.t tzresult
 
@@ -624,7 +605,7 @@ module type Type = sig
     end
 
     type 'kind internal_operation = {
-      source : Contract.contract;
+      source : Contract.t;
       operation : 'kind manager_operation;
       nonce : int;
     }
@@ -632,16 +613,16 @@ module type Type = sig
     and _ manager_operation =
       | Reveal : Signature.Public_key.t -> Kind.reveal manager_operation
       | Transaction : {
-          amount : Tez.tez;
+          amount : Tez.t;
           parameters : Script.lazy_expr;
           entrypoint : string;
-          destination : Contract.contract;
+          destination : Contract.t;
         }
           -> Kind.transaction manager_operation
       | Origination : {
           delegate : Signature.Public_key_hash.t option;
           script : Script.t;
-          credit : Tez.tez;
+          credit : Tez.t;
           preorigination : Contract.t option;
         }
           -> Kind.origination manager_operation
