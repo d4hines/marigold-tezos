@@ -1,0 +1,64 @@
+tests/test_contract_opcodes.py::TestContractOpcodes::test_contract_input_output[map_mem_string.tz-(Pair { Elt "bar" 4 ; Elt "foo" 11 } None)-"baz"-(Pair { Elt "bar" 4 ; Elt "foo" 11 } (Some False))]
+
+storage
+  (Pair { Elt "bar" 4 ; Elt "foo" 11 } (Some False))
+emitted operations
+  
+big_map diff
+  
+trace
+  - location: 11 (remaining gas: 1039986.278 units remaining)
+    [ (Pair "baz" { Elt "bar" 4 ; Elt "foo" 11 } None)  	 ]
+  - location: 12 (remaining gas: 1039986.198 units remaining)
+    [ "baz"  	@parameter
+      (Pair { Elt "bar" 4 ; Elt "foo" 11 } None)  	@storage
+      Unit  	 ]
+  - location: 13 (remaining gas: 1039986.098 units remaining)
+    [ (Pair { Elt "bar" 4 ; Elt "foo" 11 } None)  	@storage
+      Unit  	 ]
+  - location: 15 (remaining gas: 1039986.018 units remaining)
+    [ { Elt "bar" 4 ; Elt "foo" 11 }  	
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039985.938 units remaining)
+    [ { Elt "bar" 4 ; Elt "foo" 11 }  	
+      { Elt "bar" 4 ; Elt "foo" 11 }  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039985.868 units remaining)
+    [ { Elt "bar" 4 ; Elt "foo" 11 }  	
+      { Elt "bar" 4 ; Elt "foo" 11 }  	
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039985.868 units remaining)
+    [ { Elt "bar" 4 ; Elt "foo" 11 }  	
+      { Elt "bar" 4 ; Elt "foo" 11 }  	
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039985.788 units remaining)
+    [ "baz"  	@parameter
+      { Elt "bar" 4 ; Elt "foo" 11 }  	
+      { Elt "bar" 4 ; Elt "foo" 11 }  	
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039985.708 units remaining)
+    [ False  	
+      { Elt "bar" 4 ; Elt "foo" 11 }  	
+      Unit  	 ]
+  - location: 18 (remaining gas: 1039985.628 units remaining)
+    [ (Some False)  	
+      { Elt "bar" 4 ; Elt "foo" 11 }  	
+      Unit  	 ]
+  - location: 19 (remaining gas: 1039985.558 units remaining)
+    [ { Elt "bar" 4 ; Elt "foo" 11 }  	
+      (Some False)  	
+      Unit  	 ]
+  - location: 20 (remaining gas: 1039985.478 units remaining)
+    [ (Pair { Elt "bar" 4 ; Elt "foo" 11 } (Some False))  	
+      Unit  	 ]
+  - location: 21 (remaining gas: 1039985.398 units remaining)
+    [ {}  	
+      (Pair { Elt "bar" 4 ; Elt "foo" 11 } (Some False))  	
+      Unit  	 ]
+  - location: 23 (remaining gas: 1039985.318 units remaining)
+    [ (Pair {} { Elt "bar" 4 ; Elt "foo" 11 } (Some False))  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039985.248 units remaining)
+    [ (Pair {} { Elt "bar" 4 ; Elt "foo" 11 } (Some False))  	
+      Unit  	 ]
+

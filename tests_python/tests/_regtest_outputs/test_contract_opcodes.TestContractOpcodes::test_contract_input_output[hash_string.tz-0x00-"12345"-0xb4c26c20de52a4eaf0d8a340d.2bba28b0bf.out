@@ -1,0 +1,31 @@
+tests/test_contract_opcodes.py::TestContractOpcodes::test_contract_input_output[hash_string.tz-0x00-"12345"-0xb4c26c20de52a4eaf0d8a340db47ad8cb1e74049570859c9a9a3952b204c772f]
+
+storage
+  0xb4c26c20de52a4eaf0d8a340db47ad8cb1e74049570859c9a9a3952b204c772f
+emitted operations
+  
+big_map diff
+  
+trace
+  - location: 6 (remaining gas: 1039993.926 units remaining)
+    [ (Pair "12345" 0x00)  	 ]
+  - location: 7 (remaining gas: 1039993.846 units remaining)
+    [ "12345"  	@parameter
+      Unit  	 ]
+  - location: 8 (remaining gas: 1039981.606 units remaining)
+    [ 0x0501000000053132333435  	@parameter.packed
+      Unit  	 ]
+  - location: 9 (remaining gas: 1039981.093 units remaining)
+    [ 0xb4c26c20de52a4eaf0d8a340db47ad8cb1e74049570859c9a9a3952b204c772f  	
+      Unit  	 ]
+  - location: 10 (remaining gas: 1039981.013 units remaining)
+    [ {}  	
+      0xb4c26c20de52a4eaf0d8a340db47ad8cb1e74049570859c9a9a3952b204c772f  	
+      Unit  	 ]
+  - location: 12 (remaining gas: 1039980.933 units remaining)
+    [ (Pair {} 0xb4c26c20de52a4eaf0d8a340db47ad8cb1e74049570859c9a9a3952b204c772f)  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039980.863 units remaining)
+    [ (Pair {} 0xb4c26c20de52a4eaf0d8a340db47ad8cb1e74049570859c9a9a3952b204c772f)  	
+      Unit  	 ]
+

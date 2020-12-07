@@ -126,6 +126,11 @@ module Gas = struct
 
   type error += Gas_limit_too_high = Raw_context.Gas_limit_too_high
 
+  type error += Block_quota_exceeded = Raw_context.Block_quota_exceeded
+
+  type error +=
+    | Operation_quota_exceeded = Raw_context.Operation_quota_exceeded
+
   let check_limit = Raw_context.check_gas_limit
 
   let set_limit = Raw_context.set_gas_limit
@@ -185,7 +190,9 @@ module Big_map = struct
   let get_opt c m k = Storage.Big_map.Contents.get_option (c, m) k
 
   let exists c id =
-    Raw_context.consume_gas c (Gas_limit_repr.read_bytes_cost Z.zero)
+    Raw_context.consume_gas
+      c
+      (Gas_limit_repr.read_bytes_cost Saturation_repr.zero)
     >>?= fun c ->
     Storage.Big_map.Key_type.get_option c id
     >>=? fun kt ->

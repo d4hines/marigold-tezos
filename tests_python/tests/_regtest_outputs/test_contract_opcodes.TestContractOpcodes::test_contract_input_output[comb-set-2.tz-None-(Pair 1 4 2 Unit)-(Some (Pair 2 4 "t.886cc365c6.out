@@ -1,0 +1,49 @@
+tests/test_contract_opcodes.py::TestContractOpcodes::test_contract_input_output[comb-set-2.tz-None-(Pair 1 4 2 Unit)-(Some (Pair 2 4 "toto" 0x01))]
+
+storage
+  (Some (Pair 2 4 "toto" 0x01))
+emitted operations
+  
+big_map diff
+  
+trace
+  - location: 15 (remaining gas: 1039983.796 units remaining)
+    [ (Pair (Pair 1 4 2 Unit) None)  	 ]
+  - location: 16 (remaining gas: 1039983.716 units remaining)
+    [ (Pair 1 4 2 Unit)  	@parameter
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039983.636 units remaining)
+    [ 2  	
+      (Pair 1 4 2 Unit)  	@parameter
+      Unit  	 ]
+  - location: 20 (remaining gas: 1039983.555 units remaining)
+    [ (Pair 2 4 2 Unit)  	
+      Unit  	 ]
+  - location: 22 (remaining gas: 1039983.475 units remaining)
+    [ "toto"  	
+      (Pair 2 4 2 Unit)  	
+      Unit  	 ]
+  - location: 25 (remaining gas: 1039983.389 units remaining)
+    [ (Pair 2 4 "toto" Unit)  	
+      Unit  	 ]
+  - location: 27 (remaining gas: 1039983.309 units remaining)
+    [ 0x01  	
+      (Pair 2 4 "toto" Unit)  	
+      Unit  	 ]
+  - location: 30 (remaining gas: 1039983.222 units remaining)
+    [ (Pair 2 4 "toto" 0x01)  	
+      Unit  	 ]
+  - location: 32 (remaining gas: 1039983.142 units remaining)
+    [ (Some (Pair 2 4 "toto" 0x01))  	
+      Unit  	 ]
+  - location: 33 (remaining gas: 1039983.062 units remaining)
+    [ {}  	
+      (Some (Pair 2 4 "toto" 0x01))  	
+      Unit  	 ]
+  - location: 35 (remaining gas: 1039982.982 units remaining)
+    [ (Pair {} (Some (Pair 2 4 "toto" 0x01)))  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039982.912 units remaining)
+    [ (Pair {} (Some (Pair 2 4 "toto" 0x01)))  	
+      Unit  	 ]
+

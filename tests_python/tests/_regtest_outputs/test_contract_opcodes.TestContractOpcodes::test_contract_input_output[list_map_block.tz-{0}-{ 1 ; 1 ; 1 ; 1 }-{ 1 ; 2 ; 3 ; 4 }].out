@@ -1,0 +1,290 @@
+tests/test_contract_opcodes.py::TestContractOpcodes::test_contract_input_output[list_map_block.tz-{0}-{ 1 ; 1 ; 1 ; 1 }-{ 1 ; 2 ; 3 ; 4 }]
+
+storage
+  { 1 ; 2 ; 3 ; 4 }
+emitted operations
+  
+big_map diff
+  
+trace
+  - location: 8 (remaining gas: 1039984.380 units remaining)
+    [ (Pair { 1 ; 1 ; 1 ; 1 } { 0 })  	 ]
+  - location: 9 (remaining gas: 1039984.300 units remaining)
+    [ { 1 ; 1 ; 1 ; 1 }  	@parameter
+      Unit  	 ]
+  - location: 10 (remaining gas: 1039984.220 units remaining)
+    [ 0  	
+      { 1 ; 1 ; 1 ; 1 }  	@parameter
+      Unit  	 ]
+  - location: 13 (remaining gas: 1039984.150 units remaining)
+    [ { 1 ; 1 ; 1 ; 1 }  	@parameter
+      0  	
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039983.602 units remaining)
+    [ 0  	
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039983.602 units remaining)
+    [ 1  	@parameter.elt
+      0  	
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039983.502 units remaining)
+    [ 0  	
+      Unit  	 ]
+  - location: 18 (remaining gas: 1039983.422 units remaining)
+    [ 0  	
+      0  	
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039983.352 units remaining)
+    [ 0  	
+      0  	
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039983.352 units remaining)
+    [ 0  	
+      0  	
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039983.272 units remaining)
+    [ 1  	@parameter.elt
+      0  	
+      0  	
+      Unit  	 ]
+  - location: 19 (remaining gas: 1039983.192 units remaining)
+    [ 1  	
+      0  	
+      Unit  	 ]
+  - location: 20 (remaining gas: 1039983.092 units remaining)
+    [ 0  	
+      Unit  	 ]
+  - location: 22 (remaining gas: 1039983.012 units remaining)
+    [ 1  	
+      0  	
+      Unit  	 ]
+  - location: 25 (remaining gas: 1039982.932 units remaining)
+    [ 1  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039982.862 units remaining)
+    [ 1  	
+      Unit  	 ]
+  - location: 21 (remaining gas: 1039982.862 units remaining)
+    [ 1  	
+      Unit  	 ]
+  - location: 21 (remaining gas: 1039982.782 units remaining)
+    [ 1  	
+      1  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039982.712 units remaining)
+    [ 1  	
+      1  	
+      Unit  	 ]
+  - location: 15 (remaining gas: 1039982.712 units remaining)
+    [ 1  	
+      1  	
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039982.712 units remaining)
+    [ 1  	
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039982.712 units remaining)
+    [ 1  	@parameter.elt
+      1  	
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039982.612 units remaining)
+    [ 1  	
+      Unit  	 ]
+  - location: 18 (remaining gas: 1039982.532 units remaining)
+    [ 1  	
+      1  	
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039982.462 units remaining)
+    [ 1  	
+      1  	
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039982.462 units remaining)
+    [ 1  	
+      1  	
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039982.382 units remaining)
+    [ 1  	@parameter.elt
+      1  	
+      1  	
+      Unit  	 ]
+  - location: 19 (remaining gas: 1039982.302 units remaining)
+    [ 2  	
+      1  	
+      Unit  	 ]
+  - location: 20 (remaining gas: 1039982.202 units remaining)
+    [ 1  	
+      Unit  	 ]
+  - location: 22 (remaining gas: 1039982.122 units remaining)
+    [ 1  	
+      1  	
+      Unit  	 ]
+  - location: 25 (remaining gas: 1039982.042 units remaining)
+    [ 2  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039981.972 units remaining)
+    [ 2  	
+      Unit  	 ]
+  - location: 21 (remaining gas: 1039981.972 units remaining)
+    [ 2  	
+      Unit  	 ]
+  - location: 21 (remaining gas: 1039981.892 units remaining)
+    [ 2  	
+      2  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039981.822 units remaining)
+    [ 2  	
+      2  	
+      Unit  	 ]
+  - location: 15 (remaining gas: 1039981.822 units remaining)
+    [ 2  	
+      2  	
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039981.822 units remaining)
+    [ 2  	
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039981.822 units remaining)
+    [ 1  	@parameter.elt
+      2  	
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039981.722 units remaining)
+    [ 2  	
+      Unit  	 ]
+  - location: 18 (remaining gas: 1039981.642 units remaining)
+    [ 2  	
+      2  	
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039981.572 units remaining)
+    [ 2  	
+      2  	
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039981.572 units remaining)
+    [ 2  	
+      2  	
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039981.492 units remaining)
+    [ 1  	@parameter.elt
+      2  	
+      2  	
+      Unit  	 ]
+  - location: 19 (remaining gas: 1039981.412 units remaining)
+    [ 3  	
+      2  	
+      Unit  	 ]
+  - location: 20 (remaining gas: 1039981.312 units remaining)
+    [ 2  	
+      Unit  	 ]
+  - location: 22 (remaining gas: 1039981.232 units remaining)
+    [ 1  	
+      2  	
+      Unit  	 ]
+  - location: 25 (remaining gas: 1039981.152 units remaining)
+    [ 3  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039981.082 units remaining)
+    [ 3  	
+      Unit  	 ]
+  - location: 21 (remaining gas: 1039981.082 units remaining)
+    [ 3  	
+      Unit  	 ]
+  - location: 21 (remaining gas: 1039981.002 units remaining)
+    [ 3  	
+      3  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039980.932 units remaining)
+    [ 3  	
+      3  	
+      Unit  	 ]
+  - location: 15 (remaining gas: 1039980.932 units remaining)
+    [ 3  	
+      3  	
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039980.932 units remaining)
+    [ 3  	
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039980.932 units remaining)
+    [ 1  	@parameter.elt
+      3  	
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039980.832 units remaining)
+    [ 3  	
+      Unit  	 ]
+  - location: 18 (remaining gas: 1039980.752 units remaining)
+    [ 3  	
+      3  	
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039980.682 units remaining)
+    [ 3  	
+      3  	
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039980.682 units remaining)
+    [ 3  	
+      3  	
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039980.602 units remaining)
+    [ 1  	@parameter.elt
+      3  	
+      3  	
+      Unit  	 ]
+  - location: 19 (remaining gas: 1039980.522 units remaining)
+    [ 4  	
+      3  	
+      Unit  	 ]
+  - location: 20 (remaining gas: 1039980.422 units remaining)
+    [ 3  	
+      Unit  	 ]
+  - location: 22 (remaining gas: 1039980.342 units remaining)
+    [ 1  	
+      3  	
+      Unit  	 ]
+  - location: 25 (remaining gas: 1039980.262 units remaining)
+    [ 4  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039980.192 units remaining)
+    [ 4  	
+      Unit  	 ]
+  - location: 21 (remaining gas: 1039980.192 units remaining)
+    [ 4  	
+      Unit  	 ]
+  - location: 21 (remaining gas: 1039980.112 units remaining)
+    [ 4  	
+      4  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039980.042 units remaining)
+    [ 4  	
+      4  	
+      Unit  	 ]
+  - location: 15 (remaining gas: 1039980.042 units remaining)
+    [ 4  	
+      4  	
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039980.042 units remaining)
+    [ 4  	
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039980.042 units remaining)
+    [ { 1 ; 2 ; 3 ; 4 }  	
+      4  	
+      Unit  	 ]
+  - location: 26 (remaining gas: 1039979.962 units remaining)
+    [ {}  	
+      { 1 ; 2 ; 3 ; 4 }  	
+      4  	
+      Unit  	 ]
+  - location: 28 (remaining gas: 1039979.882 units remaining)
+    [ (Pair {} { 1 ; 2 ; 3 ; 4 })  	
+      4  	
+      Unit  	 ]
+  - location: 29 (remaining gas: 1039979.782 units remaining)
+    [ 4  	
+      Unit  	 ]
+  - location: 31 (remaining gas: 1039979.702 units remaining)
+    [ Unit  	 ]
+  - location: 30 (remaining gas: 1039979.632 units remaining)
+    [ Unit  	 ]
+  - location: 30 (remaining gas: 1039979.632 units remaining)
+    [ Unit  	 ]
+  - location: 30 (remaining gas: 1039979.552 units remaining)
+    [ (Pair {} { 1 ; 2 ; 3 ; 4 })  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039979.482 units remaining)
+    [ (Pair {} { 1 ; 2 ; 3 ; 4 })  	
+      Unit  	 ]
+

@@ -1,0 +1,36 @@
+tests/test_contract_opcodes.py::TestContractOpcodes::test_contract_input_output[if_some.tz-"?"-None-""]
+
+storage
+  ""
+emitted operations
+  
+big_map diff
+  
+trace
+  - location: 7 (remaining gas: 1039992.492 units remaining)
+    [ (Pair None "?")  	 ]
+  - location: 8 (remaining gas: 1039992.412 units remaining)
+    [ None  	@parameter
+      Unit  	 ]
+  - location: 10 (remaining gas: 1039992.332 units remaining)
+    [ Unit  	 ]
+  - location: 12 (remaining gas: 1039992.252 units remaining)
+    [ ""  	
+      Unit  	 ]
+  - location: 11 (remaining gas: 1039992.182 units remaining)
+    [ ""  	
+      Unit  	 ]
+  - location: 9 (remaining gas: 1039992.112 units remaining)
+    [ ""  	
+      Unit  	 ]
+  - location: 16 (remaining gas: 1039992.032 units remaining)
+    [ {}  	
+      ""  	
+      Unit  	 ]
+  - location: 18 (remaining gas: 1039991.952 units remaining)
+    [ (Pair {} "")  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039991.882 units remaining)
+    [ (Pair {} "")  	
+      Unit  	 ]
+

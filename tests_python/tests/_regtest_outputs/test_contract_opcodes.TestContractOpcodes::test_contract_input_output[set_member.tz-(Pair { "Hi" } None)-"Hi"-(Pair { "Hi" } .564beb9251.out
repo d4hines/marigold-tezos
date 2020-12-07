@@ -1,0 +1,102 @@
+tests/test_contract_opcodes.py::TestContractOpcodes::test_contract_input_output[set_member.tz-(Pair { "Hi" } None)-"Hi"-(Pair { "Hi" } (Some True))]
+
+storage
+  (Pair { "Hi" } (Some True))
+emitted operations
+  
+big_map diff
+  
+trace
+  - location: 10 (remaining gas: 1039980.662 units remaining)
+    [ (Pair "Hi" { "Hi" } None)  	 ]
+  - location: 11 (remaining gas: 1039980.582 units remaining)
+    [ (Pair "Hi" { "Hi" } None)  	
+      (Pair "Hi" { "Hi" } None)  	
+      Unit  	 ]
+  - location: 12 (remaining gas: 1039980.502 units remaining)
+    [ (Pair "Hi" { "Hi" } None)  	
+      (Pair "Hi" { "Hi" } None)  	
+      (Pair "Hi" { "Hi" } None)  	
+      Unit  	 ]
+  - location: 13 (remaining gas: 1039980.422 units remaining)
+    [ "Hi"  	@parameter
+      (Pair "Hi" { "Hi" } None)  	
+      (Pair "Hi" { "Hi" } None)  	
+      Unit  	 ]
+  - location: 14 (remaining gas: 1039980.322 units remaining)
+    [ (Pair "Hi" { "Hi" } None)  	
+      (Pair "Hi" { "Hi" } None)  	
+      Unit  	 ]
+  - location: 17 (remaining gas: 1039980.242 units remaining)
+    [ (Pair { "Hi" } None)  	@storage
+      (Pair "Hi" { "Hi" } None)  	
+      Unit  	 ]
+  - location: 18 (remaining gas: 1039980.162 units remaining)
+    [ { "Hi" }  	
+      (Pair "Hi" { "Hi" } None)  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039980.092 units remaining)
+    [ { "Hi" }  	
+      (Pair "Hi" { "Hi" } None)  	
+      Unit  	 ]
+  - location: 15 (remaining gas: 1039980.022 units remaining)
+    [ { "Hi" }  	
+      (Pair "Hi" { "Hi" } None)  	
+      Unit  	 ]
+  - location: 15 (remaining gas: 1039980.022 units remaining)
+    [ { "Hi" }  	
+      (Pair "Hi" { "Hi" } None)  	
+      Unit  	 ]
+  - location: 15 (remaining gas: 1039979.942 units remaining)
+    [ "Hi"  	@parameter
+      { "Hi" }  	
+      (Pair "Hi" { "Hi" } None)  	
+      Unit  	 ]
+  - location: 19 (remaining gas: 1039979.862 units remaining)
+    [ True  	
+      (Pair "Hi" { "Hi" } None)  	
+      Unit  	 ]
+  - location: 20 (remaining gas: 1039979.782 units remaining)
+    [ (Some True)  	
+      (Pair "Hi" { "Hi" } None)  	
+      Unit  	 ]
+  - location: 21 (remaining gas: 1039979.682 units remaining)
+    [ (Pair "Hi" { "Hi" } None)  	
+      Unit  	 ]
+  - location: 24 (remaining gas: 1039979.602 units remaining)
+    [ (Pair { "Hi" } None)  	@storage
+      Unit  	 ]
+  - location: 25 (remaining gas: 1039979.522 units remaining)
+    [ { "Hi" }  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039979.452 units remaining)
+    [ { "Hi" }  	
+      Unit  	 ]
+  - location: 22 (remaining gas: 1039979.382 units remaining)
+    [ { "Hi" }  	
+      Unit  	 ]
+  - location: 22 (remaining gas: 1039979.382 units remaining)
+    [ { "Hi" }  	
+      Unit  	 ]
+  - location: 22 (remaining gas: 1039979.302 units remaining)
+    [ (Some True)  	
+      { "Hi" }  	
+      Unit  	 ]
+  - location: 26 (remaining gas: 1039979.232 units remaining)
+    [ { "Hi" }  	
+      (Some True)  	
+      Unit  	 ]
+  - location: 27 (remaining gas: 1039979.152 units remaining)
+    [ (Pair { "Hi" } (Some True))  	
+      Unit  	 ]
+  - location: 28 (remaining gas: 1039979.072 units remaining)
+    [ {}  	
+      (Pair { "Hi" } (Some True))  	
+      Unit  	 ]
+  - location: 30 (remaining gas: 1039978.992 units remaining)
+    [ (Pair {} { "Hi" } (Some True))  	
+      Unit  	 ]
+  - location: -1 (remaining gas: 1039978.922 units remaining)
+    [ (Pair {} { "Hi" } (Some True))  	
+      Unit  	 ]
+
