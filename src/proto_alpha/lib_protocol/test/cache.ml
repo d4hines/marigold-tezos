@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
+(* Copyright (c) 2020 Morigold, <contact@marigold.dev>                       *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,32 +23,22 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let () =
-  Alcotest_lwt.run
-    "protocol_alpha"
-    [ ("transfer", Transfer.tests);
-      ("origination", Origination.tests);
-      ("activation", Activation.tests);
-      ("revelation", Reveal.tests);
-      ("endorsement", Endorsement.tests);
-      ("double endorsement", Double_endorsement.tests);
-      ("double baking", Double_baking.tests);
-      ("seed", Seed.tests);
-      ("baking", Baking.tests);
-      ("delegation", Delegation.tests);
-      ("rolls", Rolls.tests);
-      ("combined", Combined_operations.tests);
-      ("qty", Qty.tests);
-      ("voting", Voting.tests);
-      ("interpretation", Interpretation.tests);
-      ("typechecking", Typechecking.tests);
-      ("gas properties", Gas_properties.tests);
-      ("fixed point computation", Fixed_point.tests);
-      ("gas levels", Gas_levels.tests);
-      ("gas cost functions", Gas_costs.tests);
-      ("lazy storage diff", Lazy_storage_diff.tests);
-      ("sapling", Test_sapling.tests);
-      ("helpers rpcs", Test_helpers_rpcs.tests);
-      ("script deserialize gas", Script_gas.tests);
-      ("carbonated storage cache", Cache.tests) ]
-  |> Lwt_main.run
+open Protocol
+
+let wrap e = Lwt.return (Environment.wrap_error e)
+
+let decache_init () =
+  Context.init 1
+  >>=? fun (b, _) ->
+  Raw_context.prepare
+    b.context
+    ~level:b.header.shell.level
+    ~predecessor_timestamp:b.header.shell.timestamp
+    ~timestamp:b.header.shell.timestamp
+    ~fitness:b.header.shell.fitness
+  >>= wrap
+  >>=? fun ctx ->
+  let bds = Raw_context.get_decarbonated_cache ctx in
+  Assert.equal_int ~loc:__LOC__ (List.length bds) 0
+
+let tests = [Test.tztest "init decarbonated cache" `Quick decache_init]
