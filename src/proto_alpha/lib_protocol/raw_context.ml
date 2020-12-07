@@ -25,6 +25,10 @@
 
 module Int_set = Set.Make (Compare.Int)
 
+module CacheMap = struct
+  include Map.Make (Compare.List (Compare.String))
+end
+
 type t = {
   context : Context.t;
   constants : Constants_repr.parametric;
@@ -47,6 +51,7 @@ type t = {
   temporary_lazy_storage_ids : Lazy_storage_kind.Temp_ids.t;
   internal_nonce : int;
   internal_nonces_used : Int_set.t;
+  decarbonated_cache : bytes CacheMap.t;
 }
 
 type context = t
@@ -156,6 +161,8 @@ let get_deposits ctxt = ctxt.deposits
 let get_rewards ctxt = ctxt.rewards
 
 let get_fees ctxt = ctxt.fees
+
+let get_decarbonated_cache ctx = CacheMap.bindings ctx.decarbonated_cache
 
 type error += Undefined_operation_nonce (* `Permanent *)
 
@@ -538,6 +545,7 @@ let prepare ~level ~predecessor_timestamp ~timestamp ~fitness ctxt =
     temporary_lazy_storage_ids = Lazy_storage_kind.Temp_ids.init;
     internal_nonce = 0;
     internal_nonces_used = Int_set.empty;
+    decarbonated_cache = CacheMap.empty;
   }
 
 type previous_protocol = Genesis of Parameters_repr.t | Delphi_007
@@ -654,6 +662,16 @@ module type T = sig
   val check_enough_gas : context -> Gas_limit_repr.cost -> unit tzresult
 
   val description : context Storage_description.t
+
+  val decarbonated_cache_init : context -> context
+
+  val decarbonated_cache_mem : context -> key -> bool
+
+  val decarbonated_cache_find_option : context -> key -> value option
+
+  val decarbonated_cache_add : context -> key -> value -> context
+
+  val decarbonated_cache_remove : context -> key -> context
 end
 
 let mem ctxt k = Context.mem ctxt.context k
@@ -730,6 +748,22 @@ let project x = x
 let absolute_key _ k = k
 
 let description = Storage_description.create ()
+
+let decarbonated_cache_init ctx =
+  {ctx with decarbonated_cache = CacheMap.empty}
+
+let decarbonated_cache_mem ctx key = CacheMap.mem key ctx.decarbonated_cache
+
+let decarbonated_cache_find_option ctx key =
+  CacheMap.find_opt key ctx.decarbonated_cache
+
+let decarbonated_cache_add ctx key value =
+  let cm = CacheMap.add key value ctx.decarbonated_cache in
+  {ctx with decarbonated_cache = cm}
+
+let decarbonated_cache_remove ctx key =
+  let cm = CacheMap.remove key ctx.decarbonated_cache in
+  {ctx with decarbonated_cache = cm}
 
 let fold_map_temporary_lazy_storage_ids ctxt f =
   f ctxt.temporary_lazy_storage_ids

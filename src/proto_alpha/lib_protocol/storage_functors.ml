@@ -124,6 +124,16 @@ module Make_subcontext (R : REGISTER) (C : Raw_context.T) (N : NAME) :
       if R.ghost then Storage_description.create () else C.description
     in
     Storage_description.register_named_subcontext description N.name
+
+  let decarbonated_cache_init = C.decarbonated_cache_init
+
+  let decarbonated_cache_mem = C.decarbonated_cache_mem
+
+  let decarbonated_cache_find_option = C.decarbonated_cache_find_option
+
+  let decarbonated_cache_add = C.decarbonated_cache_add
+
+  let decarbonated_cache_remove = C.decarbonated_cache_remove
 end
 
 module Make_single_data_storage
@@ -448,70 +458,125 @@ struct
     C.consume_gas c (Storage_costs.write_access ~written_bytes:0)
     >>?= fun c -> del c (len_key i)
 
+  let cache_mem ctx i =
+    let key = C.absolute_key ctx (data_key i) in
+    C.decarbonated_cache_mem ctx key
+
+  let cache_find_option ctx i =
+    let key = C.absolute_key ctx (data_key i) in
+    C.decarbonated_cache_find_option ctx key
+
+  let cache_add ctx i v =
+    let key = C.absolute_key ctx (data_key i) in
+    let bytes = to_bytes v in
+    C.decarbonated_cache_add ctx key bytes
+
+  let cache_add_raw ctx key bytes = C.decarbonated_cache_add ctx key bytes
+
+  let cache_remove ctx i =
+    let key = C.absolute_key ctx (data_key i) in
+    C.decarbonated_cache_remove ctx key
+
+  let cache_remove_raw ctx key = C.decarbonated_cache_remove ctx key
+
+  let cache_empty ctx = C.decarbonated_cache_init ctx
+
   let mem s i =
-    let key = data_key i in
-    consume_mem_gas s key
-    >>?= fun s -> C.mem s key >|= fun exists -> ok (C.project s, exists)
+    if cache_mem s i then return (C.project s, true)
+    else
+      let key = C.absolute_key s (data_key i) in
+      consume_mem_gas s key
+      >>?= fun s -> C.mem s key >|= fun exists -> ok (C.project s, exists)
 
   let get s i =
-    consume_read_gas C.get s i
-    >>=? fun s ->
-    C.get s (data_key i)
-    >>=? fun b ->
     let key = C.absolute_key s (data_key i) in
-    Lwt.return (of_bytes ~key b >|? fun v -> (C.project s, v))
+    match cache_find_option s i with
+    | Some b ->
+        Lwt.return (of_bytes ~key b >|? fun v -> (C.project s, v))
+    | None ->
+        consume_read_gas C.get s i
+        >>=? fun s ->
+        C.get s key
+        >>=? fun b ->
+        let s = cache_add_raw s key b in
+        Lwt.return (of_bytes ~key b >|? fun v -> (C.project s, v))
 
   let get_option s i =
-    let key = data_key i in
-    consume_mem_gas s key
-    >>?= fun s ->
-    C.mem s key
-    >>= fun exists ->
-    if exists then get s i >|=? fun (s, v) -> (s, Some v)
-    else return (C.project s, None)
+    let key = C.absolute_key s (data_key i) in
+    match cache_find_option s i with
+    | Some b ->
+        Lwt.return (of_bytes ~key b >|? fun v -> (C.project s, Some v))
+    | None ->
+        consume_mem_gas s key
+        >>?= fun s ->
+        C.mem s key
+        >>= fun exists ->
+        if exists then
+          consume_read_gas C.get s i
+          >>=? fun s ->
+          C.get s key
+          >>=? fun b ->
+          let s = cache_add_raw s key b in
+          Lwt.return (of_bytes ~key b >|? fun v -> (C.project s, Some v))
+        else return (C.project s, None)
 
   let set s i v =
+    let key = C.absolute_key s (data_key i) in
     existing_size s i
     >>=? fun (prev_size, _) ->
     consume_serialize_write_gas C.set s i v
     >>=? fun (s, bytes) ->
-    C.set s (data_key i) bytes
+    C.set s key bytes
     >|=? fun t ->
     let size_diff = Bytes.length bytes - prev_size in
-    (C.project t, size_diff)
+    let u = cache_add_raw t key bytes in
+    (C.project u, size_diff)
 
   let init s i v =
+    let key = C.absolute_key s (data_key i) in
     consume_serialize_write_gas C.init s i v
     >>=? fun (s, bytes) ->
-    C.init s (data_key i) bytes
+    C.init s key bytes
     >|=? fun t ->
     let size = Bytes.length bytes in
-    (C.project t, size)
+    let u = cache_add_raw t key bytes in
+    (C.project u, size)
 
   let init_set s i v =
+    let key = C.absolute_key s (data_key i) in
     let init_set s i v = C.init_set s i v >|= ok in
     existing_size s i
     >>=? fun (prev_size, existed) ->
     consume_serialize_write_gas init_set s i v
     >>=? fun (s, bytes) ->
-    init_set s (data_key i) bytes
+    init_set s key bytes
     >|=? fun t ->
     let size_diff = Bytes.length bytes - prev_size in
-    (C.project t, size_diff, existed)
+    let u = cache_add_raw t key bytes in
+    (C.project u, size_diff, existed)
 
   let remove s i =
+    let key = C.absolute_key s (data_key i) in
     let remove s i = C.remove s i >|= ok in
     existing_size s i
     >>=? fun (prev_size, existed) ->
     consume_remove_gas remove s i
     >>=? fun s ->
-    remove s (data_key i) >|=? fun t -> (C.project t, prev_size, existed)
+    remove s key
+    >|=? fun t ->
+    let u = cache_remove_raw t key in
+    (C.project u, prev_size, existed)
 
   let delete s i =
+    let key = C.absolute_key s (data_key i) in
     existing_size s i
     >>=? fun (prev_size, _) ->
     consume_remove_gas C.delete s i
-    >>=? fun s -> C.delete s (data_key i) >|=? fun t -> (C.project t, prev_size)
+    >>=? fun s ->
+    C.delete s key
+    >|=? fun t ->
+    let u = cache_remove_raw t key in
+    (C.project u, prev_size)
 
   let set_option s i v =
     match v with None -> remove s i | Some v -> init_set s i v
@@ -780,6 +845,29 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
       C.check_enough_gas t g
 
     let description = description
+
+    let decarbonated_cache_init c =
+      let (t, i) = unpack c in
+      let u = C.decarbonated_cache_init t in
+      pack u i
+
+    let decarbonated_cache_mem c k =
+      let (t, _) = unpack c in
+      C.decarbonated_cache_mem t k
+
+    let decarbonated_cache_find_option c k =
+      let (t, _) = unpack c in
+      C.decarbonated_cache_find_option t k
+
+    let decarbonated_cache_add c k v =
+      let (t, i) = unpack c in
+      let u = C.decarbonated_cache_add t k v in
+      pack u i
+
+    let decarbonated_cache_remove c k =
+      let (t, i) = unpack c in
+      let u = C.decarbonated_cache_remove t k in
+      pack u i
   end
 
   let resolve t prefix =

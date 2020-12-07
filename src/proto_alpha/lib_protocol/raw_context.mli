@@ -121,6 +121,8 @@ val get_rewards : context -> Tez_repr.t
 
 val get_deposits : context -> Tez_repr.t Signature.Public_key_hash.Map.t
 
+val get_decarbonated_cache : context -> (string list * bytes) list
+
 type error += Gas_limit_too_high (* `Permanent *)
 
 val check_gas_limit : t -> 'a Gas_limit_repr.Arith.t -> unit tzresult
@@ -244,6 +246,21 @@ module type T = sig
   val check_enough_gas : context -> Gas_limit_repr.cost -> unit tzresult
 
   val description : context Storage_description.t
+
+  (** Internally used in {!Storage_functors} to init de-carbonated cache *)
+  val decarbonated_cache_init : context -> context
+
+  (** Internally used in {!Storage_functors} to get de-carbonated cache *)
+  val decarbonated_cache_mem : context -> key -> bool
+
+  (** Internally used in {!Storage_functors} to get de-carbonated cache *)
+  val decarbonated_cache_find_option : context -> key -> value option
+
+  (** Internally used in {!Storage_functors} to add de-carbonated cache *)
+  val decarbonated_cache_add : context -> key -> value -> context
+
+  (** Internally used in {!Storage_functors} to remove de-carbonated cache *)
+  val decarbonated_cache_remove : context -> key -> context
 end
 
 include T with type t := t and type context := context
