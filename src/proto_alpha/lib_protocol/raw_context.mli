@@ -247,19 +247,23 @@ module type T = sig
 
   val description : context Storage_description.t
 
-  (** Internally used in {!Storage_functors} to init de-carbonated cache *)
+  (** Internally used in {!Storage_functors} to init de-carbonated cache. *)
   val decarbonated_cache_init : context -> context
 
-  (** Internally used in {!Storage_functors} to get de-carbonated cache *)
+  (** Internally used in {!Storage_functors} to check membership
+      for a given keyde-carbonated cache. *)
   val decarbonated_cache_mem : context -> key -> bool
 
-  (** Internally used in {!Storage_functors} to get de-carbonated cache *)
+  (** Internally used in {!Storage_functors} to get the value for given key
+      from de-carbonated cache. *)
   val decarbonated_cache_find_option : context -> key -> value option
 
-  (** Internally used in {!Storage_functors} to add de-carbonated cache *)
+  (** Internally used in {!Storage_functors} to add a new member
+      into de-carbonated cache. *)
   val decarbonated_cache_add : context -> key -> value -> context
 
-  (** Internally used in {!Storage_functors} to remove de-carbonated cache *)
+  (** Internally used in {!Storage_functors} to remove an element
+      from de-carbonated cache. *)
   val decarbonated_cache_remove : context -> key -> context
 end
 
