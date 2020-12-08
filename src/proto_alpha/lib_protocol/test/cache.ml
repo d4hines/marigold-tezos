@@ -24,14 +24,31 @@
 (*****************************************************************************)
 
 open Protocol
+open Gas_limit_repr
 
 (* Aux. for wrapping *)
 let wrap e = Lwt.return (Environment.wrap_error e)
 
-(* Aux. casting cost to Z, copied from gas_costs.ml *)
-let cast_cost_to_z (c : Alpha_context.Gas.cost) : Z.t =
-  Data_encoding.Binary.to_bytes_exn Alpha_context.Gas.cost_encoding c
-  |> Data_encoding.Binary.of_bytes_exn Data_encoding.z
+let grepr_z : Gas_limit_repr.t -> Gas_limit_repr.Arith.fp = function
+  | Unaccounted -> Gas_limit_repr.Arith.fp Gas_limit_repr.Arith.zero
+  | Limited x -> x.remaining
+
+let binop_gas_arith
+  ~loc binop msg (a : Gas_limit_repr.Arith.fp) (b : Gas_limit_repr.Arith.fp) =
+  Assert.equal
+    ~loc binop msg Gas_limit_repr.Arith.pp a b
+
+let leq_gas_arith
+  ~loc (a : Gas_limit_repr.Arith.fp) (b : Gas_limit_repr.Arith.fp) =
+  binop_gas_arith
+    ~loc Gas_limit_repr.Arith.(<=)
+    "Gas aren't less than or equal" a b
+
+let eq_gas_arith
+  ~loc (a : Gas_limit_repr.Arith.fp) (b : Gas_limit_repr.Arith.fp) =
+  binop_gas_arith
+    ~loc Gas_limit_repr.Arith.(=)
+    "Gas aren't equal" a b
 
 (** test case:
     cache initialized as empty *)
@@ -53,8 +70,9 @@ let decache_init () =
     cache initialized as empty *)
 let decache_mem () =
   Context.init 1
-  >>=? fun (b, contracts) ->
-  let contract = List.nth contracts 0 in
+  (* >>=? fun (b, contracts) -> *)
+  >>=? fun (b, _) ->
+  (* let contract = List.nth contracts 0 in *)
   Raw_context.prepare
     b.context
     ~level:b.header.shell.level
@@ -63,18 +81,21 @@ let decache_mem () =
     ~fitness:b.header.shell.fitness
   >>= wrap
   >>=? fun ctx ->
-  let i = contract in
+  (* let i = Script_expr_hash.encoding sexpr in
+  let idz = Lazy_storage_kind.Big_map.Id.init in
   let v = Bytes.of_string "some value" in
-  Storage.Big_map.Contents.set ctx i v
-  >>=? fun (ctx, _) ->
-  let op_gas_bef = cast_cost_to_z (Raw_context.gas_level ctx) in
-  let bl_gas_bef = cast_cost_to_z (Raw_context.block_gas_level ctx) in
-  Big_map.Contents.mem ctx i
-  >>=? fun (ctx, exists) ->
-  let op_gas_aft = cast_cost_to_z (Raw_context.gas_level ctx) in
-  let bl_gas_aft = cast_cost_to_z (Raw_context.block_gas_level ctx) in
-  Assert.equal_bool ~loc:__LOC__ (Z.equal op_gas_bef op_gas_aft) true
-  Assert.equal_bool ~loc:__LOC__ (Z.equal bl_gas_bef bl_gas_aft) true
+  Storage.Big_map.Contents.set (ctx, idz) i v *)
+  (* >>=? fun (ctx, _) -> *)
+  (* Gas_limit_repr.Arith *)
+  let op_gas_bef = grepr_z (Raw_context.gas_level ctx) in
+  let bl_gas_bef = Raw_context.block_gas_level ctx in
+  (* Storage.Big_map.Contents.mem ctx i
+  >>=? fun (ctx, exists) -> *)
+  let op_gas_aft = grepr_z (Raw_context.gas_level ctx) in
+  let bl_gas_aft = Raw_context.block_gas_level ctx in
+  eq_gas_arith ~loc:__LOC__ op_gas_bef op_gas_aft
+  >>=? fun () ->
+  eq_gas_arith ~loc:__LOC__ bl_gas_bef bl_gas_aft
 
 (*********************************************************************)
 
