@@ -38,6 +38,12 @@ let binop_gas_arith
   Assert.equal
     ~loc binop msg Gas_limit_repr.Arith.pp a b
 
+let geq_gas_arith
+  ~loc (a : Gas_limit_repr.Arith.fp) (b : Gas_limit_repr.Arith.fp) =
+  binop_gas_arith
+    ~loc Gas_limit_repr.Arith.(>=)
+    "Gas aren't less than or equal" a b
+
 let leq_gas_arith
   ~loc (a : Gas_limit_repr.Arith.fp) (b : Gas_limit_repr.Arith.fp) =
   binop_gas_arith
@@ -49,6 +55,21 @@ let eq_gas_arith
   binop_gas_arith
     ~loc Gas_limit_repr.Arith.(=)
     "Gas aren't equal" a b
+
+let gt_gas_arith
+  ~loc (a : Gas_limit_repr.Arith.fp) (b : Gas_limit_repr.Arith.fp) =
+  binop_gas_arith
+    ~loc Gas_limit_repr.Arith.(>)
+    "Gas aren't greater" a b
+
+let ls_gas_arith
+  ~loc (a : Gas_limit_repr.Arith.fp) (b : Gas_limit_repr.Arith.fp) =
+  binop_gas_arith
+    ~loc Gas_limit_repr.Arith.(<)
+    "Gas aren't less" a b
+
+let xxx () =
+  Lwt.Return (Script_repr.force_decode Script_repr.unit_parameter)
 
 (** test case:
     cache initialized as empty *)
@@ -81,16 +102,22 @@ let decache_mem () =
     ~fitness:b.header.shell.fitness
   >>= wrap
   >>=? fun ctx ->
-  (* let i = Script_expr_hash.encoding sexpr in
-  let idz = Lazy_storage_kind.Big_map.Id.init in
-  let v = Bytes.of_string "some value" in
-  Storage.Big_map.Contents.set (ctx, idz) i v *)
-  (* >>=? fun (ctx, _) -> *)
-  (* Gas_limit_repr.Arith *)
   let op_gas_bef = grepr_z (Raw_context.gas_level ctx) in
   let bl_gas_bef = Raw_context.block_gas_level ctx in
-  (* Storage.Big_map.Contents.mem ctx i
-  >>=? fun (ctx, exists) -> *)
+  (* === 0:index === *)
+  let idz = Lazy_storage_kind.Big_map.Id.init in
+  (* === 1:index === *)
+  (* let i = Script_expr_hash.encoding sexpr in *)
+  let i = Script_expr_hash.zero in
+  (* === 2:value === *)
+  xxx ()
+  >>=? fun (v, _) ->
+  (* === EXEC === *)
+  Storage.Big_map.Contents.set (ctx, idz) i v
+  >>=? fun (ctx, _) ->
+  (* Gas_limit_repr.Arith *)
+  (* Storage.Big_map.Contents.mem ctx i *)
+  (* >>=? fun (ctx, exists) -> *)
   let op_gas_aft = grepr_z (Raw_context.gas_level ctx) in
   let bl_gas_aft = Raw_context.block_gas_level ctx in
   eq_gas_arith ~loc:__LOC__ op_gas_bef op_gas_aft
