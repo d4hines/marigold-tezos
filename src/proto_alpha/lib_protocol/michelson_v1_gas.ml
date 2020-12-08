@@ -54,7 +54,7 @@ module Cost_of = struct
   (* Upper-bound on the time to compare the given value.
      For now, returns size in bytes, but this could get more complicated... *)
   let rec size_of_comparable :
-      type a. a Script_typed_ir.comparable_ty -> a -> S.t =
+      type a. a Script_typed_cps_ir.comparable_ty -> a -> S.t =
    fun wit v ->
     match (wit, v) with
     | (Unit_key _, _) ->
@@ -776,24 +776,25 @@ module Cost_of = struct
 
     let if_cons = atomic_step_cost cost_N_If_cons
 
-    let list_map : 'a Script_typed_ir.boxed_list -> Gas.cost =
+    let list_map : 'a Script_typed_cps_ir.boxed_list -> Gas.cost =
      fun {length; _} -> atomic_step_cost (cost_N_List_map length)
 
     let list_size = atomic_step_cost cost_N_List_size
 
-    let list_iter : 'a Script_typed_ir.boxed_list -> Gas.cost =
+    let list_iter : 'a Script_typed_cps_ir.boxed_list -> Gas.cost =
      fun {length; _} -> atomic_step_cost (cost_N_List_iter length)
 
     let empty_set = atomic_step_cost cost_N_Empty_set
 
-    let set_iter (type a) ((module Box) : a Script_typed_ir.set) =
+    let set_iter (type a) ((module Box) : a Script_typed_cps_ir.set) =
       atomic_step_cost (cost_N_Set_iter Box.size)
 
-    let set_mem (type a) (elt : a) ((module Box) : a Script_typed_ir.set) =
+    let set_mem (type a) (elt : a) ((module Box) : a Script_typed_cps_ir.set) =
       let elt_size = size_of_comparable Box.elt_ty elt in
       atomic_step_cost (cost_N_Set_mem elt_size Box.size)
 
-    let set_update (type a) (elt : a) ((module Box) : a Script_typed_ir.set) =
+    let set_update (type a) (elt : a)
+        ((module Box) : a Script_typed_cps_ir.set) =
       let elt_size = size_of_comparable Box.elt_ty elt in
       atomic_step_cost (cost_N_Set_update elt_size Box.size)
 
@@ -801,29 +802,29 @@ module Cost_of = struct
 
     let empty_map = atomic_step_cost cost_N_Empty_map
 
-    let map_map (type k v) ((module Box) : (k, v) Script_typed_ir.map) =
+    let map_map (type k v) ((module Box) : (k, v) Script_typed_cps_ir.map) =
       atomic_step_cost (cost_N_Map_map (snd Box.boxed))
 
-    let map_iter (type k v) ((module Box) : (k, v) Script_typed_ir.map) =
+    let map_iter (type k v) ((module Box) : (k, v) Script_typed_cps_ir.map) =
       atomic_step_cost (cost_N_Map_iter (snd Box.boxed))
 
     let map_mem (type k v) (elt : k)
-        ((module Box) : (k, v) Script_typed_ir.map) =
+        ((module Box) : (k, v) Script_typed_cps_ir.map) =
       let elt_size = size_of_comparable Box.key_ty elt in
       atomic_step_cost (cost_N_Map_mem elt_size (S.of_int (snd Box.boxed)))
 
     let map_get (type k v) (elt : k)
-        ((module Box) : (k, v) Script_typed_ir.map) =
+        ((module Box) : (k, v) Script_typed_cps_ir.map) =
       let elt_size = size_of_comparable Box.key_ty elt in
       atomic_step_cost (cost_N_Map_get elt_size (S.of_int (snd Box.boxed)))
 
     let map_update (type k v) (elt : k)
-        ((module Box) : (k, v) Script_typed_ir.map) =
+        ((module Box) : (k, v) Script_typed_cps_ir.map) =
       let elt_size = size_of_comparable Box.key_ty elt in
       atomic_step_cost (cost_N_Map_update elt_size (S.of_int (snd Box.boxed)))
 
     let map_get_and_update (type k v) (elt : k)
-        (m : (k, v) Script_typed_ir.map) =
+        (m : (k, v) Script_typed_cps_ir.map) =
       map_get elt m +@ map_update elt m
 
     let map_size = atomic_step_cost cost_N_Map_size
@@ -993,7 +994,7 @@ module Cost_of = struct
 
     let nop = atomic_step_cost cost_N_Nop
 
-    let pairing_check_bls12_381 (l : 'a Script_typed_ir.boxed_list) =
+    let pairing_check_bls12_381 (l : 'a Script_typed_cps_ir.boxed_list) =
       atomic_step_cost (cost_N_Pairing_check_bls12_381 l.length)
 
     let comb n = atomic_step_cost (cost_N_Comb n)
@@ -1059,8 +1060,8 @@ module Cost_of = struct
 
     let compare_chain_id = atomic_step_cost (S.of_int 30)
 
-    let rec compare : type a. a Script_typed_ir.comparable_ty -> a -> a -> cost
-        =
+    let rec compare :
+        type a. a Script_typed_cps_ir.comparable_ty -> a -> a -> cost =
      fun ty x y ->
       match ty with
       | Unit_key _ ->
@@ -1135,7 +1136,7 @@ module Cost_of = struct
        list of strings to compute the total allocated cost.
        [concat_string_precheck] corresponds to the meta-gas cost of this computation.
      *)
-    let concat_string_precheck (l : 'a Script_typed_ir.boxed_list) =
+    let concat_string_precheck (l : 'a Script_typed_cps_ir.boxed_list) =
       (* we set the precheck to be slightly more expensive than cost_N_List_iter *)
       atomic_step_cost (S.mul (S.of_int l.length) (S.of_int 10))
 
@@ -1235,9 +1236,9 @@ module Cost_of = struct
       +@ compare_nat ticket_amount ticket_amount
 
     let join_tickets :
-        'a Script_typed_ir.comparable_ty ->
-        'a Script_typed_ir.ticket ->
-        'a Script_typed_ir.ticket ->
+        'a Script_typed_cps_ir.comparable_ty ->
+        'a Script_typed_cps_ir.ticket ->
+        'a Script_typed_cps_ir.ticket ->
         Gas.cost =
      fun ty ticket_a ticket_b ->
       ticket +@ compare_address

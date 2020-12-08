@@ -62,7 +62,7 @@ type ('a, 's, 'b, 'f, 'u) logging_function =
   ('a, 's, 'b, 'f) Script_typed_cps_ir.kinstr ->
   context ->
   Script.location ->
-  'u Script_typed_ir.stack_ty ->
+  'u Script_typed_cps_ir.stack_ty ->
   'u ->
   unit
 
@@ -97,9 +97,10 @@ val step :
   logger option ->
   context ->
   step_constants ->
-  ('bef, 'aft) Script_typed_ir.descr ->
-  'bef ->
-  ('aft * context) tzresult Lwt.t
+  ('a, 's, 'r, 'f) Script_typed_cps_ir.kdescr ->
+  'a ->
+  's ->
+  ('r * 'f * context) tzresult Lwt.t
 
 val execute :
   ?logger:logger ->

@@ -45,7 +45,7 @@ let test_context_with_nat_nat_big_map () =
   let ctxt = Incremental.alpha_ctxt v in
   wrap_error_lwt @@ Big_map.fresh ~temporary:false ctxt
   >>=? fun (ctxt, id) ->
-  let nat_ty = Script_typed_ir.Nat_t None in
+  let nat_ty = Script_typed_cps_ir.Nat_t None in
   wrap_error_lwt @@ Lwt.return @@ Script_ir_translator.unparse_ty ctxt nat_ty
   >>=? fun (nat_ty_node, ctxt) ->
   let nat_ty_expr = Micheline.strip_locations nat_ty_node in
@@ -168,7 +168,7 @@ let test_parse_ty ctxt node expected =
 
 let test_parse_comb_type () =
   let open Script in
-  let open Script_typed_ir in
+  let open Script_typed_cps_ir in
   let nat_prim = Prim (-1, T_nat, [], []) in
   let nat_prim_a = Prim (-1, T_nat, [], ["%a"]) in
   let nat_prim_b = Prim (-1, T_nat, [], ["%b"]) in
@@ -258,7 +258,7 @@ let test_unparse_ty loc ctxt expected ty =
 
 let test_unparse_comb_type () =
   let open Script in
-  let open Script_typed_ir in
+  let open Script_typed_cps_ir in
   let nat_prim = Prim (-1, T_nat, [], []) in
   let nat_prim_a = Prim (-1, T_nat, [], ["%a"]) in
   let nat_prim_b = Prim (-1, T_nat, [], ["%b"]) in
@@ -376,7 +376,7 @@ let test_unparse_comparable_ty loc ctxt expected ty =
 
 let test_unparse_comb_comparable_type () =
   let open Script in
-  let open Script_typed_ir in
+  let open Script_typed_cps_ir in
   let nat_prim = Prim (-1, T_nat, [], []) in
   let nat_prim_a = Prim (-1, T_nat, [], ["%a"]) in
   let nat_prim_b = Prim (-1, T_nat, [], ["%b"]) in
@@ -492,7 +492,7 @@ let test_parse_data_fails loc ctxt ty node =
 
 let test_parse_comb_data () =
   let open Script in
-  let open Script_typed_ir in
+  let open Script_typed_cps_ir in
   let z = Script_int.zero_n in
   let z_prim = Micheline.Int (-1, Z.zero) in
   let nat_ty = Nat_t None in
@@ -589,7 +589,7 @@ let test_parse_comb_data () =
       Boxed_map with type key = n num and type value = n num option
   end in
   let expected_big_map =
-    let open Script_typed_ir in
+    let open Script_typed_cps_ir in
     let diff = (module M : M.S) in
     let nat_key_ty = Nat_key None in
     {id = Some big_map_id; diff; key_type = nat_key_ty; value_type = nat_ty}
@@ -635,7 +635,7 @@ let test_unparse_data loc ctxt ty x ~expected_readable ~expected_optimized =
 
 let test_unparse_comb_data () =
   let open Script in
-  let open Script_typed_ir in
+  let open Script_typed_cps_ir in
   let z = Script_int.zero_n in
   let z_prim = Micheline.Int (-1, Z.zero) in
   let nat_ty = Nat_t None in
@@ -706,7 +706,7 @@ let rec gen_combs leaf arity =
 
 (* Checks the optimality of the Optimized Micheline representation for combs *)
 let test_optimal_comb () =
-  let open Script_typed_ir in
+  let open Script_typed_cps_ir in
   let leaf_ty = Nat_t None in
   let leaf_mich = Int (-1, Z.zero) in
   let leaf_v = Script_int.zero_n in

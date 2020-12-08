@@ -8,8 +8,9 @@ big_map diff
   New map(0) of type (big_map nat nat)
   Set map(0)[1] to 0
 trace
-  - location: 12 (remaining gas: 1039986.170 units remaining)
-    [ (Pair 1 { Elt 1 0 } None)  	 ]
+  - location: 11 (remaining gas: 1039986.170 units remaining)
+    [ (Pair 1 { Elt 1 0 } None)  	
+      Unit  	 ]
   - location: 12 (remaining gas: 1039986.090 units remaining)
     [ 1  	@parameter
       (Pair { Elt 1 0 } None)  	@storage
@@ -24,38 +25,31 @@ trace
     [ { Elt 1 0 }  	
       { Elt 1 0 }  	
       Unit  	 ]
-  - location: -1 (remaining gas: 1039985.760 units remaining)
-    [ { Elt 1 0 }  	
-      { Elt 1 0 }  	
-      Unit  	 ]
-  - location: 14 (remaining gas: 1039985.680 units remaining)
+  - location: 14 (remaining gas: 1039985.750 units remaining)
     [ 1  	@parameter
       { Elt 1 0 }  	
       { Elt 1 0 }  	
       Unit  	 ]
-  - location: 17 (remaining gas: 1039985.600 units remaining)
+  - location: 17 (remaining gas: 1039985.670 units remaining)
     [ True  	
       { Elt 1 0 }  	
       Unit  	 ]
-  - location: 18 (remaining gas: 1039985.520 units remaining)
+  - location: 18 (remaining gas: 1039985.590 units remaining)
     [ (Some True)  	
       { Elt 1 0 }  	
       Unit  	 ]
-  - location: 19 (remaining gas: 1039985.450 units remaining)
+  - location: 19 (remaining gas: 1039985.520 units remaining)
     [ { Elt 1 0 }  	
       (Some True)  	
       Unit  	 ]
-  - location: 20 (remaining gas: 1039985.370 units remaining)
+  - location: 20 (remaining gas: 1039985.440 units remaining)
     [ (Pair { Elt 1 0 } (Some True))  	
       Unit  	 ]
-  - location: 21 (remaining gas: 1039985.290 units remaining)
+  - location: 21 (remaining gas: 1039985.360 units remaining)
     [ {}  	
       (Pair { Elt 1 0 } (Some True))  	
       Unit  	 ]
-  - location: 23 (remaining gas: 1039985.210 units remaining)
-    [ (Pair {} { Elt 1 0 } (Some True))  	
-      Unit  	 ]
-  - location: -1 (remaining gas: 1039985.140 units remaining)
+  - location: 23 (remaining gas: 1039985.280 units remaining)
     [ (Pair {} { Elt 1 0 } (Some True))  	
       Unit  	 ]
 

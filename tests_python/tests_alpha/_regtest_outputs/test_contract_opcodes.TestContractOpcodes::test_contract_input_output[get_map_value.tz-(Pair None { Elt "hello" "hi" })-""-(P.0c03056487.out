@@ -7,8 +7,9 @@ emitted operations
 big_map diff
   
 trace
-  - location: 12 (remaining gas: 1039984.923 units remaining)
-    [ (Pair "" None { Elt "hello" "hi" })  	 ]
+  - location: 11 (remaining gas: 1039984.923 units remaining)
+    [ (Pair "" None { Elt "hello" "hi" })  	
+      Unit  	 ]
   - location: 12 (remaining gas: 1039984.843 units remaining)
     [ (Pair "" None { Elt "hello" "hi" })  	
       (Pair "" None { Elt "hello" "hi" })  	
@@ -26,37 +27,27 @@ trace
   - location: 18 (remaining gas: 1039984.503 units remaining)
     [ { Elt "hello" "hi" }  	
       Unit  	 ]
-  - location: -1 (remaining gas: 1039984.433 units remaining)
-    [ { Elt "hello" "hi" }  	
-      Unit  	 ]
-  - location: 19 (remaining gas: 1039984.353 units remaining)
+  - location: 19 (remaining gas: 1039984.423 units remaining)
     [ { Elt "hello" "hi" }  	
       { Elt "hello" "hi" }  	
       Unit  	 ]
-  - location: -1 (remaining gas: 1039984.283 units remaining)
-    [ { Elt "hello" "hi" }  	
-      { Elt "hello" "hi" }  	
-      Unit  	 ]
-  - location: 15 (remaining gas: 1039984.203 units remaining)
+  - location: 15 (remaining gas: 1039984.343 units remaining)
     [ ""  	@parameter
       { Elt "hello" "hi" }  	
       { Elt "hello" "hi" }  	
       Unit  	 ]
-  - location: 20 (remaining gas: 1039984.123 units remaining)
+  - location: 20 (remaining gas: 1039984.263 units remaining)
     [ None  	
       { Elt "hello" "hi" }  	
       Unit  	 ]
-  - location: 21 (remaining gas: 1039984.043 units remaining)
+  - location: 21 (remaining gas: 1039984.183 units remaining)
     [ (Pair None { Elt "hello" "hi" })  	
       Unit  	 ]
-  - location: 22 (remaining gas: 1039983.963 units remaining)
+  - location: 22 (remaining gas: 1039984.103 units remaining)
     [ {}  	
       (Pair None { Elt "hello" "hi" })  	
       Unit  	 ]
-  - location: 24 (remaining gas: 1039983.883 units remaining)
-    [ (Pair {} None { Elt "hello" "hi" })  	
-      Unit  	 ]
-  - location: -1 (remaining gas: 1039983.813 units remaining)
+  - location: 24 (remaining gas: 1039984.023 units remaining)
     [ (Pair {} None { Elt "hello" "hi" })  	
       Unit  	 ]
 

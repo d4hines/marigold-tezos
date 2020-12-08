@@ -7,8 +7,9 @@ emitted operations
 big_map diff
   
 trace
-  - location: 10 (remaining gas: 1039989.020 units remaining)
-    [ (Pair (Pair "1970-01-01T00:00:00Z" 0) None)  	 ]
+  - location: 9 (remaining gas: 1039989.020 units remaining)
+    [ (Pair (Pair "1970-01-01T00:00:00Z" 0) None)  	
+      Unit  	 ]
   - location: 10 (remaining gas: 1039988.940 units remaining)
     [ (Pair "1970-01-01T00:00:00Z" 0)  	@parameter
       Unit  	 ]
@@ -26,27 +27,21 @@ trace
   - location: 15 (remaining gas: 1039988.600 units remaining)
     [ 0  	
       Unit  	 ]
-  - location: 14 (remaining gas: 1039988.530 units remaining)
-    [ 0  	
-      Unit  	 ]
-  - location: 14 (remaining gas: 1039988.450 units remaining)
+  - location: 15 (remaining gas: 1039988.520 units remaining)
     [ "1970-01-01T00:00:00Z"  	
       0  	
       Unit  	 ]
-  - location: 16 (remaining gas: 1039988.370 units remaining)
+  - location: 16 (remaining gas: 1039988.440 units remaining)
     [ "1970-01-01T00:00:00Z"  	
       Unit  	 ]
-  - location: 17 (remaining gas: 1039988.290 units remaining)
+  - location: 17 (remaining gas: 1039988.360 units remaining)
     [ (Some "1970-01-01T00:00:00Z")  	
       Unit  	 ]
-  - location: 18 (remaining gas: 1039988.210 units remaining)
+  - location: 18 (remaining gas: 1039988.280 units remaining)
     [ {}  	
       (Some "1970-01-01T00:00:00Z")  	
       Unit  	 ]
-  - location: 20 (remaining gas: 1039988.130 units remaining)
-    [ (Pair {} (Some "1970-01-01T00:00:00Z"))  	
-      Unit  	 ]
-  - location: -1 (remaining gas: 1039988.060 units remaining)
+  - location: 20 (remaining gas: 1039988.200 units remaining)
     [ (Pair {} (Some "1970-01-01T00:00:00Z"))  	
       Unit  	 ]
 

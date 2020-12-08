@@ -7,8 +7,9 @@ emitted operations
 big_map diff
   
 trace
-  - location: 12 (remaining gas: 1039987.090 units remaining)
-    [ (Pair 1 { Elt 0 1 } None)  	 ]
+  - location: 11 (remaining gas: 1039987.090 units remaining)
+    [ (Pair 1 { Elt 0 1 } None)  	
+      Unit  	 ]
   - location: 12 (remaining gas: 1039987.010 units remaining)
     [ 1  	@parameter
       (Pair { Elt 0 1 } None)  	@storage
@@ -23,38 +24,31 @@ trace
     [ { Elt 0 1 }  	
       { Elt 0 1 }  	
       Unit  	 ]
-  - location: -1 (remaining gas: 1039986.680 units remaining)
-    [ { Elt 0 1 }  	
-      { Elt 0 1 }  	
-      Unit  	 ]
-  - location: 14 (remaining gas: 1039986.600 units remaining)
+  - location: 14 (remaining gas: 1039986.670 units remaining)
     [ 1  	@parameter
       { Elt 0 1 }  	
       { Elt 0 1 }  	
       Unit  	 ]
-  - location: 17 (remaining gas: 1039986.520 units remaining)
+  - location: 17 (remaining gas: 1039986.590 units remaining)
     [ False  	
       { Elt 0 1 }  	
       Unit  	 ]
-  - location: 18 (remaining gas: 1039986.440 units remaining)
+  - location: 18 (remaining gas: 1039986.510 units remaining)
     [ (Some False)  	
       { Elt 0 1 }  	
       Unit  	 ]
-  - location: 19 (remaining gas: 1039986.370 units remaining)
+  - location: 19 (remaining gas: 1039986.440 units remaining)
     [ { Elt 0 1 }  	
       (Some False)  	
       Unit  	 ]
-  - location: 20 (remaining gas: 1039986.290 units remaining)
+  - location: 20 (remaining gas: 1039986.360 units remaining)
     [ (Pair { Elt 0 1 } (Some False))  	
       Unit  	 ]
-  - location: 21 (remaining gas: 1039986.210 units remaining)
+  - location: 21 (remaining gas: 1039986.280 units remaining)
     [ {}  	
       (Pair { Elt 0 1 } (Some False))  	
       Unit  	 ]
-  - location: 23 (remaining gas: 1039986.130 units remaining)
-    [ (Pair {} { Elt 0 1 } (Some False))  	
-      Unit  	 ]
-  - location: -1 (remaining gas: 1039986.060 units remaining)
+  - location: 23 (remaining gas: 1039986.200 units remaining)
     [ (Pair {} { Elt 0 1 } (Some False))  	
       Unit  	 ]
 

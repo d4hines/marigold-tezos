@@ -29,47 +29,48 @@ open Script_tc_errors
 type ('ta, 'tb) eq = Eq : ('same, 'same) eq
 
 type ex_comparable_ty =
-  | Ex_comparable_ty : 'a Script_typed_ir.comparable_ty -> ex_comparable_ty
+  | Ex_comparable_ty : 'a Script_typed_cps_ir.comparable_ty -> ex_comparable_ty
 
-type ex_ty = Ex_ty : 'a Script_typed_ir.ty -> ex_ty
+type ex_ty = Ex_ty : 'a Script_typed_cps_ir.ty -> ex_ty
 
-type ex_stack_ty = Ex_stack_ty : 'a Script_typed_ir.stack_ty -> ex_stack_ty
+type ex_stack_ty =
+  | Ex_stack_ty : 'a Script_typed_cps_ir.stack_ty -> ex_stack_ty
 
-type ex_script = Ex_script : ('a, 'b) Script_typed_ir.script -> ex_script
+type ex_script = Ex_script : ('a, 'b) Script_typed_cps_ir.script -> ex_script
 
 type ('arg, 'storage) code = {
   code :
-    ( ('arg, 'storage) Script_typed_ir.pair,
-      ( Script_typed_ir.operation Script_typed_ir.boxed_list,
+    ( ('arg, 'storage) Script_typed_cps_ir.pair,
+      ( Script_typed_cps_ir.operation Script_typed_cps_ir.boxed_list,
         'storage )
-      Script_typed_ir.pair )
-    Script_typed_ir.lambda;
-  arg_type : 'arg Script_typed_ir.ty;
-  storage_type : 'storage Script_typed_ir.ty;
-  root_name : Script_typed_ir.field_annot option;
+      Script_typed_cps_ir.pair )
+    Script_typed_cps_ir.lambda;
+  arg_type : 'arg Script_typed_cps_ir.ty;
+  storage_type : 'storage Script_typed_cps_ir.ty;
+  root_name : Script_typed_cps_ir.field_annot option;
 }
 
 type ex_code = Ex_code : ('a, 'c) code -> ex_code
 
 type tc_context =
   | Lambda : tc_context
-  | Dip : 'a Script_typed_ir.stack_ty * tc_context -> tc_context
+  | Dip : 'a Script_typed_cps_ir.stack_ty * tc_context -> tc_context
   | Toplevel : {
-      storage_type : 'sto Script_typed_ir.ty;
-      param_type : 'param Script_typed_ir.ty;
-      root_name : Script_typed_ir.field_annot option;
+      storage_type : 'sto Script_typed_cps_ir.ty;
+      param_type : 'param Script_typed_cps_ir.ty;
+      root_name : Script_typed_cps_ir.field_annot option;
       legacy_create_contract_literal : bool;
     }
       -> tc_context
 
-type 'bef judgement =
-  | Typed : ('bef, 'aft) Script_typed_ir.descr -> 'bef judgement
+type ('a, 's) judgement =
+  | Typed : ('a, 's, 'b, 'u) Script_typed_cps_ir.descr -> ('a, 's) judgement
   | Failed : {
       descr :
-        'aft. 'aft Script_typed_ir.stack_ty ->
-        ('bef, 'aft) Script_typed_ir.descr;
+        'b 'u. ('b * 'u) Script_typed_cps_ir.stack_ty ->
+        ('a, 's, 'b, 'u) Script_typed_cps_ir.descr;
     }
-      -> 'bef judgement
+      -> ('a, 's) judgement
 
 type unparsing_mode = Optimized | Readable | Optimized_legacy
 
@@ -81,84 +82,89 @@ type type_logger =
 
 (* ---- Lists, Sets and Maps ----------------------------------------------- *)
 
-val list_empty : 'a Script_typed_ir.boxed_list
+val list_empty : 'a Script_typed_cps_ir.boxed_list
 
 val list_cons :
-  'a -> 'a Script_typed_ir.boxed_list -> 'a Script_typed_ir.boxed_list
+  'a -> 'a Script_typed_cps_ir.boxed_list -> 'a Script_typed_cps_ir.boxed_list
 
-val empty_set : 'a Script_typed_ir.comparable_ty -> 'a Script_typed_ir.set
+val empty_set :
+  'a Script_typed_cps_ir.comparable_ty -> 'a Script_typed_cps_ir.set
 
 val set_fold :
-  ('elt -> 'acc -> 'acc) -> 'elt Script_typed_ir.set -> 'acc -> 'acc
+  ('elt -> 'acc -> 'acc) -> 'elt Script_typed_cps_ir.set -> 'acc -> 'acc
 
-val set_update : 'a -> bool -> 'a Script_typed_ir.set -> 'a Script_typed_ir.set
+val set_update :
+  'a -> bool -> 'a Script_typed_cps_ir.set -> 'a Script_typed_cps_ir.set
 
-val set_mem : 'elt -> 'elt Script_typed_ir.set -> bool
+val set_mem : 'elt -> 'elt Script_typed_cps_ir.set -> bool
 
-val set_size : 'elt Script_typed_ir.set -> Script_int.n Script_int.num
+val set_size : 'elt Script_typed_cps_ir.set -> Script_int.n Script_int.num
 
 val empty_map :
-  'a Script_typed_ir.comparable_ty -> ('a, 'b) Script_typed_ir.map
+  'a Script_typed_cps_ir.comparable_ty -> ('a, 'b) Script_typed_cps_ir.map
 
 val map_fold :
   ('key -> 'value -> 'acc -> 'acc) ->
-  ('key, 'value) Script_typed_ir.map ->
+  ('key, 'value) Script_typed_cps_ir.map ->
   'acc ->
   'acc
 
 val map_update :
   'a ->
   'b option ->
-  ('a, 'b) Script_typed_ir.map ->
-  ('a, 'b) Script_typed_ir.map
+  ('a, 'b) Script_typed_cps_ir.map ->
+  ('a, 'b) Script_typed_cps_ir.map
 
-val map_mem : 'key -> ('key, 'value) Script_typed_ir.map -> bool
+val map_mem : 'key -> ('key, 'value) Script_typed_cps_ir.map -> bool
 
-val map_get : 'key -> ('key, 'value) Script_typed_ir.map -> 'value option
+val map_get : 'key -> ('key, 'value) Script_typed_cps_ir.map -> 'value option
 
 val map_key_ty :
-  ('a, 'b) Script_typed_ir.map -> 'a Script_typed_ir.comparable_ty
+  ('a, 'b) Script_typed_cps_ir.map -> 'a Script_typed_cps_ir.comparable_ty
 
-val map_size : ('a, 'b) Script_typed_ir.map -> Script_int.n Script_int.num
+val map_size : ('a, 'b) Script_typed_cps_ir.map -> Script_int.n Script_int.num
 
 val empty_big_map :
-  'a Script_typed_ir.comparable_ty ->
-  'b Script_typed_ir.ty ->
-  ('a, 'b) Script_typed_ir.big_map
+  'a Script_typed_cps_ir.comparable_ty ->
+  'b Script_typed_cps_ir.ty ->
+  ('a, 'b) Script_typed_cps_ir.big_map
 
 val big_map_mem :
   context ->
   'key ->
-  ('key, 'value) Script_typed_ir.big_map ->
+  ('key, 'value) Script_typed_cps_ir.big_map ->
   (bool * context) tzresult Lwt.t
 
 val big_map_get :
   context ->
   'key ->
-  ('key, 'value) Script_typed_ir.big_map ->
+  ('key, 'value) Script_typed_cps_ir.big_map ->
   ('value option * context) tzresult Lwt.t
 
 val big_map_update :
   'key ->
   'value option ->
-  ('key, 'value) Script_typed_ir.big_map ->
-  ('key, 'value) Script_typed_ir.big_map
+  ('key, 'value) Script_typed_cps_ir.big_map ->
+  ('key, 'value) Script_typed_cps_ir.big_map
 
 val ty_eq :
   context ->
   Script.location ->
-  'ta Script_typed_ir.ty ->
-  'tb Script_typed_ir.ty ->
-  (('ta Script_typed_ir.ty, 'tb Script_typed_ir.ty) eq * context) tzresult
+  'ta Script_typed_cps_ir.ty ->
+  'tb Script_typed_cps_ir.ty ->
+  (('ta Script_typed_cps_ir.ty, 'tb Script_typed_cps_ir.ty) eq * context)
+  tzresult
 
-val compare_address : Script_typed_ir.address -> Script_typed_ir.address -> int
+val compare_address :
+  Script_typed_cps_ir.address -> Script_typed_cps_ir.address -> int
 
-val compare_comparable : 'a Script_typed_ir.comparable_ty -> 'a -> 'a -> int
+val compare_comparable :
+  'a Script_typed_cps_ir.comparable_ty -> 'a -> 'a -> int
 
 val parse_comparable_data :
   ?type_logger:type_logger ->
   context ->
-  'a Script_typed_ir.comparable_ty ->
+  'a Script_typed_cps_ir.comparable_ty ->
   Script.node ->
   ('a * context) tzresult Lwt.t
 
@@ -167,14 +173,14 @@ val parse_data :
   context ->
   legacy:bool ->
   allow_forged:bool ->
-  'a Script_typed_ir.ty ->
+  'a Script_typed_cps_ir.ty ->
   Script.node ->
   ('a * context) tzresult Lwt.t
 
 val unparse_data :
   context ->
   unparsing_mode ->
-  'a Script_typed_ir.ty ->
+  'a Script_typed_cps_ir.ty ->
   'a ->
   (Script.node * context) tzresult Lwt.t
 
@@ -190,8 +196,8 @@ val parse_instr :
   context ->
   legacy:bool ->
   Script.node ->
-  'bef Script_typed_ir.stack_ty ->
-  ('bef judgement * context) tzresult Lwt.t
+  ('a * 's) Script_typed_cps_ir.stack_ty ->
+  (('a, 's) judgement * context) tzresult Lwt.t
 
 (**
   [parse_ty] specialized for the right-hand side part of a big map type, i.e.
@@ -223,17 +229,20 @@ val parse_ty :
   (ex_ty * context) tzresult
 
 val unparse_ty :
-  context -> 'a Script_typed_ir.ty -> (Script.node * context) tzresult
+  context -> 'a Script_typed_cps_ir.ty -> (Script.node * context) tzresult
 
 val parse_toplevel :
   legacy:bool ->
   Script.expr ->
-  (Script.node * Script.node * Script.node * Script_typed_ir.field_annot option)
+  ( Script.node
+  * Script.node
+  * Script.node
+  * Script_typed_cps_ir.field_annot option )
   tzresult
 
 val add_field_annot :
-  Script_typed_ir.field_annot option ->
-  Script_typed_ir.var_annot option ->
+  Script_typed_cps_ir.field_annot option ->
+  Script_typed_cps_ir.var_annot option ->
   Script.node ->
   Script.node
 
@@ -241,7 +250,7 @@ val typecheck_code :
   legacy:bool -> context -> Script.expr -> (type_map * context) tzresult Lwt.t
 
 val serialize_ty_for_error :
-  context -> 'a Script_typed_ir.ty -> (Script.expr * context) tzresult
+  context -> 'a Script_typed_cps_ir.ty -> (Script.expr * context) tzresult
 
 val parse_code :
   ?type_logger:type_logger ->
@@ -255,7 +264,7 @@ val parse_storage :
   context ->
   legacy:bool ->
   allow_forged:bool ->
-  'storage Script_typed_ir.ty ->
+  'storage Script_typed_cps_ir.ty ->
   storage:Script.lazy_expr ->
   ('storage * context) tzresult Lwt.t
 
@@ -272,55 +281,58 @@ val parse_script :
 val unparse_script :
   context ->
   unparsing_mode ->
-  ('a, 'b) Script_typed_ir.script ->
+  ('a, 'b) Script_typed_cps_ir.script ->
   (Script.t * context) tzresult Lwt.t
 
 val parse_contract :
   legacy:bool ->
   context ->
   Script.location ->
-  'a Script_typed_ir.ty ->
+  'a Script_typed_cps_ir.ty ->
   Contract.t ->
   entrypoint:string ->
-  (context * 'a Script_typed_ir.typed_contract) tzresult Lwt.t
+  (context * 'a Script_typed_cps_ir.typed_contract) tzresult Lwt.t
 
 val parse_contract_for_script :
   legacy:bool ->
   context ->
   Script.location ->
-  'a Script_typed_ir.ty ->
+  'a Script_typed_cps_ir.ty ->
   Contract.t ->
   entrypoint:string ->
-  (context * 'a Script_typed_ir.typed_contract option) tzresult Lwt.t
+  (context * 'a Script_typed_cps_ir.typed_contract option) tzresult Lwt.t
 
 val find_entrypoint :
-  't Script_typed_ir.ty ->
-  root_name:Script_typed_ir.field_annot option ->
+  't Script_typed_cps_ir.ty ->
+  root_name:Script_typed_cps_ir.field_annot option ->
   string ->
   ((Script.node -> Script.node) * ex_ty) tzresult
 
 module Entrypoints_map : S.MAP with type key = string
 
 val list_entrypoints :
-  't Script_typed_ir.ty ->
+  't Script_typed_cps_ir.ty ->
   context ->
-  root_name:Script_typed_ir.field_annot option ->
+  root_name:Script_typed_cps_ir.field_annot option ->
   ( Michelson_v1_primitives.prim list list
   * (Michelson_v1_primitives.prim list * Script.node) Entrypoints_map.t )
   tzresult
 
 val pack_data :
-  context -> 'a Script_typed_ir.ty -> 'a -> (bytes * context) tzresult Lwt.t
+  context ->
+  'a Script_typed_cps_ir.ty ->
+  'a ->
+  (bytes * context) tzresult Lwt.t
 
 val hash_comparable_data :
   context ->
-  'a Script_typed_ir.comparable_ty ->
+  'a Script_typed_cps_ir.comparable_ty ->
   'a ->
   (Script_expr_hash.t * context) tzresult Lwt.t
 
 val hash_data :
   context ->
-  'a Script_typed_ir.ty ->
+  'a Script_typed_cps_ir.ty ->
   'a ->
   (Script_expr_hash.t * context) tzresult Lwt.t
 
@@ -330,7 +342,7 @@ val no_lazy_storage_id : lazy_storage_ids
 
 val collect_lazy_storage :
   context ->
-  'a Script_typed_ir.ty ->
+  'a Script_typed_cps_ir.ty ->
   'a ->
   (lazy_storage_ids * context) tzresult
 
@@ -342,10 +354,13 @@ val extract_lazy_storage_diff :
   temporary:bool ->
   to_duplicate:lazy_storage_ids ->
   to_update:lazy_storage_ids ->
-  'a Script_typed_ir.ty ->
+  'a Script_typed_cps_ir.ty ->
   'a ->
   ('a * Lazy_storage.diffs option * context) tzresult Lwt.t
 
 (* raise Not_found if none or more than one found *)
 val get_single_sapling_state :
-  context -> 'a Script_typed_ir.ty -> 'a -> (Sapling.Id.t * context) tzresult
+  context ->
+  'a Script_typed_cps_ir.ty ->
+  'a ->
+  (Sapling.Id.t * context) tzresult

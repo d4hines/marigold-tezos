@@ -8,8 +8,9 @@ big_map diff
   New map(0) of type (big_map string string)
   Set map(0)["hello"] to "hi"
 trace
-  - location: 12 (remaining gas: 1039983.253 units remaining)
-    [ (Pair "" { Elt "hello" "hi" } None)  	 ]
+  - location: 11 (remaining gas: 1039983.253 units remaining)
+    [ (Pair "" { Elt "hello" "hi" } None)  	
+      Unit  	 ]
   - location: 12 (remaining gas: 1039983.173 units remaining)
     [ (Pair "" { Elt "hello" "hi" } None)  	
       (Pair "" { Elt "hello" "hi" } None)  	
@@ -27,41 +28,31 @@ trace
   - location: 18 (remaining gas: 1039982.833 units remaining)
     [ { Elt "hello" "hi" }  	
       Unit  	 ]
-  - location: -1 (remaining gas: 1039982.763 units remaining)
-    [ { Elt "hello" "hi" }  	
-      Unit  	 ]
-  - location: 19 (remaining gas: 1039982.683 units remaining)
+  - location: 19 (remaining gas: 1039982.753 units remaining)
     [ { Elt "hello" "hi" }  	
       { Elt "hello" "hi" }  	
       Unit  	 ]
-  - location: -1 (remaining gas: 1039982.613 units remaining)
-    [ { Elt "hello" "hi" }  	
-      { Elt "hello" "hi" }  	
-      Unit  	 ]
-  - location: 15 (remaining gas: 1039982.533 units remaining)
+  - location: 15 (remaining gas: 1039982.673 units remaining)
     [ ""  	@parameter
       { Elt "hello" "hi" }  	
       { Elt "hello" "hi" }  	
       Unit  	 ]
-  - location: 20 (remaining gas: 1039982.453 units remaining)
+  - location: 20 (remaining gas: 1039982.593 units remaining)
     [ None  	
       { Elt "hello" "hi" }  	
       Unit  	 ]
-  - location: 21 (remaining gas: 1039982.383 units remaining)
+  - location: 21 (remaining gas: 1039982.523 units remaining)
     [ { Elt "hello" "hi" }  	
       None  	
       Unit  	 ]
-  - location: 22 (remaining gas: 1039982.303 units remaining)
+  - location: 22 (remaining gas: 1039982.443 units remaining)
     [ (Pair { Elt "hello" "hi" } None)  	
       Unit  	 ]
-  - location: 23 (remaining gas: 1039982.223 units remaining)
+  - location: 23 (remaining gas: 1039982.363 units remaining)
     [ {}  	
       (Pair { Elt "hello" "hi" } None)  	
       Unit  	 ]
-  - location: 25 (remaining gas: 1039982.143 units remaining)
-    [ (Pair {} { Elt "hello" "hi" } None)  	
-      Unit  	 ]
-  - location: -1 (remaining gas: 1039982.073 units remaining)
+  - location: 25 (remaining gas: 1039982.283 units remaining)
     [ (Pair {} { Elt "hello" "hi" } None)  	
       Unit  	 ]
 
