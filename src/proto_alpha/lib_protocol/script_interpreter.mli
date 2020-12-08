@@ -72,7 +72,7 @@ type ('a, 's, 'b, 'f, 'u) logging_function =
   ('a, 's, 'b, 'f) Script_typed_cps_ir.kinstr ->
   context ->
   Script.location ->
-  'u Script_typed_ir.stack_ty ->
+  'u Script_typed_cps_ir.stack_ty ->
   'u ->
   unit
 
@@ -107,9 +107,10 @@ val step :
   logger option ->
   context ->
   step_constants ->
-  ('bef, 'aft) Script_typed_ir.descr ->
-  'bef ->
-  ('aft * context) tzresult Lwt.t
+  ('a, 's, 'r, 'f) Script_typed_cps_ir.kdescr ->
+  'a ->
+  's ->
+  ('r * 'f * context) tzresult Lwt.t
 
 val execute :
   ?logger:logger ->
@@ -169,9 +170,8 @@ type (_, _, _, _) konts =
       ('a, 's, bool, 'a * 's) kinstr * ('a, 's, 'r, 'f) konts
       -> (bool, 'a * 's, 'r, 'f) konts
   | KLoop_in_left :
-      ('a, 's, ('a, 'b) Script_typed_ir.union, 's) kinstr
-      * ('b, 's, 'r, 'f) konts
-      -> (('a, 'b) Script_typed_ir.union, 's, 'r, 'f) konts
+      ('a, 's, ('a, 'b) union, 's) kinstr * ('b, 's, 'r, 'f) konts
+      -> (('a, 'b) union, 's, 'r, 'f) konts
   | KIter :
       ('a, 'b * 's, 'b, 's) kinstr * 'a list * ('b, 's, 'r, 'f) konts
       -> ('b, 's, 'r, 'f) konts
@@ -180,27 +180,27 @@ type (_, _, _, _) konts =
       * 'a list
       * 'b list
       * int
-      * ('b Script_typed_ir.boxed_list, 'c * 's, 'r, 'f) konts
+      * ('b boxed_list, 'c * 's, 'r, 'f) konts
       -> ('c, 's, 'r, 'f) konts
   | KList_mapped :
       ('a, 'c * 's, 'b, 'c * 's) kinstr
       * 'a list
       * 'b list
       * int
-      * ('b Script_typed_ir.boxed_list, 'c * 's, 'r, 'f) konts
+      * ('b boxed_list, 'c * 's, 'r, 'f) konts
       -> ('b, 'c * 's, 'r, 'f) konts
   | KMap_mapping :
       ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
       * ('a * 'b) list
-      * ('a, 'c) Script_typed_ir.map
-      * (('a, 'c) Script_typed_ir.map, 'd * 's, 'r, 'f) konts
+      * ('a, 'c) map
+      * (('a, 'c) map, 'd * 's, 'r, 'f) konts
       -> ('d, 's, 'r, 'f) konts
   | KMap_mapped :
       ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
       * ('a * 'b) list
-      * ('a, 'c) Script_typed_ir.map
+      * ('a, 'c) map
       * 'a
-      * (('a, 'c) Script_typed_ir.map, 'd * 's, 'r, 'f) konts
+      * (('a, 'c) map, 'd * 's, 'r, 'f) konts
       -> ('c, 'd * 's, 'r, 'f) konts
 
 (** [run logger ctxt step_constants local_gas_counter i k ks accu stack]

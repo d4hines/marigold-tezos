@@ -36,13 +36,13 @@ let dummy_list = list_cons 42 list_empty
 let forty_two = Alpha_context.Script_int.of_int 42
 
 let dummy_set =
-  set_update forty_two true (empty_set Script_typed_ir.(Int_key None))
+  set_update forty_two true (empty_set Script_typed_cps_ir.(Int_key None))
 
 let dummy_map =
   map_update
     forty_two
     (Some forty_two)
-    (empty_map Script_typed_ir.(Int_key None))
+    (empty_map Script_typed_cps_ir.(Int_key None))
 
 let dummy_timestamp = Alpha_context.Script_timestamp.of_zint (Z.of_int 42)
 
@@ -138,7 +138,7 @@ let all_interpreter_costs =
     ("dropn", dropn 42);
     ("neq", neq);
     ("nop", nop);
-    ("compare", compare Script_typed_ir.(Int_key None) forty_two forty_two);
+    ("compare", compare Script_typed_cps_ir.(Int_key None) forty_two forty_two);
     ( "concat_string_precheck",
       concat_string_precheck (list_cons "42" list_empty) );
     ("concat_string", concat_string (S.of_int 42));

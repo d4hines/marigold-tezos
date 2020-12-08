@@ -7,44 +7,39 @@ emitted operations
 big_map diff
   
 trace
-  - location: 19 (remaining gas: 1039982.170 units remaining)
-    [ (Pair (Pair 10 (Right 0)) (Left None))  	 ]
-  - location: 19 (remaining gas: 1039982.090 units remaining)
+  - location: 18 (remaining gas: 1039982.040 units remaining)
+    [ (Pair (Pair 10 (Right 0)) (Left None))  	
+      Unit  	 ]
+  - location: 19 (remaining gas: 1039981.960 units remaining)
     [ (Pair 10 (Right 0))  	@parameter
       Unit  	 ]
-  - location: 20 (remaining gas: 1039982.010 units remaining)
+  - location: 20 (remaining gas: 1039981.880 units remaining)
     [ 10  	
       (Right 0)  	
       Unit  	 ]
-  - location: 21 (remaining gas: 1039981.940 units remaining)
+  - location: 21 (remaining gas: 1039981.810 units remaining)
     [ (Right 0)  	
       10  	
       Unit  	 ]
-  - location: 22 (remaining gas: 1039981.850 units remaining)
+  - location: 22 (remaining gas: 1039981.720 units remaining)
     [ 0  	
       10  	
       Unit  	 ]
-  - location: 32 (remaining gas: 1039981.780 units remaining)
+  - location: 32 (remaining gas: 1039981.650 units remaining)
     [ 10  	
       0  	
       Unit  	 ]
-  - location: 33 (remaining gas: 1039981.480 units remaining)
+  - location: 33 (remaining gas: 1039981.350 units remaining)
     [ None  	
       Unit  	 ]
-  - location: 34 (remaining gas: 1039981.400 units remaining)
+  - location: 34 (remaining gas: 1039981.270 units remaining)
     [ (Right None)  	
       Unit  	 ]
-  - location: -1 (remaining gas: 1039981.330 units remaining)
-    [ (Right None)  	
-      Unit  	 ]
-  - location: 39 (remaining gas: 1039981.250 units remaining)
+  - location: 39 (remaining gas: 1039981.190 units remaining)
     [ {}  	
       (Right None)  	
       Unit  	 ]
-  - location: 41 (remaining gas: 1039981.170 units remaining)
-    [ (Pair {} (Right None))  	
-      Unit  	 ]
-  - location: -1 (remaining gas: 1039981.100 units remaining)
+  - location: 41 (remaining gas: 1039981.110 units remaining)
     [ (Pair {} (Right None))  	
       Unit  	 ]
 

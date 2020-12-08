@@ -7,8 +7,9 @@ emitted operations
 big_map diff
   
 trace
-  - location: 7 (remaining gas: 1039986.458 units remaining)
-    [ (Pair "" "?")  	 ]
+  - location: 6 (remaining gas: 1039986.458 units remaining)
+    [ (Pair "" "?")  	
+      Unit  	 ]
   - location: 7 (remaining gas: 1039986.378 units remaining)
     [ ""  	@parameter
       Unit  	 ]
@@ -20,8 +21,9 @@ trace
     [ ""  	@parameter
       { PUSH string "_abc" ; NIL string ; SWAP ; CONS ; SWAP ; CONS ; CONCAT }  	
       Unit  	 ]
-  - location: 12 (remaining gas: 1039986.128 units remaining)
-    [ ""  	@arg ]
+  - location: 11 (remaining gas: 1039986.128 units remaining)
+    [ ""  	@arg
+      Unit  	 ]
   - location: 12 (remaining gas: 1039986.048 units remaining)
     [ "_abc"  	
       ""  	@arg
@@ -50,20 +52,14 @@ trace
   - location: 21 (remaining gas: 1039985.548 units remaining)
     [ "_abc"  	
       Unit  	 ]
-  - location: -1 (remaining gas: 1039985.478 units remaining)
+  - location: 23 (remaining gas: 1039985.548 units remaining)
     [ "_abc"  	
       Unit  	 ]
-  - location: 23 (remaining gas: 1039985.478 units remaining)
-    [ "_abc"  	
-      Unit  	 ]
-  - location: 24 (remaining gas: 1039985.398 units remaining)
+  - location: 24 (remaining gas: 1039985.468 units remaining)
     [ {}  	
       "_abc"  	
       Unit  	 ]
-  - location: 26 (remaining gas: 1039985.318 units remaining)
-    [ (Pair {} "_abc")  	
-      Unit  	 ]
-  - location: -1 (remaining gas: 1039985.248 units remaining)
+  - location: 26 (remaining gas: 1039985.388 units remaining)
     [ (Pair {} "_abc")  	
       Unit  	 ]
 

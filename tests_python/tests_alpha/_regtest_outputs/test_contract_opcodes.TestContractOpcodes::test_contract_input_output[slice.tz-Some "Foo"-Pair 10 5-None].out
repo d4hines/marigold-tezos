@@ -7,46 +7,38 @@ emitted operations
 big_map diff
   
 trace
-  - location: 10 (remaining gas: 1039988.031 units remaining)
-    [ (Pair (Pair 10 5) (Some "Foo"))  	 ]
-  - location: 10 (remaining gas: 1039987.951 units remaining)
+  - location: 9 (remaining gas: 1039987.901 units remaining)
+    [ (Pair (Pair 10 5) (Some "Foo"))  	
+      Unit  	 ]
+  - location: 10 (remaining gas: 1039987.821 units remaining)
     [ (Pair 10 5)  	@parameter
       (Some "Foo")  	@storage
       Unit  	 ]
-  - location: 11 (remaining gas: 1039987.881 units remaining)
+  - location: 11 (remaining gas: 1039987.751 units remaining)
     [ (Some "Foo")  	@storage
       (Pair 10 5)  	@parameter
       Unit  	 ]
-  - location: 13 (remaining gas: 1039987.801 units remaining)
+  - location: 13 (remaining gas: 1039987.671 units remaining)
     [ "Foo"  	@storage.some
       (Pair 10 5)  	@parameter
       Unit  	 ]
-  - location: 19 (remaining gas: 1039987.731 units remaining)
+  - location: 19 (remaining gas: 1039987.601 units remaining)
     [ (Pair 10 5)  	@parameter
       "Foo"  	@storage.some
       Unit  	 ]
-  - location: 20 (remaining gas: 1039987.651 units remaining)
+  - location: 20 (remaining gas: 1039987.521 units remaining)
     [ 10  	
       5  	
       "Foo"  	@storage.some
       Unit  	 ]
-  - location: 21 (remaining gas: 1039987.571 units remaining)
-    [ None  	@storage.some.slice
-      Unit  	 ]
-  - location: -1 (remaining gas: 1039987.501 units remaining)
+  - location: 21 (remaining gas: 1039987.441 units remaining)
     [ None  	
       Unit  	 ]
-  - location: 12 (remaining gas: 1039987.431 units remaining)
-    [ None  	
-      Unit  	 ]
-  - location: 22 (remaining gas: 1039987.351 units remaining)
+  - location: 22 (remaining gas: 1039987.361 units remaining)
     [ {}  	
       None  	
       Unit  	 ]
-  - location: 24 (remaining gas: 1039987.271 units remaining)
-    [ (Pair {} None)  	
-      Unit  	 ]
-  - location: -1 (remaining gas: 1039987.201 units remaining)
+  - location: 24 (remaining gas: 1039987.281 units remaining)
     [ (Pair {} None)  	
       Unit  	 ]
 
