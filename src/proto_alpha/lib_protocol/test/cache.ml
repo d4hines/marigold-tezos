@@ -25,8 +25,16 @@
 
 open Protocol
 
+(* Aux. for wrapping *)
 let wrap e = Lwt.return (Environment.wrap_error e)
 
+(* Aux. casting cost to Z, copied from gas_costs.ml *)
+let cast_cost_to_z (c : Alpha_context.Gas.cost) : Z.t =
+  Data_encoding.Binary.to_bytes_exn Alpha_context.Gas.cost_encoding c
+  |> Data_encoding.Binary.of_bytes_exn Data_encoding.z
+
+(** test case:
+    cache initialized as empty *)
 let decache_init () =
   Context.init 1
   >>=? fun (b, _) ->
@@ -41,4 +49,35 @@ let decache_init () =
   let bds = Raw_context.get_decarbonated_cache ctx in
   Assert.equal_int ~loc:__LOC__ (List.length bds) 0
 
-let tests = [Test.tztest "init decarbonated cache" `Quick decache_init]
+(** test case:
+    cache initialized as empty *)
+let decache_mem () =
+  Context.init 1
+  >>=? fun (b, contracts) ->
+  let contract = List.nth contracts 0 in
+  Raw_context.prepare
+    b.context
+    ~level:b.header.shell.level
+    ~predecessor_timestamp:b.header.shell.timestamp
+    ~timestamp:b.header.shell.timestamp
+    ~fitness:b.header.shell.fitness
+  >>= wrap
+  >>=? fun ctx ->
+  let i = contract in
+  let v = Bytes.of_string "some value" in
+  Big_map.Contents.set ctx i v
+  >>=? fun (ctx, _) ->
+  let op_gas_bef = cast_cost_to_z (Raw_context.gas_level ctx) in
+  let bl_gas_bef = cast_cost_to_z (Raw_context.block_gas_level ctx) in
+  Big_map.Contents.mem ctx i
+  >>=? fun (ctx, exists) ->
+  let op_gas_aft = cast_cost_to_z (Raw_context.gas_level ctx) in
+  let bl_gas_aft = cast_cost_to_z (Raw_context.block_gas_level ctx) in
+  Assert.equal_bool ~loc:__LOC__ (Z.equal op_gas_bef op_gas_aft) true
+  Assert.equal_bool ~loc:__LOC__ (Z.equal bl_gas_bef bl_gas_aft) true
+
+(*********************************************************************)
+
+let tests =
+  [ Test.tztest "init decarbonated cache" `Quick decache_init;
+    Test.tztest "membership of decarbonated cache" `Quick decache_mem ]
