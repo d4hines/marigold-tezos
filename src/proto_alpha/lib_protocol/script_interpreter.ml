@@ -34,7 +34,6 @@
 
 open Alpha_context
 open Script
-open Script_typed_ir
 open Script_typed_cps_ir
 open Script_ir_translator
 module S = Saturation_repr
@@ -145,55 +144,19 @@ let () =
 (* ---- interpreter ---------------------------------------------------------*)
 
 let rec interp_stack_prefix_preserving_operation :
-    type fbef bef faft aft result.
-    (fbef -> faft * result) ->
-    (fbef, faft, bef, aft) stack_prefix_preservation_witness ->
-    bef ->
-    aft * result =
- fun f n stk ->
+    type a s b t c u d w result.
+    (a -> s -> (b * t) * result) ->
+    (a, s, b, t, c, u, d, w) stack_prefix_preservation_witness ->
+    c ->
+    u ->
+    (d * w) * result =
+ fun f n accu stk ->
   match (n, stk) with
-  | ( Prefix
-        (Prefix
-          (Prefix
-            (Prefix
-              (Prefix
-                (Prefix
-                  (Prefix
-                    (Prefix
-                      (Prefix
-                        (Prefix
-                          (Prefix
-                            (Prefix (Prefix (Prefix (Prefix (Prefix n))))))))))))))),
-      ( v0,
-        ( v1,
-          ( v2,
-            ( v3,
-              ( v4,
-                ( v5,
-                  ( v6,
-                    (v7, (v8, (v9, (va, (vb, (vc, (vd, (ve, (vf, rest)))))))))
-                  ) ) ) ) ) ) ) ) ->
-      interp_stack_prefix_preserving_operation f n rest
-      |> fun (rest', result) ->
-      ( ( v0,
-          ( v1,
-            ( v2,
-              ( v3,
-                ( v4,
-                  ( v5,
-                    ( v6,
-                      ( v7,
-                        (v8, (v9, (va, (vb, (vc, (vd, (ve, (vf, rest'))))))))
-                      ) ) ) ) ) ) ) ),
-        result )
-  | (Prefix (Prefix (Prefix (Prefix n))), (v0, (v1, (v2, (v3, rest))))) ->
-      interp_stack_prefix_preserving_operation f n rest
-      |> fun (rest', result) -> ((v0, (v1, (v2, (v3, rest')))), result)
-  | (Prefix n, (v, rest)) ->
-      interp_stack_prefix_preserving_operation f n rest
-      |> fun (rest', result) -> ((v, rest'), result)
-  | (Rest, v) ->
-      f v
+  | (KPrefix (_, n), rest) ->
+      interp_stack_prefix_preserving_operation f n (fst rest) (snd rest)
+      |> fun ((v, rest'), result) -> ((accu, (v, rest')), result)
+  | (KRest, v) ->
+      f accu v
 
 type step_constants = {
   source : Contract.t;
@@ -745,13 +708,13 @@ let log_entry (logger : logger) ctxt gas k accu stack =
   let module Log = (val logger) in
   let kinfo = kinfo_of_kinstr k in
   let ctxt = update_context gas ctxt in
-  Log.log_entry k ctxt kinfo.kloc kinfo.kstack_ty (accu, stack)
+  Log.log_entry k ctxt kinfo.iloc kinfo.kstack_ty (accu, stack)
 
 let log_exit (logger : logger) ctxt gas kprev k accu stack =
   let module Log = (val logger) in
   let ctxt = update_context gas ctxt in
   let kinfo_prev = kinfo_of_kinstr kprev and kinfo = kinfo_of_kinstr k in
-  Log.log_exit k ctxt kinfo_prev.kloc kinfo.kstack_ty (accu, stack)
+  Log.log_exit k ctxt kinfo_prev.iloc kinfo.kstack_ty (accu, stack)
 
 let get_log (logger : logger option) =
   match logger with
@@ -844,20 +807,19 @@ type (_, _, _, _) konts =
 
 *)
 let rec run_descr :
-    type bef aft.
+    type a s r f.
     logger option ->
     context ->
     step_constants ->
-    (bef, aft) kdescr ->
-    bef ->
-    (aft * context) tzresult Lwt.t =
- fun logger ctxt step_constants descr stack ->
-  let (KDescr {kinstr; kli; klo}) = descr in
-  let (accu, stack) = lift kli stack in
+    (a, s, r, f) kdescr ->
+    a ->
+    s ->
+    (r * f * context) tzresult Lwt.t =
+ fun logger ctxt step_constants descr accu stack ->
   let gas = (Gas.gas_counter ctxt :> int) in
-  step logger (outdated ctxt) step_constants gas kinstr KNil accu stack
+  step logger (outdated ctxt) step_constants gas descr.kinstr KNil accu stack
   >>=? fun (accu, stack, ctxt, gas) ->
-  return (unlift klo (accu, stack), update_context gas ctxt)
+  return (accu, stack, update_context gas ctxt)
 
 and run :
     type a a' s s' b t b' t' r f.
@@ -926,14 +888,12 @@ and step :
           (run [@ocaml.tailcall]) logger ctxt sc gas i k ks (Some accu) stack
       | KCons_none (_, _, k) ->
           (run [@ocaml.tailcall]) logger ctxt sc gas i k ks None (accu, stack)
-      | KIf_none (_, bt, bf, k) -> (
+      | KIf_none (_, bt, bf) -> (
         match accu with
         | None ->
-            let ks = KCons (k, ks) in
             let (accu, stack) = stack in
             (run [@ocaml.tailcall]) logger ctxt sc gas i bt ks accu stack
         | Some v ->
-            let ks = KCons (k, ks) in
             (run [@ocaml.tailcall]) logger ctxt sc gas i bf ks v stack )
       (* pairs *)
       | KCons_pair (_, k) ->
@@ -953,13 +913,12 @@ and step :
           (run [@ocaml.tailcall]) logger ctxt sc gas i k ks (L accu) stack
       | KCons_right (_, k) ->
           (run [@ocaml.tailcall]) logger ctxt sc gas i k ks (R accu) stack
-      | KIf_left (_, bl, br, k) -> (
-          let ks = KCons (k, ks) in
-          match accu with
-          | L v ->
-              (run [@ocaml.tailcall]) logger ctxt sc gas i bl ks v stack
-          | R v ->
-              (run [@ocaml.tailcall]) logger ctxt sc gas i br ks v stack )
+      | KIf_left (_, bl, br) -> (
+        match accu with
+        | L v ->
+            (run [@ocaml.tailcall]) logger ctxt sc gas i bl ks v stack
+        | R v ->
+            (run [@ocaml.tailcall]) logger ctxt sc gas i br ks v stack )
       (* lists *)
       | KCons_list (_, k) ->
           let (tl, stack) = stack in
@@ -969,16 +928,14 @@ and step :
           let stack = (accu, stack) in
           let accu = list_empty in
           (run [@ocaml.tailcall]) logger ctxt sc gas i k ks accu stack
-      | KIf_cons (_, bc, bn, k) -> (
-          let ks = KCons (k, ks) in
-          match accu.elements with
-          | [] ->
-              let (accu, stack) = stack in
-              (run [@ocaml.tailcall]) logger ctxt sc gas i bn ks accu stack
-          | hd :: tl ->
-              let tl = {elements = tl; length = accu.length - 1} in
-              (run [@ocaml.tailcall]) logger ctxt sc gas i bc ks hd (tl, stack)
-          )
+      | KIf_cons (_, bc, bn) -> (
+        match accu.elements with
+        | [] ->
+            let (accu, stack) = stack in
+            (run [@ocaml.tailcall]) logger ctxt sc gas i bn ks accu stack
+        | hd :: tl ->
+            let tl = {elements = tl; length = accu.length - 1} in
+            (run [@ocaml.tailcall]) logger ctxt sc gas i bc ks hd (tl, stack) )
       | KList_map (kinfo, body, k) ->
           let xs = accu.elements in
           let ys = [] in
@@ -991,7 +948,7 @@ and step :
           let kinfo_mapping =
             match kinfo.kstack_ty with
             | Item_t (_, kstack_ty, _) ->
-                {kloc = kinfo.kloc; kstack_ty}
+                {iloc = kinfo.iloc; kstack_ty}
           in
           let k =
             KList_mapping (kinfo_mapping, kinfo_mapped, body, xs, ys, len, k)
@@ -1257,7 +1214,7 @@ and step :
           let (y, stack) = stack in
           match Script_int.to_int64 y with
           | None ->
-              get_log logger >>=? fun log -> fail (Overflow (kinfo.kloc, log))
+              get_log logger >>=? fun log -> fail (Overflow (kinfo.iloc, log))
           | Some y ->
               Tez.(x *? y)
               >>?= fun res ->
@@ -1267,7 +1224,7 @@ and step :
           let (x, stack) = stack in
           match Script_int.to_int64 y with
           | None ->
-              get_log logger >>=? fun log -> fail (Overflow (kinfo.kloc, log))
+              get_log logger >>=? fun log -> fail (Overflow (kinfo.iloc, log))
           | Some y ->
               Tez.(x *? y)
               >>?= fun res ->
@@ -1407,14 +1364,14 @@ and step :
           let x = accu and (y, stack) = stack in
           match Script_int.shift_left_n x y with
           | None ->
-              get_log logger >>=? fun log -> fail (Overflow (kinfo.kloc, log))
+              get_log logger >>=? fun log -> fail (Overflow (kinfo.iloc, log))
           | Some x ->
               (run [@ocaml.tailcall]) logger ctxt sc gas i k ks x stack )
       | KLsr_nat (kinfo, k) -> (
           let x = accu and (y, stack) = stack in
           match Script_int.shift_right_n x y with
           | None ->
-              get_log logger >>=? fun log -> fail (Overflow (kinfo.kloc, log))
+              get_log logger >>=? fun log -> fail (Overflow (kinfo.iloc, log))
           | Some r ->
               (run [@ocaml.tailcall]) logger ctxt sc gas i k ks r stack )
       | KOr_nat (_, k) ->
@@ -1442,9 +1399,8 @@ and step :
           let res = Script_int.lognot x in
           (run [@ocaml.tailcall]) logger ctxt sc gas i k ks res stack
       (* control *)
-      | KIf (_, bt, bf, k) ->
+      | KIf (_, bt, bf) ->
           let (res, stack) = stack in
-          let ks = KCons (k, ks) in
           if accu then
             (run [@ocaml.tailcall]) logger ctxt sc gas i bt ks res stack
           else (run [@ocaml.tailcall]) logger ctxt sc gas i bf ks res stack
@@ -1476,7 +1432,7 @@ and step :
           let capture = accu in
           let (lam, stack) = stack in
           let (Lam (descr, expr)) = lam in
-          let (Item_t (full_arg_ty, _, _)) = descr.bef in
+          let (Item_t (full_arg_ty, _, _)) = descr.kbef in
           let ctxt = update_context gas ctxt in
           unparse_data ctxt Optimized capture_ty capture
           >>=? fun (const_expr, ctxt) ->
@@ -1484,42 +1440,29 @@ and step :
           >>?= fun (ty_expr, ctxt) ->
           match full_arg_ty with
           | Pair_t ((capture_ty, _, _), (arg_ty, _, _), _) ->
-              let arg_stack_ty = Item_t (arg_ty, Empty_t, None) in
-              let const_descr =
-                ( {
-                    loc = descr.loc;
-                    bef = arg_stack_ty;
-                    aft = Item_t (capture_ty, arg_stack_ty, None);
-                    instr = Const capture;
-                  }
-                  : (_, _) descr )
-              in
-              let pair_descr =
-                ( {
-                    loc = descr.loc;
-                    bef = Item_t (capture_ty, arg_stack_ty, None);
-                    aft = Item_t (full_arg_ty, Empty_t, None);
-                    instr = Cons_pair;
-                  }
-                  : (_, _) descr )
-              in
-              let seq_descr =
-                ( {
-                    loc = descr.loc;
-                    bef = arg_stack_ty;
-                    aft = Item_t (full_arg_ty, Empty_t, None);
-                    instr = Seq (const_descr, pair_descr);
-                  }
-                  : (_, _) descr )
+              let arg_stack_ty =
+                Item_t (arg_ty, Item_t (Unit_t None, Empty_t, None), None)
               in
               let full_descr =
-                ( {
-                    loc = descr.loc;
-                    bef = arg_stack_ty;
-                    aft = descr.aft;
-                    instr = Seq (seq_descr, descr);
-                  }
-                  : (_, _) descr )
+                {
+                  kloc = descr.kloc;
+                  kbef = arg_stack_ty;
+                  kaft = descr.kaft;
+                  kinstr =
+                    (let kinfo_const =
+                       {iloc = descr.kloc; kstack_ty = arg_stack_ty}
+                     in
+                     let kinfo_pair =
+                       {
+                         iloc = descr.kloc;
+                         kstack_ty = Item_t (capture_ty, arg_stack_ty, None);
+                       }
+                     in
+                     KConst
+                       ( kinfo_const,
+                         capture,
+                         KCons_pair (kinfo_pair, descr.kinstr) ));
+                }
               in
               let full_expr =
                 Micheline.Seq
@@ -1609,7 +1552,7 @@ and step :
               Script_ir_translator.parse_contract_for_script
                 ~legacy:false
                 ctxt
-                kinfo.kloc
+                kinfo.iloc
                 t
                 contract
                 ~entrypoint
@@ -1800,58 +1743,69 @@ and step :
           let accu = sc.amount and stack = (accu, stack) in
           (run [@ocaml.tailcall]) logger ctxt sc gas i k ks accu stack
       | KDig (_, _n, n', k) ->
-          let (stack, accu) =
+          let ((accu, stack), x) =
             interp_stack_prefix_preserving_operation
-              (fun (v, stack) -> (stack, v))
+              (fun v stack -> (stack, v))
               n'
-              (accu, stack)
+              accu
+              stack
           in
+          let accu = x and stack = (accu, stack) in
           (run [@ocaml.tailcall]) logger ctxt sc gas i k ks accu stack
       | KDug (_, _n, n', k) ->
           let v = accu in
-          let (stack, ()) =
+          let (accu, stack) = stack in
+          let ((accu, stack), ()) =
             interp_stack_prefix_preserving_operation
-              (fun stack -> ((v, stack), ()))
+              (fun accu stack -> ((v, (accu, stack)), ()))
               n'
+              accu
               stack
           in
-          let (accu, stack) = stack in
           (run [@ocaml.tailcall]) logger ctxt sc gas i k ks accu stack
-      | KDipn (_, _n, n', b, k) -> (
+      | KDipn (_, _n, n', b, k) ->
           (*
 
               The following function pops n elements from the stack
               and push their reintroduction in the continuations stack.
 
-            *)
+          *)
           let rec ktransfer :
-              type w u v s.
-              (w, v, s, u) kstack_prefix_preservation_witness ->
-              s ->
-              (u, b, t) exkinstr ->
-              w * (v, b, t) exkinstr =
-           fun w stack k ->
-            match (w, stack) with
-            | (KPrefix (kinfo, _, IsLifted lu', w), (x, stack)) -> (
-              match k with
-              | ExKInstr k -> (
-                match inverse_lift lu' with
-                | ExLiftInverse Refl ->
-                    ktransfer w stack (ExKInstr (KConst (kinfo, x, k))) ) )
-            | (KRest (_, _), _) ->
-                (stack, k)
+              type a s e z c u d w.
+              (a, s, e, z, c, u, d, w) stack_prefix_preservation_witness ->
+              c ->
+              u ->
+              (d, w, b, t) kinstr ->
+              a * s * (e, z, b, t) kinstr =
+           fun w accu stack k ->
+            match w with
+            | KPrefix (kinfo, w) ->
+                let k = KConst (kinfo, accu, k) in
+                let (accu, stack) = stack in
+                ktransfer w accu stack k
+            | KRest ->
+                (accu, stack, k)
           in
-          match ktransfer n' (accu, stack) (ExKInstr k) with
-          | (stack, ExKInstr restore_prefix) ->
-              let ks = KCons (restore_prefix, ks) in
-              let (accu, stack) = stack in
-              (run [@ocaml.tailcall]) logger ctxt sc gas i b ks accu stack )
+          let (accu, stack, restore_prefix) = ktransfer n' accu stack k in
+          let ks = KCons (restore_prefix, ks) in
+          (run [@ocaml.tailcall]) logger ctxt sc gas i b ks accu stack
       | KDropn (_, _n, n', k) ->
-          let (_, stack) =
-            interp_stack_prefix_preserving_operation
-              (fun stack -> (stack, stack))
-              n'
-              (accu, stack)
+          let stack =
+            let rec aux :
+                type a s b t.
+                (b, t, b, t, a, s, a, s) stack_prefix_preservation_witness ->
+                a ->
+                s ->
+                b * t =
+             fun w accu stack ->
+              match w with
+              | KRest ->
+                  (accu, stack)
+              | KPrefix (_, w) ->
+                  let (accu, stack) = stack in
+                  aux w accu stack
+            in
+            aux n' accu stack
           in
           let (accu, stack) = stack in
           (run [@ocaml.tailcall]) logger ctxt sc gas i k ks accu stack
@@ -2128,26 +2082,24 @@ and unpack :
 
 (* FIXME: This ugly function will disappear when elaboration is ready. *)
 and step_descr :
-    type b a.
+    type a s r f.
     bool ->
     logger option ->
     context ->
     step_constants ->
-    (b, a) descr ->
-    b ->
-    (a * context) tzresult Lwt.t =
- fun log_now logger ctxt step_constants descr stack ->
-  (* FIXME: That's ugly but this is only temporary. *)
-  let (KDescr {kinstr} as kdescr) = translate descr in
+    (a, s, r, f) kdescr ->
+    a ->
+    s ->
+    (r * f * context) tzresult Lwt.t =
+ fun log_now logger ctxt step_constants descr accu stack ->
   ( if log_now then
     match logger with
     | None ->
         ()
     | Some logger ->
         let module Log = (val logger) in
-        let kinfo = kinfo_of_kinstr kinstr in
-        Log.log_interp kinstr ctxt kinfo.kloc descr.bef stack ) ;
-  run_descr logger ctxt step_constants kdescr stack
+        Log.log_interp descr.kinstr ctxt descr.kloc descr.kbef (accu, stack) ) ;
+  run_descr logger ctxt step_constants descr accu stack
 
 and interp :
     type p r.
@@ -2158,9 +2110,8 @@ and interp :
     p ->
     (r * context) tzresult Lwt.t =
  fun logger ctxt step_constants (Lam (code, _)) arg ->
-  let stack = (arg, ()) in
-  step_descr true logger ctxt step_constants code stack
-  >|=? fun ((ret, ()), ctxt) -> (ret, ctxt)
+  step_descr true logger ctxt step_constants code arg ((), ())
+  >|=? fun (ret, _, ctxt) -> (ret, ctxt)
 
 let kstep logger ctxt step_constants kinstr accu stack =
   let gas = (Gas.gas_counter ctxt :> int) in

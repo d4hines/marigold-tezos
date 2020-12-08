@@ -237,7 +237,7 @@ module Scripts = struct
 
     type log_element =
       | Log :
-          context * Script.location * 'a * 'a Script_typed_ir.stack_ty
+          context * Script.location * 'a * 'a Script_typed_cps_ir.stack_ty
           -> log_element
 
     let unparse_stack ctxt (stack, stack_ty) =
@@ -245,7 +245,7 @@ module Scripts = struct
       let ctxt = Gas.set_unlimited ctxt in
       let rec unparse_stack :
           type a.
-          a Script_typed_ir.stack_ty * a ->
+          a Script_typed_cps_ir.stack_ty * a ->
           (Script.expr * string option) list tzresult Lwt.t = function
         | (Empty_t, ()) ->
             return_nil

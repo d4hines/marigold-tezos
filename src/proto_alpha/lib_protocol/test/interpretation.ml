@@ -82,24 +82,25 @@ let read_file filename =
   close_in ch ; s
 
 (* Confront the Michelson interpreter to deep recursions. *)
-let test_stack_overflow () =
-  test_context ()
-  >>=? fun ctxt ->
-  let descr instr =
-    Script_typed_ir.{loc = 0; bef = Empty_t; aft = Empty_t; instr}
-  in
-  let enorme_et_seq n =
-    let rec aux n acc =
-      if n = 0 then acc else aux (n - 1) (descr (Seq (acc, descr Nop)))
-    in
-    aux n (descr Nop)
-  in
-  run_step ctxt (enorme_et_seq 100_000) ()
-  >>= function
-  | Ok _ ->
-      return ()
-  | Error _ ->
-      Alcotest.failf "Unexpected error (%s)" __LOC__
+let test_stack_overflow () = assert false
+
+(* test_context ()
+ * >>=? fun ctxt ->
+ * let descr instr =
+ *   Script_typed_cps_ir.{loc = 0; bef = Empty_t; aft = Empty_t; instr}
+ * in
+ * let enorme_et_seq n =
+ *   let rec aux n acc =
+ *     if n = 0 then acc else aux (n - 1) (descr (Seq (acc, descr Nop)))
+ *   in
+ *   aux n (descr Nop)
+ * in
+ * run_step ctxt (enorme_et_seq 100_000) ()
+ * >>= function
+ * | Ok _ ->
+ *     return ()
+ * | Error _ ->
+ *     Alcotest.failf "Unexpected error (%s)" __LOC__ *)
 
 (** Test the encoding/decoding of script_interpreter.ml specific errors *)
 

@@ -7,41 +7,33 @@ emitted operations
 big_map diff
   
 trace
-  - location: 43 (remaining gas: 1039921.954 units remaining)
-    [ (Pair (Right (Left (Right Unit))) (Left (Pair { Elt "1" "one" } { Elt "2" "two" })))  	 ]
-  - location: 43 (remaining gas: 1039921.874 units remaining)
+  - location: 42 (remaining gas: 1039920.914 units remaining)
+    [ (Pair (Right (Left (Right Unit))) (Left (Pair { Elt "1" "one" } { Elt "2" "two" })))  	
+      Unit  	 ]
+  - location: 43 (remaining gas: 1039920.834 units remaining)
     [ (Right (Left (Right Unit)))  	@parameter
       (Left (Pair { Elt "1" "one" } { Elt "2" "two" }))  	@storage
       Unit  	 ]
-  - location: 44 (remaining gas: 1039921.784 units remaining)
+  - location: 44 (remaining gas: 1039920.744 units remaining)
     [ (Left (Right Unit))  	@parameter.right
       (Left (Pair { Elt "1" "one" } { Elt "2" "two" }))  	@storage
       Unit  	 ]
-  - location: 60 (remaining gas: 1039921.694 units remaining)
+  - location: 60 (remaining gas: 1039920.654 units remaining)
     [ (Right Unit)  	@parameter.right.reset
       (Left (Pair { Elt "1" "one" } { Elt "2" "two" }))  	@storage
       Unit  	 ]
-  - location: 62 (remaining gas: 1039921.624 units remaining)
+  - location: 62 (remaining gas: 1039920.584 units remaining)
     [ (Left (Pair { Elt "1" "one" } { Elt "2" "two" }))  	@storage
       (Right Unit)  	@parameter.right.reset
       Unit  	 ]
-  - location: 63 (remaining gas: 1039921.544 units remaining)
-    [ (Right Unit)  	@parameter.right.reset
-      Unit  	 ]
-  - location: -1 (remaining gas: 1039921.474 units remaining)
+  - location: 63 (remaining gas: 1039920.504 units remaining)
     [ (Right Unit)  	
       Unit  	 ]
-  - location: 59 (remaining gas: 1039921.404 units remaining)
-    [ (Right Unit)  	
-      Unit  	 ]
-  - location: 151 (remaining gas: 1039921.324 units remaining)
+  - location: 151 (remaining gas: 1039920.424 units remaining)
     [ {}  	
       (Right Unit)  	
       Unit  	 ]
-  - location: 153 (remaining gas: 1039921.244 units remaining)
-    [ (Pair {} (Right Unit))  	
-      Unit  	 ]
-  - location: -1 (remaining gas: 1039921.174 units remaining)
+  - location: 153 (remaining gas: 1039920.344 units remaining)
     [ (Pair {} (Right Unit))  	
       Unit  	 ]
 

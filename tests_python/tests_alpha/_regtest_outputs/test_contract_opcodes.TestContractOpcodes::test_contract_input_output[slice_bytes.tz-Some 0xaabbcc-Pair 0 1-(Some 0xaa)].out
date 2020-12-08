@@ -7,46 +7,38 @@ emitted operations
 big_map diff
   
 trace
-  - location: 10 (remaining gas: 1039988.075 units remaining)
-    [ (Pair (Pair 0 1) (Some 0xaabbcc))  	 ]
-  - location: 10 (remaining gas: 1039987.995 units remaining)
+  - location: 9 (remaining gas: 1039987.945 units remaining)
+    [ (Pair (Pair 0 1) (Some 0xaabbcc))  	
+      Unit  	 ]
+  - location: 10 (remaining gas: 1039987.865 units remaining)
     [ (Pair 0 1)  	@parameter
       (Some 0xaabbcc)  	@storage
       Unit  	 ]
-  - location: 11 (remaining gas: 1039987.925 units remaining)
+  - location: 11 (remaining gas: 1039987.795 units remaining)
     [ (Some 0xaabbcc)  	@storage
       (Pair 0 1)  	@parameter
       Unit  	 ]
-  - location: 13 (remaining gas: 1039987.845 units remaining)
+  - location: 13 (remaining gas: 1039987.715 units remaining)
     [ 0xaabbcc  	@storage.some
       (Pair 0 1)  	@parameter
       Unit  	 ]
-  - location: 19 (remaining gas: 1039987.775 units remaining)
+  - location: 19 (remaining gas: 1039987.645 units remaining)
     [ (Pair 0 1)  	@parameter
       0xaabbcc  	@storage.some
       Unit  	 ]
-  - location: 20 (remaining gas: 1039987.695 units remaining)
+  - location: 20 (remaining gas: 1039987.565 units remaining)
     [ 0  	
       1  	
       0xaabbcc  	@storage.some
       Unit  	 ]
-  - location: 21 (remaining gas: 1039987.615 units remaining)
-    [ (Some 0xaa)  	@storage.some.slice
-      Unit  	 ]
-  - location: -1 (remaining gas: 1039987.545 units remaining)
+  - location: 21 (remaining gas: 1039987.485 units remaining)
     [ (Some 0xaa)  	
       Unit  	 ]
-  - location: 12 (remaining gas: 1039987.475 units remaining)
-    [ (Some 0xaa)  	
-      Unit  	 ]
-  - location: 22 (remaining gas: 1039987.395 units remaining)
+  - location: 22 (remaining gas: 1039987.405 units remaining)
     [ {}  	
       (Some 0xaa)  	
       Unit  	 ]
-  - location: 24 (remaining gas: 1039987.315 units remaining)
-    [ (Pair {} (Some 0xaa))  	
-      Unit  	 ]
-  - location: -1 (remaining gas: 1039987.245 units remaining)
+  - location: 24 (remaining gas: 1039987.325 units remaining)
     [ (Pair {} (Some 0xaa))  	
       Unit  	 ]
 

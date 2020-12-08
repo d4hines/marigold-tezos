@@ -1077,7 +1077,7 @@ module Interpreter_tests = struct
     let storage_lazy_expr = Alpha_context.Script.lazy_expr storage in
     let tytype =
       let memo_size = memo_size_of_int memo_size in
-      let open Script_typed_ir in
+      let open Script_typed_cps_ir in
       let state_ty = Sapling_state_t (memo_size, None) in
       Pair_t ((state_ty, None, None), (state_ty, None, None), None)
     in

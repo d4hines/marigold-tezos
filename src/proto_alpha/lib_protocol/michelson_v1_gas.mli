@@ -63,35 +63,35 @@ module Cost_of : sig
 
     val if_cons : Gas.cost
 
-    val list_map : 'a Script_typed_ir.boxed_list -> Gas.cost
+    val list_map : 'a Script_typed_cps_ir.boxed_list -> Gas.cost
 
     val list_size : Gas.cost
 
-    val list_iter : 'a Script_typed_ir.boxed_list -> Gas.cost
+    val list_iter : 'a Script_typed_cps_ir.boxed_list -> Gas.cost
 
     val empty_set : Gas.cost
 
-    val set_iter : 'a Script_typed_ir.set -> Gas.cost
+    val set_iter : 'a Script_typed_cps_ir.set -> Gas.cost
 
-    val set_mem : 'a -> 'a Script_typed_ir.set -> Gas.cost
+    val set_mem : 'a -> 'a Script_typed_cps_ir.set -> Gas.cost
 
-    val set_update : 'a -> 'a Script_typed_ir.set -> Gas.cost
+    val set_update : 'a -> 'a Script_typed_cps_ir.set -> Gas.cost
 
     val set_size : Gas.cost
 
     val empty_map : Gas.cost
 
-    val map_map : ('k, 'v) Script_typed_ir.map -> Gas.cost
+    val map_map : ('k, 'v) Script_typed_cps_ir.map -> Gas.cost
 
-    val map_iter : ('k, 'v) Script_typed_ir.map -> Gas.cost
+    val map_iter : ('k, 'v) Script_typed_cps_ir.map -> Gas.cost
 
-    val map_mem : 'k -> ('k, 'v) Script_typed_ir.map -> Gas.cost
+    val map_mem : 'k -> ('k, 'v) Script_typed_cps_ir.map -> Gas.cost
 
-    val map_get : 'k -> ('k, 'v) Script_typed_ir.map -> Gas.cost
+    val map_get : 'k -> ('k, 'v) Script_typed_cps_ir.map -> Gas.cost
 
-    val map_update : 'k -> ('k, 'v) Script_typed_ir.map -> Gas.cost
+    val map_update : 'k -> ('k, 'v) Script_typed_cps_ir.map -> Gas.cost
 
-    val map_get_and_update : 'k -> ('k, 'v) Script_typed_ir.map -> Gas.cost
+    val map_get_and_update : 'k -> ('k, 'v) Script_typed_cps_ir.map -> Gas.cost
 
     val map_size : Gas.cost
 
@@ -227,7 +227,7 @@ module Cost_of : sig
 
     val nop : Gas.cost
 
-    val pairing_check_bls12_381 : 'a Script_typed_ir.boxed_list -> Gas.cost
+    val pairing_check_bls12_381 : 'a Script_typed_cps_ir.boxed_list -> Gas.cost
 
     val comb : int -> Gas.cost
 
@@ -239,9 +239,9 @@ module Cost_of : sig
 
     val dupn : int -> Gas.cost
 
-    val compare : 'a Script_typed_ir.comparable_ty -> 'a -> 'a -> Gas.cost
+    val compare : 'a Script_typed_cps_ir.comparable_ty -> 'a -> 'a -> Gas.cost
 
-    val concat_string_precheck : 'a Script_typed_ir.boxed_list -> Gas.cost
+    val concat_string_precheck : 'a Script_typed_cps_ir.boxed_list -> Gas.cost
 
     val concat_string : Saturation_repr.t -> Gas.cost
 
@@ -299,9 +299,9 @@ module Cost_of : sig
       'a Script_int.num -> 'a Script_int.num -> 'a Script_int.num -> Gas.cost
 
     val join_tickets :
-      'a Script_typed_ir.comparable_ty ->
-      'a Script_typed_ir.ticket ->
-      'a Script_typed_ir.ticket ->
+      'a Script_typed_cps_ir.comparable_ty ->
+      'a Script_typed_cps_ir.ticket ->
+      'a Script_typed_cps_ir.ticket ->
       Gas.cost
   end
 
