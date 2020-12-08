@@ -65,7 +65,7 @@ let decache_mem () =
   >>=? fun ctx ->
   let i = contract in
   let v = Bytes.of_string "some value" in
-  Big_map.Contents.set ctx i v
+  Storage.Big_map.Contents.set ctx i v
   >>=? fun (ctx, _) ->
   let op_gas_bef = cast_cost_to_z (Raw_context.gas_level ctx) in
   let bl_gas_bef = cast_cost_to_z (Raw_context.block_gas_level ctx) in
