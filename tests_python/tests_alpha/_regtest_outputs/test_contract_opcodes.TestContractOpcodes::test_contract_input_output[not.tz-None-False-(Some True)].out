@@ -7,8 +7,9 @@ emitted operations
 big_map diff
   
 trace
-  - location: 8 (remaining gas: 1039993.690 units remaining)
-    [ (Pair False None)  	 ]
+  - location: 7 (remaining gas: 1039993.690 units remaining)
+    [ (Pair False None)  	
+      Unit  	 ]
   - location: 8 (remaining gas: 1039993.610 units remaining)
     [ False  	@parameter
       Unit  	 ]
@@ -23,9 +24,6 @@ trace
       (Some True)  	
       Unit  	 ]
   - location: 13 (remaining gas: 1039993.280 units remaining)
-    [ (Pair {} (Some True))  	
-      Unit  	 ]
-  - location: -1 (remaining gas: 1039993.210 units remaining)
     [ (Pair {} (Some True))  	
       Unit  	 ]
 

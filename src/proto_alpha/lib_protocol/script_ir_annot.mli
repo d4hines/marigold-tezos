@@ -24,7 +24,7 @@
 (*****************************************************************************)
 
 open Alpha_context
-open Script_typed_ir
+open Script_typed_cps_ir
 
 (** Default annotations *)
 

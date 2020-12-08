@@ -7,44 +7,39 @@ emitted operations
 big_map diff
   
 trace
-  - location: 19 (remaining gas: 1039982.170 units remaining)
-    [ (Pair (Pair 10 (Left 10)) (Left None))  	 ]
-  - location: 19 (remaining gas: 1039982.090 units remaining)
+  - location: 18 (remaining gas: 1039982.040 units remaining)
+    [ (Pair (Pair 10 (Left 10)) (Left None))  	
+      Unit  	 ]
+  - location: 19 (remaining gas: 1039981.960 units remaining)
     [ (Pair 10 (Left 10))  	@parameter
       Unit  	 ]
-  - location: 20 (remaining gas: 1039982.010 units remaining)
+  - location: 20 (remaining gas: 1039981.880 units remaining)
     [ 10  	
       (Left 10)  	
       Unit  	 ]
-  - location: 21 (remaining gas: 1039981.940 units remaining)
+  - location: 21 (remaining gas: 1039981.810 units remaining)
     [ (Left 10)  	
       10  	
       Unit  	 ]
-  - location: 22 (remaining gas: 1039981.850 units remaining)
+  - location: 22 (remaining gas: 1039981.720 units remaining)
     [ 10  	
       10  	
       Unit  	 ]
-  - location: 24 (remaining gas: 1039981.780 units remaining)
+  - location: 24 (remaining gas: 1039981.650 units remaining)
     [ 10  	
       10  	
       Unit  	 ]
-  - location: 25 (remaining gas: 1039981.580 units remaining)
+  - location: 25 (remaining gas: 1039981.450 units remaining)
     [ (Some (Pair 1 0))  	
       Unit  	 ]
-  - location: 26 (remaining gas: 1039981.500 units remaining)
+  - location: 26 (remaining gas: 1039981.370 units remaining)
     [ (Left (Some (Pair 1 0)))  	
       Unit  	 ]
-  - location: -1 (remaining gas: 1039981.430 units remaining)
-    [ (Left (Some (Pair 1 0)))  	
-      Unit  	 ]
-  - location: 39 (remaining gas: 1039981.350 units remaining)
+  - location: 39 (remaining gas: 1039981.290 units remaining)
     [ {}  	
       (Left (Some (Pair 1 0)))  	
       Unit  	 ]
-  - location: 41 (remaining gas: 1039981.270 units remaining)
-    [ (Pair {} (Left (Some (Pair 1 0))))  	
-      Unit  	 ]
-  - location: -1 (remaining gas: 1039981.200 units remaining)
+  - location: 41 (remaining gas: 1039981.210 units remaining)
     [ (Pair {} (Left (Some (Pair 1 0))))  	
       Unit  	 ]
 
