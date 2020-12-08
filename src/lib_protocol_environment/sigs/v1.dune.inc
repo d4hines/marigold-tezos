@@ -11,6 +11,7 @@
    v1/int32.mli
    v1/int64.mli
    v1/format.mli
+   v1/array.mli
 
    ;; Part of external libraries
    v1/hex.mli           ; 1.4.0
