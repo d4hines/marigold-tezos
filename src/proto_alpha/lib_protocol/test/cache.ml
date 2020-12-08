@@ -35,8 +35,7 @@ let grepr_z : Gas_limit_repr.t -> Gas_limit_repr.Arith.fp = function
 
 let binop_gas_arith
   ~loc binop msg (a : Gas_limit_repr.Arith.fp) (b : Gas_limit_repr.Arith.fp) =
-  Assert.equal
-    ~loc binop msg Gas_limit_repr.Arith.pp a b
+  Assert.equal ~loc binop msg Gas_limit_repr.Arith.pp a b
 
 let geq_gas_arith
   ~loc (a : Gas_limit_repr.Arith.fp) (b : Gas_limit_repr.Arith.fp) =
@@ -68,13 +67,8 @@ let ls_gas_arith
     ~loc Gas_limit_repr.Arith.(<)
     "Gas aren't less" a b
 
-let xxx () =
-  Lwt.Return (Script_repr.force_decode Script_repr.unit_parameter)
-
-(** test case:
-    cache initialized as empty *)
-let decache_init () =
-  Context.init 1
+let init () =
+  Context.init 0
   >>=? fun (b, _) ->
   Raw_context.prepare
     b.context
@@ -83,6 +77,17 @@ let decache_init () =
     ~timestamp:b.header.shell.timestamp
     ~fitness:b.header.shell.fitness
   >>= wrap
+
+let unit_value () : Michelson_v1_primitives.prim Micheline.canonical =
+  match Script_repr.force_decode Script_repr.unit_parameter with
+  | Error _ ->
+      assert false
+  | Ok (term, _) -> term
+
+(** test case:
+    cache initialized as empty *)
+let decache_init () =
+  init ()
   >>=? fun ctx ->
   let bds = Raw_context.get_decarbonated_cache ctx in
   Assert.equal_int ~loc:__LOC__ (List.length bds) 0
@@ -90,34 +95,15 @@ let decache_init () =
 (** test case:
     cache initialized as empty *)
 let decache_mem () =
-  Context.init 1
-  (* >>=? fun (b, contracts) -> *)
-  >>=? fun (b, _) ->
-  (* let contract = List.nth contracts 0 in *)
-  Raw_context.prepare
-    b.context
-    ~level:b.header.shell.level
-    ~predecessor_timestamp:b.header.shell.timestamp
-    ~timestamp:b.header.shell.timestamp
-    ~fitness:b.header.shell.fitness
-  >>= wrap
+  init ()
   >>=? fun ctx ->
   let op_gas_bef = grepr_z (Raw_context.gas_level ctx) in
   let bl_gas_bef = Raw_context.block_gas_level ctx in
-  (* === 0:index === *)
   let idz = Lazy_storage_kind.Big_map.Id.init in
-  (* === 1:index === *)
-  (* let i = Script_expr_hash.encoding sexpr in *)
   let i = Script_expr_hash.zero in
-  (* === 2:value === *)
-  xxx ()
-  >>=? fun (v, _) ->
-  (* === EXEC === *)
+  let v = unit_value () in
   Storage.Big_map.Contents.set (ctx, idz) i v
   >>=? fun (ctx, _) ->
-  (* Gas_limit_repr.Arith *)
-  (* Storage.Big_map.Contents.mem ctx i *)
-  (* >>=? fun (ctx, exists) -> *)
   let op_gas_aft = grepr_z (Raw_context.gas_level ctx) in
   let bl_gas_aft = Raw_context.block_gas_level ctx in
   eq_gas_arith ~loc:__LOC__ op_gas_bef op_gas_aft
