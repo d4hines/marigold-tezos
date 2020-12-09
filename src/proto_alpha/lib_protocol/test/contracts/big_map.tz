@@ -1,0 +1,33 @@
+{ parameter unit ;
+  storage string ;
+  code { DROP ;
+         # init big_map : int -> string
+         # with three default elements
+         EMPTY_BIG_MAP int string ;
+         PUSH string "msg2" ;
+         SOME ;
+         PUSH int 2 ;
+         UPDATE ;
+         PUSH string "msg1" ;
+         SOME ;
+         PUSH int 1 ;
+         UPDATE ;
+         PUSH string "msg0" ;
+         SOME ;
+         PUSH int 0 ;
+         UPDATE ;
+         DUP ;
+         # read big_map with key = 1 (second time)
+         PUSH int 1 ;
+         GET ;
+         IF_NONE { PUSH string "" } {} ;
+         PUSH string " " ;
+         CONCAT ;
+         SWAP ;
+         # read big_map with key = 1 (second time)
+         PUSH int 1 ;
+         GET ;
+         IF_NONE { PUSH string "" } {} ;
+         CONCAT ;
+         NIL operation ;
+         PAIR } }

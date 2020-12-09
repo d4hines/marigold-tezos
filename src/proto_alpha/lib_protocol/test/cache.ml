@@ -34,17 +34,6 @@ let grepr_z : Gas_limit_repr.t -> Gas_limit_repr.Arith.fp = function
   | Unaccounted -> Gas_limit_repr.Arith.fp Gas_limit_repr.Arith.zero
   | Limited x -> x.remaining
 
-let init () =
-  Context.init 1
-  >>=? fun (b, _) ->
-  Raw_context.prepare
-    b.context
-    ~level:b.header.shell.level
-    ~predecessor_timestamp:b.header.shell.timestamp
-    ~timestamp:b.header.shell.timestamp
-    ~fitness:b.header.shell.fitness
-  >>= wrap
-
 let unit_value () : Michelson_v1_primitives.prim Micheline.canonical =
   match Script_repr.force_decode Script_repr.unit_parameter with
   | Error _ ->
@@ -81,22 +70,60 @@ end
 (** test case:
     cache initialized as empty *)
 let decache_init () =
-  init ()
+  Context.init 1
+  >>=? fun (b, _) ->
+  Raw_context.prepare
+    b.context
+    ~level:b.header.shell.level
+    ~predecessor_timestamp:b.header.shell.timestamp
+    ~timestamp:b.header.shell.timestamp
+    ~fitness:b.header.shell.fitness
+  >>= wrap
   >>=? fun ctx ->
   let bds = Raw_context.get_decarbonated_cache ctx in
   Assert.equal_int ~loc:__LOC__ (List.length bds) 0
 
+open Sapling_helpers.Interpreter_helpers
+
+let test000 () =
+  init ()
+  >>=? fun (b, baker, src, _) ->
+  originate_contract "contracts/big_map.tz" "Unit" src b baker
+  >>=? fun (dst, b, _anti_replay) ->
+  (* .. *)
+  (* let w = wallet_gen () in *)
+  let parameters =
+    Alpha_context.Script.(lazy_expr (expression_from_string "Unit"))
+  in
+  let fee = Test_tez.Tez.of_int 10 in
+  Op.transaction ~fee (B b) src dst Test_tez.Tez.zero ~parameters
+  >>=? fun operation ->
+  next_block b operation
+  >>=? fun _b ->
+  return_unit
+
 (** test case:
     cache initialized as empty *)
 let decache_mem () =
-  init ()
+  Context.init 1
+  >>=? fun (b, _) ->
+  Raw_context.prepare
+    b.context
+    ~level:b.header.shell.level
+    ~predecessor_timestamp:b.header.shell.timestamp
+    ~timestamp:b.header.shell.timestamp
+    ~fitness:b.header.shell.fitness
+  >>= wrap
   >>=? fun ctx ->
   let op_gas_bef = grepr_z (Raw_context.gas_level ctx) in
   let bl_gas_bef = Raw_context.block_gas_level ctx in
+  (* VVVVVVVVVV *)
   let idz = Lazy_storage_kind.Big_map.Id.init in
   let i = Script_expr_hash.zero in
   let v = unit_value () in
+  (* ---------- *)
   Storage.Big_map.Contents.set (ctx, idz) i v
+  (* ^^^^^^^^^^ *)
   >|= Error.deError_monad
   >>=? fun (ctx, _) ->
   let op_gas_aft = grepr_z (Raw_context.gas_level ctx) in
@@ -109,4 +136,5 @@ let decache_mem () =
 
 let tests =
   [ Test.tztest "init decarbonated cache" `Quick decache_init;
+    Test.tztest "test000" `Quick test000;
     Test.tztest "membership of decarbonated cache" `Quick decache_mem ]
