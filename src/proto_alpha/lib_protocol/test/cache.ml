@@ -68,7 +68,7 @@ let ls_gas_arith
     "Gas aren't less" a b
 
 let init () =
-  Context.init 0
+  Context.init 1
   >>=? fun (b, _) ->
   Raw_context.prepare
     b.context
@@ -103,12 +103,16 @@ let decache_mem () =
   let i = Script_expr_hash.zero in
   let v = unit_value () in
   Storage.Big_map.Contents.set (ctx, idz) i v
+  >|= Error.deError_monad
   >>=? fun (ctx, _) ->
   let op_gas_aft = grepr_z (Raw_context.gas_level ctx) in
   let bl_gas_aft = Raw_context.block_gas_level ctx in
   eq_gas_arith ~loc:__LOC__ op_gas_bef op_gas_aft
   >>=? fun () ->
   eq_gas_arith ~loc:__LOC__ bl_gas_bef bl_gas_aft
+
+
+
 
 (*********************************************************************)
 
