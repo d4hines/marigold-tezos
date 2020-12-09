@@ -65,6 +65,8 @@ let erem x y = x mod y
 
 let ediv x y = (x / y, erem x y)
 
-let encoding = Data_encoding.(conv to_z of_z z)
+let z_encoding = Data_encoding.(conv to_z of_z z)
+
+let n_encoding = Data_encoding.(conv to_z of_z n)
 
 let pp fmt x = Format.fprintf fmt "%d" x

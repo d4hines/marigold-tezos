@@ -95,9 +95,9 @@ module Arith = struct
 
   let pp_integral = pp
 
-  let n_fp_encoding : fp Data_encoding.t = Saturation_repr.encoding
+  let n_fp_encoding : fp Data_encoding.t = Saturation_repr.n_encoding
 
-  let z_fp_encoding : fp Data_encoding.t = Saturation_repr.encoding
+  let z_fp_encoding : fp Data_encoding.t = Saturation_repr.z_encoding
 
   let n_integral_encoding : integral Data_encoding.t =
     Data_encoding.conv integral_to_z integral Data_encoding.n

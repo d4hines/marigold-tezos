@@ -87,8 +87,11 @@ val of_z : Z.t -> t
 (** [of_z z] is [Z.of_int]. *)
 val to_z : t -> Z.t
 
-(** An encoder for native integers. *)
-val encoding : t Data_encoding.t
+(** An encoder for integers. *)
+val z_encoding : t Data_encoding.t
+
+(** An encoder for positive integers. *)
+val n_encoding : t Data_encoding.t
 
 (** A pretty-printer for native integers. *)
 val pp : Format.formatter -> t -> unit
