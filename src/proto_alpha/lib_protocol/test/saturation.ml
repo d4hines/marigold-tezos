@@ -24,25 +24,22 @@
 (*****************************************************************************)
 
 open Protocol
+
+let valid (z : Saturation_repr.t) =
+  let x = (z :> int) in
+  x >= 0 && x <= max_int
+
 open Saturation_repr
 
 exception Saturating_test_error of string
 
 let err x = Exn (Saturating_test_error x)
 
-let small_enough (z : t) = Compare.Int.((z :> int) land 0x7fffffff00000000 = 0)
+let small_enough (z : t) = Compare.Int.((z :> int) land 0x7fffffff80000000 = 0)
 
-let random_nativeint k =
-  let open Nativeint in
-  Random.nativeint (of_int k) |> to_int
+let n = of_int 123123
 
-let rec random () =
-  let n = random_nativeint ((saturated :> int) / 2) |> of_int in
-  if small_enough n then n else random ()
-
-let n = random ()
-
-let m = random ()
+let m = of_int 377337
 
 let add () =
   fail_unless
@@ -53,16 +50,18 @@ let add () =
   >>=? fun () ->
   fail_unless (add n zero = n) (err "n + zero = n")
   >>=? fun () ->
+  let r = add n m in
   fail_unless
-    (add n m = of_int ((n :> int) + (m :> int)))
+    (valid r && r = of_int ((n :> int) + (m :> int)))
     (err "add does not behave like + on small numbers.")
 
 let sub () =
   fail_unless (sub zero n = zero) (err "zero - n <> zero")
   >>=? fun () ->
   let n = max n m and m = min n m in
+  let r = sub n m in
   fail_unless
-    (sub n m = of_int ((n :> int) - (m :> int)))
+    (valid r && r = of_int ((n :> int) - (m :> int)))
     (err "sub does not behave like - on small numbers.")
 
 let mul () =
@@ -74,18 +73,21 @@ let mul () =
   >>=? fun () ->
   fail_unless (mul saturated zero = zero) (err "saturated * zero <> zero")
   >>=? fun () ->
-  let max_squared = of_int (1 lsl 32) in
+  let max_squared = of_int (1 lsl 31) in
+  let r = mul max_squared max_squared in
   fail_unless
-    (mul max_squared max_squared = saturated)
+    (valid r && r = saturated)
     (err "2 ^ 31 * 2 ^ 31 should be saturated")
   >>=? fun () ->
-  let safe_squared = of_int ((1 lsl 32) - 1) in
+  let safe_squared = of_int ((1 lsl 31) - 1) in
+  let r = mul safe_squared safe_squared in
   fail_unless
-    (mul safe_squared safe_squared <> saturated)
+    (valid r && r <> saturated)
     (err "(2 ^ 31 - 1) * (2 ^ 31 - 1) should not be saturated")
   >>=? fun () ->
+  let r = mul n m in
   fail_unless
-    (mul n m = of_int ((n :> int) * (m :> int)))
+    (valid r && r = of_int ((n :> int) * (m :> int)))
     (err "mul does not behave like * on small numbers.")
 
 let tests =
