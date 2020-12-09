@@ -61,6 +61,8 @@ let sub_opt x y =
   let s = x - y in
   if Compare.Int.(s < 0) then None else Some s
 
+(* Notice that Z.erem does not behave as mod on negative numbers.
+   Fortunately, the inhabitant of [t] are positive. *)
 let erem x y = x mod y
 
 let ediv x y = (x / y, erem x y)
