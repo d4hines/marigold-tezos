@@ -26,46 +26,13 @@
 open Protocol
 open Gas_limit_repr
 
-(* Aux. for wrapping *)
+(* === aux. function === *)
+
 let wrap e = Lwt.return (Environment.wrap_error e)
 
 let grepr_z : Gas_limit_repr.t -> Gas_limit_repr.Arith.fp = function
   | Unaccounted -> Gas_limit_repr.Arith.fp Gas_limit_repr.Arith.zero
   | Limited x -> x.remaining
-
-let binop_gas_arith
-  ~loc binop msg (a : Gas_limit_repr.Arith.fp) (b : Gas_limit_repr.Arith.fp) =
-  Assert.equal ~loc binop msg Gas_limit_repr.Arith.pp a b
-
-let geq_gas_arith
-  ~loc (a : Gas_limit_repr.Arith.fp) (b : Gas_limit_repr.Arith.fp) =
-  binop_gas_arith
-    ~loc Gas_limit_repr.Arith.(>=)
-    "Gas aren't less than or equal" a b
-
-let leq_gas_arith
-  ~loc (a : Gas_limit_repr.Arith.fp) (b : Gas_limit_repr.Arith.fp) =
-  binop_gas_arith
-    ~loc Gas_limit_repr.Arith.(<=)
-    "Gas aren't less than or equal" a b
-
-let eq_gas_arith
-  ~loc (a : Gas_limit_repr.Arith.fp) (b : Gas_limit_repr.Arith.fp) =
-  binop_gas_arith
-    ~loc Gas_limit_repr.Arith.(=)
-    "Gas aren't equal" a b
-
-let gt_gas_arith
-  ~loc (a : Gas_limit_repr.Arith.fp) (b : Gas_limit_repr.Arith.fp) =
-  binop_gas_arith
-    ~loc Gas_limit_repr.Arith.(>)
-    "Gas aren't greater" a b
-
-let ls_gas_arith
-  ~loc (a : Gas_limit_repr.Arith.fp) (b : Gas_limit_repr.Arith.fp) =
-  binop_gas_arith
-    ~loc Gas_limit_repr.Arith.(<)
-    "Gas aren't less" a b
 
 let init () =
   Context.init 1
@@ -83,6 +50,33 @@ let unit_value () : Michelson_v1_primitives.prim Micheline.canonical =
   | Error _ ->
       assert false
   | Ok (term, _) -> term
+
+module Gas_Cmp = struct
+  type t = Gas_limit_repr.Arith.fp
+
+  let pp = Gas_limit_repr.Arith.pp
+
+  let binop
+    ~loc (bop : 'a -> 'a -> bool) (opmsg : string) (a : t) (b : t) =
+    if bop a b then
+      return_unit
+    else
+      failwith
+        "@[@[[%s]@] - @[%a is not %s to %a@]@]"
+        loc pp a opmsg pp b
+
+  let eq ~loc a b = binop ~loc Gas_limit_repr.Arith.(=) "=" a b
+
+  let gt ~loc a b = binop ~loc Gas_limit_repr.Arith.(>) ">" a b
+
+  let ls ~loc a b = binop ~loc Gas_limit_repr.Arith.(<) "<" a b
+
+  let neq ~loc a b = binop ~loc Gas_limit_repr.Arith.(<>) "<>" a b
+
+  let geq ~loc a b = binop ~loc Gas_limit_repr.Arith.(>=) ">=" a b
+
+  let leq ~loc a b = binop ~loc Gas_limit_repr.Arith.(<=) "<=" a b
+end
 
 (** test case:
     cache initialized as empty *)
@@ -107,12 +101,9 @@ let decache_mem () =
   >>=? fun (ctx, _) ->
   let op_gas_aft = grepr_z (Raw_context.gas_level ctx) in
   let bl_gas_aft = Raw_context.block_gas_level ctx in
-  eq_gas_arith ~loc:__LOC__ op_gas_bef op_gas_aft
+  Gas_Cmp.eq ~loc:__LOC__ op_gas_bef op_gas_aft
   >>=? fun () ->
-  eq_gas_arith ~loc:__LOC__ bl_gas_bef bl_gas_aft
-
-
-
+  Gas_Cmp.eq ~loc:__LOC__ bl_gas_bef bl_gas_aft
 
 (*********************************************************************)
 
