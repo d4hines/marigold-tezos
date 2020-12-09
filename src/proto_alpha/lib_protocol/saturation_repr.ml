@@ -37,7 +37,7 @@ let to_z x = Z.of_int x
 
 let zero = 0
 
-let small_enough z = z land 0x7fffffff00000000 = 0
+let small_enough z = z land 0x7fffffff80000000 = 0
 
 let mul x y =
   (* assert (x >= 0 && y >= 0); *)
