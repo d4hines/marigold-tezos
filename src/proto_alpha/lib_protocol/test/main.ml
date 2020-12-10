@@ -23,31 +23,11 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let () =
-  Alcotest_lwt.run
+let () = 
+Interpretation.main ()
+
+  (* Alcotest_lwt.run
     "protocol_alpha"
-    [ ("transfer", Transfer.tests);
-      ("origination", Origination.tests);
-      ("activation", Activation.tests);
-      ("revelation", Reveal.tests);
-      ("endorsement", Endorsement.tests);
-      ("double endorsement", Double_endorsement.tests);
-      ("double baking", Double_baking.tests);
-      ("seed", Seed.tests);
-      ("baking", Baking.tests);
-      ("delegation", Delegation.tests);
-      ("rolls", Rolls.tests);
-      ("combined", Combined_operations.tests);
-      ("qty", Qty.tests);
-      ("voting", Voting.tests);
-      ("interpretation", Interpretation.tests);
-      ("typechecking", Typechecking.tests);
-      ("gas properties", Gas_properties.tests);
-      ("gas levels", Gas_levels.tests);
-      ("saturation arithmetic", Saturation.tests);
-      ("gas cost functions", Gas_costs.tests);
-      ("lazy storage diff", Lazy_storage_diff.tests);
-      ("sapling", Test_sapling.tests);
-      ("helpers rpcs", Test_helpers_rpcs.tests);
-      ("script deserialize gas", Script_gas.tests) ]
-  |> Lwt_main.run
+    [("interpretation", Interpretation.tests)]
+  |> Lwt_main.run *)
+  

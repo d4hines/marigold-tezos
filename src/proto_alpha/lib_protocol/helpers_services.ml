@@ -22,6 +22,11 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
+[@@@warning "-27"]
+[@@@warning "-26"]
+[@@@warning "-37"]
+[@@@warning "-34"]
+[@@@warning "-32"]
 
 open Alpha_context
 
@@ -268,7 +273,7 @@ module Scripts = struct
       in
       unparse_stack (stack_ty, stack)
 
-    module Trace_logger () : Script_interpreter.STEP_LOGGER = struct
+    (* module Trace_logger () : Script_interpreter.STEP_LOGGER = struct
       let log : log_element list ref = ref []
 
       let save ctxt loc stack_ty stack =
@@ -287,10 +292,12 @@ module Scripts = struct
             >>=? fun stack -> return (loc, Gas.level ctxt, stack))
           !log
         >>=? fun res -> return (Some (List.rev res))
-    end
+    end *)
 
     let execute ctxt mode step_constants ~script ~entrypoint ~parameter =
-      let module Logger = Trace_logger () in
+      assert false
+
+    (* let module Logger = Trace_logger () in
       let open Script_interpreter in
       let logger = (module Logger : STEP_LOGGER) in
       execute
@@ -306,7 +313,7 @@ module Scripts = struct
       Logger.get_log ()
       >|=? fun trace ->
       let trace = Option.value ~default:[] trace in
-      ({ctxt; storage; lazy_storage_diff; operations}, trace)
+      ({ctxt; storage; lazy_storage_diff; operations}, trace) *)
   end
 
   let typecheck_data :
@@ -448,19 +455,7 @@ module Scripts = struct
           let open Script_interpreter in
           {source; payer; self = dummy_contract; amount; chain_id}
         in
-        Traced_interpreter.execute
-          ctxt
-          Readable
-          step_constants
-          ~script:{storage; code}
-          ~entrypoint
-          ~parameter
-        >|=? fun ( { Script_interpreter.storage;
-                     operations;
-                     lazy_storage_diff;
-                     _ },
-                   trace ) ->
-        (storage, operations, trace, lazy_storage_diff)) ;
+        assert false) ;
     register0 S.typecheck_code (fun ctxt () (expr, maybe_gas, legacy) ->
         let legacy = Option.value ~default:false legacy in
         let ctxt =

@@ -58,8 +58,10 @@ type step_constants = {
   chain_id : Chain_id.t;
 }
 
-type 's logging_function =
-  context -> Script.location -> 's Script_typed_ir.stack_ty -> 's -> unit
+
+type my_stack
+val my_stack_to_string: my_stack -> string
+type logging_function = context -> Script.location -> Script_typed_cps_ir.my_instr -> my_stack -> unit
 
 (** [STEP_LOGGER] is the module type of logging
     modules as passed to the Michelson interpreter.
@@ -70,16 +72,16 @@ module type STEP_LOGGER = sig
       function [interp]. [interp] is called when starting
       the interpretation of a script and subsequently
       at each [Exec] instruction. *)
-  val log_interp : 's logging_function
+  val log_interp : logging_function
 
   (** [log_entry] is called {i before} executing
       each instruction but {i after} gas for
       this instruction has been successfully consumed. *)
-  val log_entry : 's logging_function
+  val log_entry : logging_function
 
   (** [log_exit] is called {i after} executing each
       instruction. *)
-  val log_exit : 's logging_function
+  val log_exit : logging_function
 
   (** [get_log] allows to obtain an execution trace, if
       any was produced. *)

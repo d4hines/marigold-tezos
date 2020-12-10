@@ -219,9 +219,7 @@ let make ?specialization ~model ~instr ~stack_type ~info ?name () =
 
 (* ------------------------------------------------------------------------- *)
 
-open Michelson_types
-
-module List_size_bench =
+(* module List_size_bench =
 ( val make
         ~model:(Some N_List_size)
         ~instr:"SIZE"
@@ -2266,7 +2264,7 @@ module Read_ticket =
         ~stack_type:Michelson_types.(read_ticket_stack_ty unit_cmp_ty)
         ~info:"Benchmarking the READ_TICKET instruction"
         ~name:"READ_TICKET"
-        () )
+        () ) *)
 
 module MyFirstBenchmark = struct
   let name = "myfirstbenchmark"
@@ -2371,6 +2369,29 @@ module MyFirstBenchmark = struct
           \        DIP 1 { DROP };             # stack = [fact n]\n\
           \        }\n\
           \      "
+          (* {|
+{ DROP;                          # Ignore the initial store, stack = [n]
+       PUSH int 10;
+       PUSH @acc int 1;              # We will accumulate the result on top, stack = [1; n]
+       SWAP;                         # Put n on top, stack = [n; accu]
+       PUSH bool True;               # It is a do-while loop.
+       LOOP { DUP;                   # stack = [n; n; accu]
+              PUSH int 1;            # stack = [1; n; n; accu]
+              SWAP;                  # stack = [n; 1; n; accu]
+              SUB;                   # stack = [n - 1; n; accu]
+              SWAP;                  # stack = [n; n - 1; accu]
+              DIP 1 { SWAP };        # stack = [n; accu; n - 1]
+              MUL;                   # stack = [n * accu; n - 1]
+              SWAP;                  # stack = [n - 1; n * accu]
+              DUP;                   # stack = [n - 1; n - 1; n * accu]
+              PUSH int 0;            # stack = [0; n - 1; n - 1; n * accu]
+              COMPARE;               # stack = [cmp 0 (n - 1); n - 1; n * accu]
+              NEQ };                # stack = [n - 1 <> 0; n - 1; n * accu]
+       SWAP;                       # stack = [fact n; 0]
+       DIP 1 { DROP };             # stack = [fact n]
+       NIL operation ;             # stack = [ []; fact n ]
+       PAIR }
+|} *)
           Michelson_types.int_stack_ty
           (Alpha_context.Script_int.of_int 100, ()))
 end
