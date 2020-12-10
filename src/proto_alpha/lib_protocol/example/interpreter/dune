@@ -1,14 +1,24 @@
 (executable
  (name main)
- (modules main)
+ (modules main interp compile show)
  (libraries interpreter_example_functor tezos-protocol-alpha
-   tezos-alpha-test-helpers))
+   tezos-alpha-test-helpers call_hack compiler-libs.bytecomp
+   compiler-libs.optcomp ocaml-migrate-parsetree ctypes ctypes.foreign ppxlib
+   core_bench core)
+ (foreign_stubs
+  (language c)
+  (names register_module))
+ (preprocess
+  (pps ppx_tools_versioned.metaquot_408 ppx_deriving.show)))
 
 (library
  (name interpreter_example_functor)
- (flags (:standard -nopervasives -nostdlib))
+ (flags
+  (:standard -nopervasives -nostdlib))
  (modules Script_typed_ir_functor Script_typed_ir_parameters
-   Script_interpreter_functor Script_interpreter_parameters))
+   Script_interpreter_functor Script_interpreter_parameters)
+ (preprocess
+  (pps ppx_tools_versioned.metaquot_408 ppx_deriving.show)))
 
 (rule
  (copy ../../script_typed_ir_functor.ml script_typed_ir_functor.ml))

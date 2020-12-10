@@ -33,9 +33,7 @@ if [ -n "$dev" ]; then
     opam repository remove default > /dev/null 2>&1 || true
 fi
 
-if [ "$(ocaml -vnum)" != "$ocaml_version" ]; then
-    opam install --unlock-base ocaml-base-compiler.$ocaml_version
-fi
+opam install --unlock-base ocaml-base-compiler.$ocaml_version+flambda
 
 # Must be done before install_build_deps.raw.sh because install_build_deps.raw.sh installs
 # opam packages that depend on Rust.
