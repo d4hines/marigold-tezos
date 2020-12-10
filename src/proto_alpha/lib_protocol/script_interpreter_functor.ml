@@ -443,11 +443,8 @@ module Make (P : Script_interpreter_parameters.Type) :
     Gas.consume ctxt gas
     >>?= fun ctxt ->
     let module Log = (val logger) in
-    Log.log_entry ctxt descr stack ;
     let logged_return : a * context -> (a * context) tzresult Lwt.t =
-     fun (ret, ctxt) ->
-      Log.log_exit ctxt descr ret ;
-      return (ret, ctxt)
+     fun (ret, ctxt) -> return (ret, ctxt)
     in
     let non_terminal_recursion ~ctxt ?(stack_depth = stack_depth + 1) descr
         stack =

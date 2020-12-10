@@ -48,18 +48,24 @@ external magic : 'a -> 'b = "%identity"
 
 let rec merge_while_seq :
     type b a.
-    (Parsetree.expression * 'things array, b, 'trans) descr_with_code ->
-    (Parsetree.expression * 'things array, 'trans, a) descr_with_code ->
-    (Parsetree.expression * 'things array, b, a) descr_with_code =
+    ( (Parsetree.expression -> Parsetree.expression) * 'things array,
+      b,
+      'trans )
+    descr_with_code ->
+    ( (Parsetree.expression -> Parsetree.expression) * 'things array,
+      'trans,
+      a )
+    descr_with_code ->
+    ( (Parsetree.expression -> Parsetree.expression) * 'things array,
+      b,
+      a )
+    descr_with_code =
  fun left right ->
   let instr =
     match (left.instr, right.instr) with
     | (Compiled (left, v_left), Compiled (right, v_right)) ->
         Compiled
-          ( [%expr
-              let stack = [%e left] in
-              [%e right]],
-            Array.append v_left v_right )
+          ((fun after -> left (right after)), Array.append v_left v_right)
     | (Compiled _, Seq (({instr = Compiled _; _} as r_left), r_right)) ->
         let left = merge_while_seq left r_left in
         Seq (left, r_right)
@@ -71,78 +77,116 @@ let rec merge_while_seq :
   in
   {loc = left.loc; bef = left.bef; aft = right.aft; instr}
 
+module Interp_costs = Michelson_v1_gas.Cost_of.Interpreter
+
 let rec compile_to_ocaml :
     type b a.
     int ->
     (b, a) descr ->
     int
-    * (Parsetree.expression * (string * 'things) array, b, a) descr_with_code =
+    * ( (Parsetree.expression -> Parsetree.expression)
+        * (string * 'things) array,
+        b,
+        a )
+      descr_with_code =
  fun counter descr ->
   let ( counter,
         (instr :
-          ( Parsetree.expression * (string * 'things) array,
+          ( (Parsetree.expression -> Parsetree.expression)
+            * (string * 'things) array,
             b,
             a )
-          instr_with_code) ) =
+          instr_with_code),
+        cost ) =
     match descr.instr with
     | Drop ->
         ( counter,
           Compiled
-            ( [%expr
-                let (_, rest) = stack in
-                rest],
-              [||] ) )
+            ( (fun after ->
+                [%expr
+                  let (_, stack) = stack in
+                  [%e after]]),
+              [||] ),
+          [%expr Interp_costs.drop] )
     | Cons_pair ->
         ( counter,
           Compiled
-            ( [%expr
-                let (a, (b, rest)) = stack in
-                ((a, b), rest)],
-              [||] ) )
+            ( (fun after ->
+                [%expr
+                  let (a, (b, stack)) = stack in
+                  let stack = ((a, b), stack) in
+                  [%e after]]),
+              [||] ),
+          [%expr Interp_costs.cons_pair] )
     | Cdr ->
         ( counter,
           Compiled
-            ( [%expr
-                let ((_, b), rest) = stack in
-                (b, rest)],
-              [||] ) )
+            ( (fun after ->
+                [%expr
+                  let ((_, b), rest) = stack in
+                  let stack = (b, rest) in
+                  [%e after]]),
+              [||] ),
+          [%expr Interp_costs.cdr] )
     | Nil ->
-        (counter, Compiled ([%expr {elements = []; length = 0}, stack], [||]))
+        ( counter,
+          Compiled
+            ( (fun after ->
+                [%expr
+                  let stack = ({elements = []; length = 0}, stack) in
+                  [%e after]]),
+              [||] ),
+          [%expr Interp_costs.nil] )
     | Dup ->
         ( counter,
           Compiled
-            ( [%expr
-                let (v, rest) = stack in
-                (v, (v, rest))],
-              [||] ) )
+            ( (fun after ->
+                [%expr
+                  let (v, rest) = stack in
+                  let stack = (v, (v, rest)) in
+                  [%e after]]),
+              [||] ),
+          [%expr Interp_costs.dup] )
     | Swap ->
         ( counter,
           Compiled
-            ( [%expr
-                let (vi, (vo, rest)) = stack in
-                (vo, (vi, rest))],
-              [||] ) )
+            ( (fun after ->
+                [%expr
+                  let (vi, (vo, rest)) = stack in
+                  let stack = (vo, (vi, rest)) in
+                  [%e after]]),
+              [||] ),
+          [%expr Interp_costs.swap] )
     | Car ->
         ( counter,
           Compiled
-            ( [%expr
-                let ((a, _), rest) = stack in
-                (a, rest)],
-              [||] ) )
+            ( (fun after ->
+                [%expr
+                  let ((a, _), rest) = stack in
+                  let stack = (a, rest) in
+                  [%e after]]),
+              [||] ),
+          [%expr Interp_costs.car] )
     | Cons_left ->
         ( counter,
           Compiled
-            ( [%expr
-                let (v, rest) = stack in
-                (L v, rest)],
-              [||] ) )
+            ( (fun after ->
+                [%expr
+                  let (v, rest) = stack in
+                  let stack = (L v, rest) in
+                  [%e after]]),
+              [||] ),
+          [%expr Interp_costs.cons_left] )
     | Cons_right ->
         ( counter,
           Compiled
-            ( [%expr
-                let (v, rest) = stack in
-                (R v, rest)],
-              [||] ) )
+            ( (fun after ->
+                [%expr
+                  let (v, rest) = stack in
+                  let stack = (R v, rest) in
+                  [%e after]]),
+              [||] ),
+          [%expr Interp_costs.cons_right] )
     | Dig (n, _) ->
         let names =
           List.init (n + 1) (fun n -> "a" ^ string_of_int n) |> List.rev
@@ -163,10 +207,13 @@ let rec compile_to_ocaml :
         in
         ( counter,
           Compiled
-            ( [%expr
-                let [%p pat] = stack in
-                [%e exp]],
-              [||] ) )
+            ( (fun after ->
+                [%expr
+                  let [%p pat] = stack in
+                  let stack = [%e exp] in
+                  [%e after]]),
+              [||] ),
+          [%expr Interp_costs.dign [%e eint n]] )
     | Dug (n, _) ->
         let names =
           List.init (n + 1) (fun n -> "i" ^ string_of_int n) |> List.rev
@@ -188,107 +235,160 @@ let rec compile_to_ocaml :
         in
         ( counter,
           Compiled
-            ( [%expr
-                let [%p pat] = stack in
-                [%e exp]],
-              [||] ) )
+            ( (fun after ->
+                [%expr
+                  let [%p pat] = stack in
+                  let stack = [%e exp] in
+                  [%e after]]),
+              [||] ),
+          [%expr Interp_costs.dugn [%e eint n]] )
     | Mul_intint | Mul_intnat | Mul_natint ->
         ( counter,
           Compiled
-            ( [%expr
-                let (x, (y, rest)) = stack in
-                (Script_int.mul x y, rest)],
-              [||] ) )
+            ( (fun after ->
+                [%expr
+                  let (x, (y, rest)) = stack in
+                  let stack = (Script_int.mul x y, rest) in
+                  [%e after]]),
+              [||] ),
+          [%expr
+            let (x, (y, _)) = stack in
+            Interp_costs.mul_bigint x y] )
     | Mul_natnat ->
         ( counter,
           Compiled
-            ( [%expr
-                let (x, (y, rest)) = stack in
-                (Script_int.mul_n x y, rest)],
-              [||] ) )
+            ( (fun after ->
+                [%expr
+                  let (x, (y, rest)) = stack in
+                  let stack = (Script_int.mul_n x y, rest) in
+                  [%e after]]),
+              [||] ),
+          [%expr
+            let (x, (y, _)) = stack in
+            Interp_costs.mul_bigint x y] )
     | Sub_int ->
         ( counter,
           Compiled
-            ( [%expr
-                let (x, (y, rest)) = stack in
-                (Script_int.sub x y, rest)],
-              [||] ) )
+            ( (fun after ->
+                [%expr
+                  let (x, (y, rest)) = stack in
+                  let stack = (Script_int.sub x y, rest) in
+                  [%e after]]),
+              [||] ),
+          [%expr
+            let (x, (y, _)) = stack in
+            Interp_costs.sub_bigint x y] )
     | Gt ->
         ( counter,
           Compiled
-            ( [%expr
-                let (cmpres, rest) = stack in
-                let cmpres = Script_int.compare cmpres Script_int.zero in
-                let cmpres = Compare.Int.(cmpres > 0) in
-                (cmpres, rest)],
-              [||] ) )
+            ( (fun after ->
+                [%expr
+                  let (cmpres, rest) = stack in
+                  let cmpres = Script_int.compare cmpres Script_int.zero in
+                  let cmpres = Compare.Int.(cmpres > 0) in
+                  let stack = (cmpres, rest) in
+                  [%e after]]),
+              [||] ),
+          [%expr Interp_costs.neq] )
     | Const v ->
         let name = "v_" ^ string_of_int counter in
         let counter = counter + 1 in
         ( counter,
           Compiled
-            (pexp_tuple [evar name; evar "stack"], [|(name, Obj.magic v)|]) )
+            ( (fun after ->
+                [%expr
+                  let stack = [%e pexp_tuple [evar name; evar "stack"]] in
+                  [%e after]]),
+              [|(name, Obj.magic v)|] ),
+          [%expr Interp_costs.push] )
     | Compare ty ->
         let name = "v_" ^ string_of_int counter in
         let counter = counter + 1 in
         ( counter,
           Compiled
-            ( [%expr
-                let (a, (b, stack)) = stack in
-                ( Script_int.of_int
-                  @@ Script_ir_translator.compare_comparable [%e evar name] a b,
-                  stack )],
-              [|(name, Obj.magic ty)|] ) )
+            ( (fun after ->
+                [%expr
+                  let (a, (b, stack)) = stack in
+                  let stack =
+                    ( Script_int.of_int
+                      @@ Script_ir_translator.compare_comparable
+                           [%e evar name]
+                           a
+                           b,
+                      stack )
+                  in
+                  [%e after]]),
+              [|(name, Obj.magic ty)|] ),
+          [%expr
+            let (a, (b, _)) = stack in
+            Interp_costs.compare [%e evar name] a b] )
     | If (left, right) ->
         let (counter, left) = compile_to_ocaml counter left in
         let (counter, right) = compile_to_ocaml counter right in
-        let instr =
+        let (instr, cost) =
           match (left.instr, right.instr) with
           | (Compiled (left, v_left), Compiled (right, v_right)) ->
-              Compiled
-                ( [%expr
-                    let (value, stack) = stack in
-                    if value then [%e left] else [%e right]],
-                  Array.append v_left v_right )
+              let left = left [%expr return (stack, ctx)] in
+              let right = right [%expr return (stack, ctx)] in
+              ( Compiled
+                  ( (fun after ->
+                      [%expr
+                        let (value, stack) = stack in
+                        let>>=? (stack, ctx) = if value then [%e left]
+                        else [%e right] in [%e after]]),
+                    Array.append v_left v_right ),
+                [%expr Interp_costs.if_] )
           | _ ->
-              If (left, right)
+              (If (left, right), [%expr Interp_costs.zero])
         in
-        (counter, instr)
+        (counter, instr, cost)
         (* TODO: inline IF *)
     | Seq (left, right) ->
         let (counter, left) = compile_to_ocaml counter left in
         let (counter, right) = compile_to_ocaml counter right in
-        (counter, (merge_while_seq left right).instr)
+        (counter, (merge_while_seq left right).instr, [%expr Interp_costs.seq])
     | Loop_left v ->
         let (counter, v) = compile_to_ocaml counter v in
-        (counter, Loop_left v)
+        (counter, Loop_left v, [%expr Interp_costs.zero])
     | Nop ->
         ( counter,
           Compiled
-            ( [%expr
-                let stack = stack in
-                stack],
-              [||] ) )
+            ( (fun after ->
+                [%expr
+                  let stack = stack in
+                  [%e after]]),
+              [||] ),
+          [%expr Interp_costs.nop] )
     | v ->
         print_endline (Show.get_instr_name v) ;
-        assert false
+        (counter, Eval v, [%expr Interp_costs.zero])
+  in
+  let instr =
+    match instr with
+    | Compiled (expr, value) ->
+        (* TODO: logging has a problem because descr *)
+        let expr after =
+          [%expr
+            let cost = [%e cost] in
+            let>>?= ctx = Gas.consume ctx cost in
+            [%e expr after]]
+        in
+        Compiled (expr, value)
+    | _ ->
+        instr
   in
   (counter, {loc = descr.loc; bef = descr.bef; aft = descr.aft; instr})
 
-let header =
-  [%str
-    type 'a input = Input of 'a
-
-    open Tezos_protocol_environment_alpha.Environment
-    open Tezos_raw_protocol_alpha.Script_typed_ir
-    open Tezos_raw_protocol_alpha.Alpha_context
-    module Script_ir_translator = Tezos_raw_protocol_alpha.Script_ir_translator]
+let header = Header.header
 
 let rec merge_ocaml_code :
     type b a.
     int ->
     (string * Parsetree.structure_item * (string * 'things) array) list ->
-    (Parsetree.expression * (string * 'things) array, b, a) descr_with_code ->
+    ( (Parsetree.expression -> Parsetree.expression) * (string * 'things) array,
+      b,
+      a )
+    descr_with_code ->
     int
     * (string * Parsetree.structure_item * (string * 'things) array) list
     * (int, b, a) descr_with_code =
@@ -308,14 +408,23 @@ let rec merge_ocaml_code :
           | list ->
               list |> List.map (fun (name, _) -> pvar name) |> ppat_tuple
         in
+        let code = code [%expr return (stack, ctx)] in
         let full_code =
           pstr_value
             Ppxlib.Nonrecursive
             [ value_binding
                 ~pat:(pvar name)
                 ~expr:
-                  [%expr fun (Input (stack, [%p values_pattern])) -> [%e code]]
-            ]
+                  [%expr
+                    fun (Input
+                          ( 
+                            ( let>>?= ),
+                            ( let>>=? ),
+                            return,
+                            ctx,
+                            stack,
+                            [%p values_pattern] )) ->
+                      [%e code]] ]
         in
         let cmms = (name, full_code, values) :: cmms in
         let instr = Compiled counter in
@@ -458,9 +567,9 @@ let rec step_compiled :
  fun log ~stack_depth ctx const descr stack ->
   let module Log = (val log : STEP_LOGGER) in
   let logged_return : a * context -> (a * context) tzresult Lwt.t =
-   fun (ret, ctxt) ->
-    Log.log_exit ctxt (Obj.magic descr) ret ;
-    return (ret, ctxt)
+   fun (ret, ctx) ->
+    Log.log_exit ctx (Obj.magic descr) ret ;
+    return (ret, ctx)
   in
   let non_terminal_recursion ~ctx ?(stack_depth = stack_depth + 1) descr stack
       =
@@ -477,11 +586,14 @@ let rec step_compiled :
         {loc = descr.loc; instr; bef = descr.bef; aft = descr.aft}
         stack
   | (Compiled (addr, value), stack) ->
-      let v : a =
-        Call_hack.call_pointer (Call_hack.Input (stack, value)) addr
+      let v : (a * context, 'f) result Lwt.t =
+        Call_hack.call_pointer
+          (Call_hack.Input (
+            ( >>?= ), ( >>=? ), return, ctx, stack, value))
+          addr
         |> Obj.magic
       in
-      logged_return (v, ctx)
+      v
   | (Seq (left, right), stack) ->
       step_compiled ~stack_depth log ctx const left stack
       >>=? fun (res, ctx) -> step_compiled log ~stack_depth ctx const right res
@@ -491,17 +603,17 @@ let rec step_compiled :
       step_compiled ~stack_depth log ctx const bf rest
   | (Loop_left body, (L v, rest)) ->
       non_terminal_recursion ~ctx body (v, rest)
-      >>=? fun (trans, ctxt) ->
-      step_compiled log ~stack_depth ctxt const descr trans
+      >>=? fun (trans, ctx) ->
+      step_compiled log ~stack_depth ctx const descr trans
   | (Loop_left _, (R v, rest)) ->
       logged_return ((v, rest), ctx)
 
 module No_trace : STEP_LOGGER = struct
-  let log_interp _ctxt _descr _stack = ()
+  let log_interp _ctx _descr _stack = ()
 
-  let log_entry _ctxt _descr _stack = ()
+  let log_entry _ctx _descr _stack = ()
 
-  let log_exit _ctxt _descr _stack = ()
+  let log_exit _ctx _descr _stack = ()
 
   let get_log () = return_none
 end
@@ -575,3 +687,5 @@ let run_compiled_script ctx ~step_constants ~parameter_expr script =
         ((arg, storage), ())
       >>=? fun (((_, storage), ()), ctx) ->
       Script_ir_translator.unparse_data ctx Readable storage_type storage)
+
+module X = struct end
