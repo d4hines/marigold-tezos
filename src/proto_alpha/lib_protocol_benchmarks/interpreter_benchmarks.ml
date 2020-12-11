@@ -2426,7 +2426,7 @@ module Bench10 = struct
           let closure () =
             ignore @@ Lwt_main.run
             @@ Script_interpreter.step
-                 None
+                 (module No_trace)
                  ctxt
                  step_constants
                  descr
@@ -2532,7 +2532,7 @@ module Bench1000 = struct
           let closure () =
             ignore @@ Lwt_main.run
             @@ Script_interpreter.step
-                 None
+                 (module No_trace)
                  ctxt
                  step_constants
                  descr
