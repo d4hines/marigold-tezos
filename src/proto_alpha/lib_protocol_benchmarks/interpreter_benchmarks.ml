@@ -2268,8 +2268,8 @@ module Read_ticket =
         ~name:"READ_TICKET"
         () )
 
-module MyFirstBenchmark = struct
-  let name = "myfirstbenchmark"
+module Bench100 = struct
+  let name = "bench100"
 
   let info = ""
 
@@ -2374,5 +2374,221 @@ module MyFirstBenchmark = struct
           Michelson_types.int_stack_ty
           (Alpha_context.Script_int.of_int 100, ()))
 end
+module Bench10 = struct
+  let name = "bench10"
 
-let () = Registration_helpers.register (module MyFirstBenchmark)
+  let info = ""
+
+  let tags = []
+
+  type config = unit
+
+  let default_config = ()
+
+  let config_encoding = Data_encoding.unit
+
+  type workload = unit
+
+  let workload_encoding = Data_encoding.unit
+
+  let workload_to_vector () = Sparse_vec.String.zero
+
+  let models = []
+
+  let create_benchmark rng_state instr stack_ty stack =
+    let open Error_monad in
+    Lwt_main.run
+      ( Execution_context.make ~rng_state
+      >>=? fun (context, step_constants) ->
+      Michelson_parsing_helpers.node_from_string instr
+      >>=? fun instr_node ->
+      Script_ir_translator.parse_instr
+        ~legacy:false
+        Script_ir_translator.(
+          Toplevel
+            {
+              storage_type = Unit_t None;
+              param_type = Unit_t None;
+              root_name = None;
+              legacy_create_contract_literal = false;
+            })
+        context
+        instr_node
+        stack_ty
+      >|= Protocol.Environment.wrap_error
+      >>=? fun (jdg, ctxt) ->
+      match jdg with
+      | Script_ir_translator.Typed descr ->
+          (* let (_, workload, _) =
+              Interpreter_workload.extract_deps ctxt step_constants descr stack *)
+          (* in *)
+          let ctxt = Gas_helpers.set_limit ctxt in
+          let closure () =
+            ignore @@ Lwt_main.run
+            @@ Script_interpreter.step
+                 None
+                 ctxt
+                 step_constants
+                 descr
+                 stack
+          in
+          return (Generator.Plain {workload = (); closure})
+      | _ ->
+          assert false )
+    |> function
+    | Ok closure ->
+        closure
+    | Error errs ->
+        Format.eprintf "%a@." Error_monad.pp_print_error errs ;
+        raise (Failure "Interpreter_benchmarks.create_benchmark")
+
+  (* let benchmark = fun _rng_state _unit -> fun () -> Generator.Plain {
+      workload = ();
+      closure = 
+    } *)
+  let create_benchmarks ~rng_state ~bench_num (_config : config) =
+    List.repeat bench_num (fun () ->
+        create_benchmark
+          rng_state
+          "\n\
+          \        {\n\
+          \        PUSH @acc int 1;              # We will accumulate the \
+           result on top, stack = [1; n]\n\
+          \        SWAP;                         # Put n on top, stack = [n; \
+           accu]\n\
+          \        PUSH bool True;               # It is a do-while loop.\n\
+          \        LOOP { DUP;                   # stack = [n; n; accu]\n\
+          \               PUSH int 1;            # stack = [1; n; n; accu]\n\
+          \               SWAP;                  # stack = [n; 1; n; accu]\n\
+          \               SUB;                   # stack = [n - 1; n; accu]\n\
+          \               SWAP;                  # stack = [n; n - 1; accu]\n\
+          \               DIP 1 { SWAP };        # stack = [n; accu; n - 1]\n\
+          \               MUL;                   # stack = [n * accu; n - 1]\n\
+          \               SWAP;                  # stack = [n - 1; n * accu]\n\
+          \               DUP;                   # stack = [n - 1; n - 1; n * \
+           accu]\n\
+          \               PUSH int 0;            # stack = [0; n - 1; n - 1; \
+           n * accu]\n\
+          \               COMPARE;               # stack = [cmp 0 (n - 1); n \
+           - 1; n * accu]\n\
+          \               NEQ };                # stack = [n - 1 <> 0; n - 1; \
+           n * accu]\n\
+          \        SWAP;                       # stack = [fact n; 0]\n\
+          \        DIP 1 { DROP };             # stack = [fact n]\n\
+          \        }\n\
+          \      "
+          Michelson_types.int_stack_ty
+          (Alpha_context.Script_int.of_int 10, ()))
+end
+module Bench1000 = struct
+  let name = "bench1000"
+
+  let info = ""
+
+  let tags = []
+
+  type config = unit
+
+  let default_config = ()
+
+  let config_encoding = Data_encoding.unit
+
+  type workload = unit
+
+  let workload_encoding = Data_encoding.unit
+
+  let workload_to_vector () = Sparse_vec.String.zero
+
+  let models = []
+
+  let create_benchmark rng_state instr stack_ty stack =
+    let open Error_monad in
+    Lwt_main.run
+      ( Execution_context.make ~rng_state
+      >>=? fun (context, step_constants) ->
+      Michelson_parsing_helpers.node_from_string instr
+      >>=? fun instr_node ->
+      Script_ir_translator.parse_instr
+        ~legacy:false
+        Script_ir_translator.(
+          Toplevel
+            {
+              storage_type = Unit_t None;
+              param_type = Unit_t None;
+              root_name = None;
+              legacy_create_contract_literal = false;
+            })
+        context
+        instr_node
+        stack_ty
+      >|= Protocol.Environment.wrap_error
+      >>=? fun (jdg, ctxt) ->
+      match jdg with
+      | Script_ir_translator.Typed descr ->
+          (* let (_, workload, _) =
+              Interpreter_workload.extract_deps ctxt step_constants descr stack *)
+          (* in *)
+          let ctxt = Gas_helpers.set_limit ctxt in
+          let closure () =
+            ignore @@ Lwt_main.run
+            @@ Script_interpreter.step
+                 None
+                 ctxt
+                 step_constants
+                 descr
+                 stack
+          in
+          return (Generator.Plain {workload = (); closure})
+      | _ ->
+          assert false )
+    |> function
+    | Ok closure ->
+        closure
+    | Error errs ->
+        Format.eprintf "%a@." Error_monad.pp_print_error errs ;
+        raise (Failure "Interpreter_benchmarks.create_benchmark")
+
+  (* let benchmark = fun _rng_state _unit -> fun () -> Generator.Plain {
+      workload = ();
+      closure = 
+    } *)
+  let create_benchmarks ~rng_state ~bench_num (_config : config) =
+    List.repeat bench_num (fun () ->
+        create_benchmark
+          rng_state
+          "\n\
+          \        {\n\
+          \        PUSH @acc int 1;              # We will accumulate the \
+           result on top, stack = [1; n]\n\
+          \        SWAP;                         # Put n on top, stack = [n; \
+           accu]\n\
+          \        PUSH bool True;               # It is a do-while loop.\n\
+          \        LOOP { DUP;                   # stack = [n; n; accu]\n\
+          \               PUSH int 1;            # stack = [1; n; n; accu]\n\
+          \               SWAP;                  # stack = [n; 1; n; accu]\n\
+          \               SUB;                   # stack = [n - 1; n; accu]\n\
+          \               SWAP;                  # stack = [n; n - 1; accu]\n\
+          \               DIP 1 { SWAP };        # stack = [n; accu; n - 1]\n\
+          \               MUL;                   # stack = [n * accu; n - 1]\n\
+          \               SWAP;                  # stack = [n - 1; n * accu]\n\
+          \               DUP;                   # stack = [n - 1; n - 1; n * \
+           accu]\n\
+          \               PUSH int 0;            # stack = [0; n - 1; n - 1; \
+           n * accu]\n\
+          \               COMPARE;               # stack = [cmp 0 (n - 1); n \
+           - 1; n * accu]\n\
+          \               NEQ };                # stack = [n - 1 <> 0; n - 1; \
+           n * accu]\n\
+          \        SWAP;                       # stack = [fact n; 0]\n\
+          \        DIP 1 { DROP };             # stack = [fact n]\n\
+          \        }\n\
+          \      "
+          Michelson_types.int_stack_ty
+          (Alpha_context.Script_int.of_int 1000, ()))
+end
+
+let () = Registration_helpers.register (module Bench100)
+
+let () = Registration_helpers.register (module Bench10)
+
+let () = Registration_helpers.register (module Bench1000)
