@@ -93,7 +93,7 @@ open Script_typed_ir
    'u, 'v, ... to assign types to stacks.
 
    The final types for the whole sequence of instructions
-   are written 'r and 'f.
+   are written 'r and 'f (standing for "result" and "final stack rest", respectively).
 
    Instructions for internal execution steps
    =========================================
