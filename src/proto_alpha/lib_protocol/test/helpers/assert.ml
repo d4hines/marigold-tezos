@@ -24,6 +24,7 @@
 (*****************************************************************************)
 
 open Protocol
+open Alpha_context
 
 let error ~loc v f =
   match v with
@@ -84,6 +85,37 @@ let not_equal_pkh ~loc (a : Signature.Public_key_hash.t)
     (b : Signature.Public_key_hash.t) =
   let module PKH = Signature.Public_key_hash in
   not_equal ~loc PKH.equal "Public key hashes are equal" PKH.pp a b
+
+module Gas = struct
+  let gas_check ~loc biop opname (a : Gas.Arith.fp) (b : Gas.Arith.fp) =
+    equal ~loc biop ("Gas aren't " ^ opname) Gas.Arith.pp a b
+
+  let eq ~loc = gas_check ~loc Gas.Arith.( = ) "eq"
+
+  let leq ~loc = gas_check ~loc Gas.Arith.( <= ) "leq"
+
+  let geq ~loc = gas_check ~loc Gas.Arith.( >= ) "geq"
+
+  let neq ~loc = gas_check ~loc Gas.Arith.( <> ) "neq"
+
+  let gt ~loc = gas_check ~loc Gas.Arith.( > ) "gt"
+
+  let ls ~loc = gas_check ~loc Gas.Arith.( < ) "ls"
+
+  let zero = Gas.Arith.zero
+
+  let eq_z ~loc x = eq ~loc x zero
+
+  let leq_z ~loc x = leq ~loc x zero
+
+  let geq_z ~loc x = geq ~loc x zero
+
+  let neq_z ~loc x = neq ~loc x zero
+
+  let gt_z ~loc x = gt ~loc x zero
+
+  let ls_z ~loc x = ls ~loc x zero
+end
 
 open Context
 
