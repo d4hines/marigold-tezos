@@ -13,6 +13,13 @@ end)
 open Ast_builder
 module Compare = Tezos_protocol_environment_alpha.Environment.Compare
 
+let call_pointer input pointer =
+  let id = Sys.opaque_identity (fun v -> v) in
+  let call : int ref = Obj.magic id in
+  call := pointer ;
+  let call : 'a -> 'b = Obj.magic call in
+  call input
+
 let print_code code =
   Format.asprintf
     "%a\n%!"
@@ -43,8 +50,6 @@ and ('compiled, 'bef, 'aft) descr_with_code = {
   aft : 'aft stack_ty;
   instr : ('compiled, 'bef, 'aft) instr_with_code;
 }
-
-external magic : 'a -> 'b = "%identity"
 
 let rec merge_while_seq :
     type b a.
@@ -328,14 +333,14 @@ let rec compile_to_ocaml :
         let (instr, cost) =
           match (left.instr, right.instr) with
           | (Compiled (left, v_left), Compiled (right, v_right)) ->
-              let left = left [%expr return (stack, ctx)] in
-              let right = right [%expr return (stack, ctx)] in
+              let left = left [%expr stack] in
+              let right = right [%expr stack] in
               ( Compiled
                   ( (fun after ->
                       [%expr
                         let (value, stack) = stack in
-                        let>>=? (stack, ctx) = if value then [%e left]
-                        else [%e right] in [%e after]]),
+                        let stack = if value then [%e left] else [%e right] in
+                        [%e after]]),
                     Array.append v_left v_right ),
                 [%expr Interp_costs.if_] )
           | _ ->
@@ -366,13 +371,8 @@ let rec compile_to_ocaml :
   let instr =
     match instr with
     | Compiled (expr, value) ->
-        (* TODO: logging has a problem because descr *)
-        let expr after =
-          [%expr
-            let cost = [%e cost] in
-            let>>?= ctx = Gas.consume ctx cost in
-            [%e expr after]]
-        in
+        (* TODO: logging and gashas a problem because descr *)
+        let _ = cost in
         Compiled (expr, value)
     | _ ->
         instr
@@ -408,23 +408,13 @@ let rec merge_ocaml_code :
           | list ->
               list |> List.map (fun (name, _) -> pvar name) |> ppat_tuple
         in
-        let code = code [%expr return (stack, ctx)] in
+        let code = code [%expr stack] in
         let full_code =
           pstr_value
             Ppxlib.Nonrecursive
             [ value_binding
                 ~pat:(pvar name)
-                ~expr:
-                  [%expr
-                    fun (Input
-                          ( 
-                            ( let>>?= ),
-                            ( let>>=? ),
-                            return,
-                            ctx,
-                            stack,
-                            [%p values_pattern] )) ->
-                      [%e code]] ]
+                ~expr:[%expr fun (stack, [%p values_pattern]) -> [%e code]] ]
         in
         let cmms = (name, full_code, values) :: cmms in
         let instr = Compiled counter in
@@ -586,14 +576,8 @@ let rec step_compiled :
         {loc = descr.loc; instr; bef = descr.bef; aft = descr.aft}
         stack
   | (Compiled (addr, value), stack) ->
-      let v : (a * context, 'f) result Lwt.t =
-        Call_hack.call_pointer
-          (Call_hack.Input (
-            ( >>?= ), ( >>=? ), return, ctx, stack, value))
-          addr
-        |> Obj.magic
-      in
-      v
+      let stack : a = call_pointer (stack, value) addr |> Obj.magic in
+      logged_return (stack, ctx)
   | (Seq (left, right), stack) ->
       step_compiled ~stack_depth log ctx const left stack
       >>=? fun (res, ctx) -> step_compiled log ~stack_depth ctx const right res

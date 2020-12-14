@@ -24,11 +24,14 @@ let load_paths_from_cmt cmt =
   |> List.iter Load_path.add_dir
 
 let interpreter_cmt =
-  "/home/eduardo/tezos/_build/default/src/proto_alpha/lib_protocol/.tezos_raw_protocol_alpha.objs/byte/tezos_raw_protocol_alpha__Script_interpreter_functor.cmt"
+  Sys.getcwd ()
+  ^ "/_build/default/src/proto_alpha/lib_protocol/.tezos_raw_protocol_alpha.objs/byte/tezos_raw_protocol_alpha__Script_interpreter_functor.cmt"
 
-let x =
-  Load_path.add_dir
-    "/home/eduardo/tezos/_build/default/src/proto_alpha/lib_protocol/.tezos_raw_protocol_alpha.objs/native"
+let cmx_folder =
+  Sys.getcwd ()
+  ^ "/_build/default/src/proto_alpha/lib_protocol/.tezos_raw_protocol_alpha.objs/native"
+
+let () = Load_path.add_dir cmx_folder
 
 let cmt = Cmt_format.read_cmt interpreter_cmt
 

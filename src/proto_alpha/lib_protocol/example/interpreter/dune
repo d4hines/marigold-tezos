@@ -2,9 +2,8 @@
  (name main)
  (modules main interp compile show header)
  (libraries interpreter_example_functor tezos-protocol-alpha
-   tezos-alpha-test-helpers call_hack compiler-libs.bytecomp
-   compiler-libs.optcomp ocaml-migrate-parsetree ctypes ctypes.foreign ppxlib
-   core_bench core)
+   tezos-alpha-test-helpers compiler-libs.bytecomp compiler-libs.optcomp
+   ocaml-migrate-parsetree ctypes ctypes.foreign ppxlib core_bench core)
  (foreign_stubs
   (language c)
   (names register_module))

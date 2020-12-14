@@ -2,7 +2,7 @@ open Migrate_parsetree
 
 let header =
   [%str
-    type 'a input = Input of 'a
+    type 'a box = Box of 'a
 
     open Tezos_protocol_environment_alpha.Environment
     open Pervasives
