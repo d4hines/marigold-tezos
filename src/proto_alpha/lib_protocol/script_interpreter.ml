@@ -772,12 +772,27 @@ let get_log (logger : logger option) =
    fragment). The [konts] GADT ensures that the input and output
    stack types of the continuations are consistent.
 
+   Loops have a special treatment because their control stack
+   is reused as is during the next iteration. This avoids the
+   reallocation of a control stack cell at each iteration.
+
+   Dip also has a dedicated constructor in the control stack.
+   This allows the stack prefix to be restored after the execution
+   of the [Dip]'s body.
+
 *)
 type (_, _, _, _) konts =
   | KNil : ('r, 'f, 'r, 'f) konts
   | KCons :
       ('a, 's, 'b, 't) kinstr * ('b, 't, 'r, 'f) konts
       -> ('a, 's, 'r, 'f) konts
+  | KUndip : 'b * ('b, 'a * 's, 'r, 'f) konts -> ('a, 's, 'r, 'f) konts
+  | KLoop_in :
+      ('a, 's, bool, 'a * 's) kinstr * ('a, 's, 'r, 'f) konts
+      -> (bool, 'a * 's, 'r, 'f) konts
+  | KLoop_in_left :
+      ('a, 's, ('a, 'b) union, 's) kinstr * ('b, 's, 'r, 'f) konts
+      -> (('a, 'b) union, 's, 'r, 'f) konts
 
 (*
 
@@ -843,6 +858,36 @@ and run :
   (step [@ocaml.tailcall]) logger ctxt step_constants gas k' ks accu stack
  [@@inline.always]
 
+and next :
+    type a s r f.
+    logger option ->
+    outdated_context ->
+    step_constants ->
+    local_gas_counter ->
+    (a, s, r, f) konts ->
+    a ->
+    s ->
+    (r * f * outdated_context * local_gas_counter) tzresult Lwt.t =
+ fun logger ctxt sc gas ks accu stack ->
+  match ks with
+  | KNil ->
+      Lwt.return (Ok (accu, stack, ctxt, gas))
+  | KCons (k, ks) ->
+      (step [@ocaml.tailcall]) logger ctxt sc gas k ks accu stack
+  | KLoop_in (ki, ks') ->
+      let (accu', stack') = stack in
+      if accu then
+        (step [@ocaml.tailcall]) logger ctxt sc gas ki ks accu' stack'
+      else (next [@ocaml.tailcall]) logger ctxt sc gas ks' accu' stack'
+  | KLoop_in_left (ki, ks') -> (
+    match accu with
+    | L v ->
+        (step [@ocaml.tailcall]) logger ctxt sc gas ki ks v stack
+    | R v ->
+        (next [@ocaml.tailcall]) logger ctxt sc gas ks' v stack )
+  | KUndip (x, ks) ->
+      next logger ctxt sc gas ks x (accu, stack)
+
 and step :
     type a s b t r f.
     logger option ->
@@ -865,14 +910,8 @@ and step :
       | Some logger ->
           log_entry logger ctxt gas i accu stack ) ;
       match i with
-      | KHalt _ -> (
-        match ks with
-        | KNil ->
-            ( Lwt.return (Ok (accu, stack, ctxt, gas))
-              : (r * f * outdated_context * local_gas_counter) tzresult Lwt.t
-              )
-        | KCons (k, ks) ->
-            (step [@ocaml.tailcall]) logger ctxt sc gas k ks accu stack )
+      | KHalt _ ->
+          next logger ctxt sc gas ks accu stack
       (* stack ops *)
       | KDrop (_, k) ->
           let (accu, stack) = stack in
@@ -1405,22 +1444,15 @@ and step :
           if accu then
             (run [@ocaml.tailcall]) logger ctxt sc gas i bt ks res stack
           else (run [@ocaml.tailcall]) logger ctxt sc gas i bf ks res stack
-      | KLoop (_, body, k) as self ->
-          let (res, stack) = stack in
-          if accu then
-            let ks = KCons (self, ks) in
-            (run [@ocaml.tailcall]) logger ctxt sc gas i body ks res stack
-          else (run [@ocaml.tailcall]) logger ctxt sc gas i k ks res stack
-      | KLoop_left (_, bl, br) as self -> (
-        match accu with
-        | L v ->
-            let ks = KCons (self, ks) in
-            (run [@ocaml.tailcall]) logger ctxt sc gas i bl ks v stack
-        | R v ->
-            (run [@ocaml.tailcall]) logger ctxt sc gas i br ks v stack )
-      | KDip (_, kinfo_const, b, k) ->
+      | KLoop (_, body, k) ->
+          let ks = KLoop_in (body, KCons (k, ks)) in
+          (next [@ocaml.tailcall]) logger ctxt sc gas ks accu stack
+      | KLoop_left (_, bl, br) ->
+          let ks = KLoop_in_left (bl, KCons (br, ks)) in
+          (next [@ocaml.tailcall]) logger ctxt sc gas ks accu stack
+      | KDip (_, _, b, k) ->
           let ign = accu in
-          let ks = KCons (KConst (kinfo_const, ign, k), ks) in
+          let ks = KUndip (ign, KCons (k, ks)) in
           let (accu, stack) = stack in
           (run [@ocaml.tailcall]) logger ctxt sc gas i b ks accu stack
       | KExec (_, k) ->
