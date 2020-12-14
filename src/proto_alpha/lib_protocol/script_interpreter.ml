@@ -49,8 +49,6 @@ type error += Cannot_serialize_storage
 
 type error += Michelson_too_many_recursive_calls
 
-type execution_ord = BFS | DFS
-
 let () =
   let open Data_encoding in
   let trace_encoding =
@@ -1486,7 +1484,7 @@ let execute logger ctxt mode step_constants ~entrypoint ~internal
     tzresult
     Lwt.t =
   parse_script ctxt unparsed_script ~legacy:true ~allow_forged_in_storage:true
-  >>=? fun (Ex_script {code; arg_type; storage; storage_type; root_name}, ctxt) ->
+  >>=? fun (Ex_script {code; arg_type; storage; storage_type; execution_ord; root_name}, ctxt) ->
   record_trace
     (Bad_contract_parameter step_constants.self)
     (find_entrypoint arg_type ~root_name entrypoint)
@@ -1533,7 +1531,7 @@ let execute logger ctxt mode step_constants ~entrypoint ~internal
     | diff ->
         Some diff
   in
-  (storage, ops, ctxt, lazy_storage_diff, BFS)
+  (storage, ops, ctxt, lazy_storage_diff, execution_ord)
 
 type execution_result = {
   ctxt : context;

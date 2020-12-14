@@ -297,7 +297,7 @@ let register () =
             ( Script.force_decode_in_context ctxt expr
             >>? fun (expr, _) ->
             parse_toplevel ~legacy expr
-            >>? (fun (arg_type, _, _, root_name) ->
+            >>? (fun (arg_type, _, _, _, root_name) ->
                   parse_parameter_ty ctxt ~legacy arg_type
                   >>? fun (Ex_ty arg_type, _) ->
                   Script_ir_translator.find_entrypoint
@@ -324,7 +324,7 @@ let register () =
             ( Script.force_decode_in_context ctxt expr
             >>? fun (expr, _) ->
             parse_toplevel ~legacy expr
-            >>? (fun (arg_type, _, _, root_name) ->
+            >>? (fun (arg_type, _, _, _, root_name) ->
                   parse_parameter_ty ctxt ~legacy arg_type
                   >>? fun (Ex_ty arg_type, _) ->
                   Script_ir_translator.list_entrypoints

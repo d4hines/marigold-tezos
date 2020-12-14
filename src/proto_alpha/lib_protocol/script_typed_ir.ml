@@ -43,6 +43,8 @@ type ('a, 'b) union = L of 'a | R of 'b
 
 type never = |
 
+type execution_ord = BFS | DFS
+
 type _ comparable_ty =
   | Unit_key : type_annot option -> unit comparable_ty
   | Never_key : type_annot option -> never comparable_ty
@@ -110,6 +112,7 @@ type ('arg, 'storage) script = {
   arg_type : 'arg ty;
   storage : 'storage;
   storage_type : 'storage ty;
+  execution_ord : execution_ord;
   root_name : field_annot option;
 }
 

@@ -2296,6 +2296,7 @@ type ('arg, 'storage) code = {
   code : (('arg, 'storage) pair, (operation boxed_list, 'storage) pair) lambda;
   arg_type : 'arg ty;
   storage_type : 'storage ty;
+  execution_ord : execution_ord;
   root_name : field_annot option;
 }
 
@@ -5117,7 +5118,7 @@ and parse_instr :
       >>?= fun (op_annot, addr_annot) ->
       let canonical_code = fst @@ Micheline.extract_locations code in
       parse_toplevel ~legacy canonical_code
-      >>?= fun (arg_type, storage_type, code_field, root_name) ->
+      >>?= fun (arg_type, storage_type, code_field, _execution_ord, root_name) ->
       record_trace
         (Ill_formed_type (Some "parameter", canonical_code, location arg_type))
         (parse_parameter_ty ctxt ~legacy arg_type)
@@ -5859,7 +5860,7 @@ and parse_contract :
           Script.force_decode_in_context ctxt code
           >>? fun (code, ctxt) ->
           parse_toplevel ~legacy:true code
-          >>? fun (arg_type, _, _, root_name) ->
+          >>? fun (arg_type, _, _, _execution_ord, root_name) ->
           parse_parameter_ty ctxt ~legacy:true arg_type
           >>? fun (Ex_ty targ, ctxt) ->
           find_entrypoint_for_type
@@ -5931,7 +5932,7 @@ and parse_contract_for_script :
                 match parse_toplevel ~legacy:true code with
                 | Error _ ->
                     error (Invalid_contract (loc, contract))
-                | Ok (arg_type, _, _, root_name) -> (
+                | Ok (arg_type, _, _, _execution_ord, root_name) -> (
                   match parse_parameter_ty ctxt ~legacy:true arg_type with
                   | Error _ ->
                       error (Invalid_contract (loc, contract))
@@ -5962,7 +5963,7 @@ and parse_contract_for_script :
 and parse_toplevel :
     legacy:bool ->
     Script.expr ->
-    (Script.node * Script.node * Script.node * field_annot option) tzresult =
+    (Script.node * Script.node * Script.node * Script_typed_ir.execution_ord * field_annot option) tzresult =
  fun ~legacy toplevel ->
   record_trace (Ill_typed_contract (toplevel, []))
   @@
@@ -5976,10 +5977,10 @@ and parse_toplevel :
   | Prim (loc, _, _, _) ->
       error (Invalid_kind (loc, [Seq_kind], Prim_kind))
   | Seq (_, fields) -> (
-      let rec find_fields p s c fields =
+      let rec find_fields p s c o fields =
         match fields with
         | [] ->
-            ok (p, s, c)
+            ok (p, s, c, o)
         | Int (loc, _) :: _ ->
             error (Invalid_kind (loc, [Prim_kind], Int_kind))
         | String (loc, _) :: _ ->
@@ -5991,37 +5992,52 @@ and parse_toplevel :
         | Prim (loc, K_parameter, [arg], annot) :: rest -> (
           match p with
           | None ->
-              find_fields (Some (arg, loc, annot)) s c rest
+              find_fields (Some (arg, loc, annot)) s c o rest
           | Some _ ->
               error (Duplicate_field (loc, K_parameter)) )
         | Prim (loc, K_storage, [arg], annot) :: rest -> (
           match s with
           | None ->
-              find_fields p (Some (arg, loc, annot)) c rest
+              find_fields p (Some (arg, loc, annot)) c o rest
           | Some _ ->
               error (Duplicate_field (loc, K_storage)) )
         | Prim (loc, K_code, [arg], annot) :: rest -> (
           match c with
           | None ->
-              find_fields p s (Some (arg, loc, annot)) rest
+              find_fields p s (Some (arg, loc, annot)) o rest
           | Some _ ->
               error (Duplicate_field (loc, K_code)) )
-        | Prim (loc, ((K_parameter | K_storage | K_code) as name), args, _)
+        | Prim (loc, K_exec_ording, [(Prim (_, ord, [], _))], _) :: rest -> (
+          match o with
+          | None ->
+              (match ord with
+               | D_BFS ->
+                   find_fields p s c (Some Script_typed_ir.BFS) rest
+               | D_DFS ->
+                   find_fields p s c (Some Script_typed_ir.DFS) rest
+               | _ ->
+                   let allowed = [D_DFS; D_BFS] in
+                   error (Invalid_primitive (loc, allowed, K_exec_ording))
+              )
+          | Some _ ->
+              error (Duplicate_field (loc, K_exec_ording))
+          )
+        | Prim (loc, ((K_parameter | K_storage | K_code | K_exec_ording) as name), args, _)
           :: _ ->
             error (Invalid_arity (loc, name, 1, List.length args))
         | Prim (loc, name, _, _) :: _ ->
             let allowed = [K_parameter; K_storage; K_code] in
             error (Invalid_primitive (loc, allowed, name))
       in
-      find_fields None None None fields
+      find_fields None None None None fields
       >>? function
-      | (None, _, _) ->
+      | (None, _, _, _) ->
           error (Missing_field K_parameter)
-      | (Some _, None, _) ->
+      | (Some _, None, _, _) ->
           error (Missing_field K_storage)
-      | (Some _, Some _, None) ->
+      | (Some _, Some _, None, _) ->
           error (Missing_field K_code)
-      | (Some (p, ploc, pannot), Some (s, sloc, sannot), Some (c, cloc, carrot))
+      | (Some (p, ploc, pannot), Some (s, sloc, sannot), Some (c, cloc, carrot), o)
         ->
           let maybe_root_name =
             (* root name can be attached to either the parameter
@@ -6041,6 +6057,11 @@ and parse_toplevel :
               | _ ->
                   ok (p, pannot, None) )
           in
+          let default_ord =
+            match o with
+            | Some d -> d
+            | None -> Script_typed_ir.BFS
+          in
           if legacy then
             (* legacy semantics ignores spurious annotations *)
             let (p, root_name) =
@@ -6050,7 +6071,7 @@ and parse_toplevel :
               | Error _ ->
                   (p, None)
             in
-            ok (p, s, c, root_name)
+            ok (p, s, c, default_ord, root_name)
           else
             (* only one field annot is allowed to set the root entrypoint name *)
             maybe_root_name
@@ -6060,7 +6081,7 @@ and parse_toplevel :
             Script_ir_annot.error_unexpected_annot cloc carrot
             >>? fun () ->
             Script_ir_annot.error_unexpected_annot sloc sannot
-            >>? fun () -> ok (p, s, c, root_name) )
+            >>? fun () -> ok (p, s, c, default_ord, root_name) )
 
 let parse_code :
     ?type_logger:type_logger ->
@@ -6072,7 +6093,7 @@ let parse_code :
   Script.force_decode_in_context ctxt code
   >>?= fun (code, ctxt) ->
   parse_toplevel ~legacy code
-  >>?= fun (arg_type, storage_type, code_field, root_name) ->
+  >>?= fun (arg_type, storage_type, code_field, execution_ord, root_name) ->
   record_trace
     (Ill_formed_type (Some "parameter", code, location arg_type))
     (parse_parameter_ty ctxt ~legacy arg_type)
@@ -6121,7 +6142,7 @@ let parse_code :
        ret_type_full
        code_field)
   >|=? fun (code, ctxt) ->
-  (Ex_code {code; arg_type; storage_type; root_name}, ctxt)
+    (Ex_code {code; arg_type; storage_type; execution_ord; root_name}, ctxt)
 
 let parse_storage :
     ?type_logger:type_logger ->
@@ -6158,7 +6179,7 @@ let parse_script :
     (ex_script * context) tzresult Lwt.t =
  fun ?type_logger ctxt ~legacy ~allow_forged_in_storage {code; storage} ->
   parse_code ~legacy ctxt ?type_logger ~code
-  >>=? fun (Ex_code {code; arg_type; storage_type; root_name}, ctxt) ->
+  >>=? fun (Ex_code {code; arg_type; storage_type; execution_ord; root_name}, ctxt) ->
   parse_storage
     ?type_logger
     ctxt
@@ -6167,7 +6188,7 @@ let parse_script :
     storage_type
     ~storage
   >|=? fun (storage, ctxt) ->
-  (Ex_script {code; arg_type; storage; storage_type; root_name}, ctxt)
+    (Ex_script {code; arg_type; storage; storage_type; execution_ord; root_name}, ctxt)
 
 let typecheck_code :
     legacy:bool ->
@@ -6176,7 +6197,7 @@ let typecheck_code :
     (type_map * context) tzresult Lwt.t =
  fun ~legacy ctxt code ->
   parse_toplevel ~legacy code
-  >>?= fun (arg_type, storage_type, code_field, root_name) ->
+  >>?= fun (arg_type, storage_type, code_field, _execution_ord, root_name) ->
   let type_map = ref [] in
   record_trace
     (Ill_formed_type (Some "parameter", code, location arg_type))

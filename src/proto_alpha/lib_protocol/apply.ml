@@ -518,7 +518,7 @@ let apply_manager_operation_content :
     ( context
     * kind successful_manager_operation_result
     * packed_internal_operation list
-    * Script_interpreter.execution_ord option)
+    * Script_typed_ir.execution_ord option)
     tzresult
     Lwt.t =
  fun ctxt mode ~payer ~source ~chain_id ~internal operation ->

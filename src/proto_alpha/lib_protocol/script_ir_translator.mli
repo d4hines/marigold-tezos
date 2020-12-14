@@ -46,6 +46,7 @@ type ('arg, 'storage) code = {
     Script_typed_ir.lambda;
   arg_type : 'arg Script_typed_ir.ty;
   storage_type : 'storage Script_typed_ir.ty;
+  execution_ord : Script_typed_ir.execution_ord;
   root_name : Script_typed_ir.field_annot option;
 }
 
@@ -228,7 +229,7 @@ val unparse_ty :
 val parse_toplevel :
   legacy:bool ->
   Script.expr ->
-  (Script.node * Script.node * Script.node * Script_typed_ir.field_annot option)
+  (Script.node * Script.node * Script.node * Script_typed_ir.execution_ord * Script_typed_ir.field_annot option)
   tzresult
 
 val add_field_annot :
