@@ -517,7 +517,8 @@ let apply_manager_operation_content :
     kind manager_operation ->
     ( context
     * kind successful_manager_operation_result
-    * packed_internal_operation list )
+    * packed_internal_operation list
+    * Script_interpreter.execution_ord option)
     tzresult
     Lwt.t =
  fun ctxt mode ~payer ~source ~chain_id ~internal operation ->
@@ -538,7 +539,7 @@ let apply_manager_operation_content :
           ( Reveal_result
               {consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt}
             : kind successful_manager_operation_result ),
-          [] )
+          [], None)
   | Transaction {amount; parameters; destination; entrypoint} -> (
       Contract.spend ctxt source amount
       >>=? fun ctxt ->
@@ -607,7 +608,7 @@ let apply_manager_operation_content :
                   allocated_destination_contract;
                 }
             in
-            (ctxt, result, []) )
+            (ctxt, result, [], None) )
       | Some script ->
           Script.force_decode_in_context ctxt parameters
           >>?= fun (parameter, ctxt) ->
@@ -627,7 +628,7 @@ let apply_manager_operation_content :
             ~parameter
             ~entrypoint
             ~internal
-          >>=? fun {ctxt; storage; lazy_storage_diff; operations} ->
+          >>=? fun {ctxt; storage; lazy_storage_diff; operations; execution_ord} ->
           Contract.update_script_storage
             ctxt
             destination
@@ -657,7 +658,7 @@ let apply_manager_operation_content :
                 allocated_destination_contract;
               }
           in
-          (ctxt, result, operations) )
+          (ctxt, result, operations, Some execution_ord) )
   | Origination {delegate; script; preorigination; credit} ->
       Script.force_decode_in_context ctxt script.storage
       >>?= fun (unparsed_storage, ctxt) ->
@@ -737,14 +738,14 @@ let apply_manager_operation_content :
             paid_storage_size_diff;
           }
       in
-      (ctxt, result, [])
+      (ctxt, result, [], None)
   | Delegation delegate ->
       Delegate.set ctxt source delegate
       >|=? fun ctxt ->
       ( ctxt,
         Delegation_result
           {consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt},
-        [] )
+        [], None)
 
 type success_or_failure = Success of context | Failure
 
@@ -780,11 +781,17 @@ let apply_internal_manager_operations ctxt mode ~payer ~chain_id ops =
                 rest
             in
             Lwt.return (Failure, List.rev (skipped @ (result :: applied)))
-        | Ok (ctxt, result, emitted) ->
+        | Ok (ctxt, result, emitted, execution_ord) -> (
+            let ord =
+              match execution_ord with
+              | None -> rest @ emitted
+              | Some BFS -> rest @ emitted
+              | Some DFS -> emitted @ rest
+            in
             apply
               ctxt
               (Internal_operation_result (op, Applied result) :: applied)
-              (rest @ emitted) )
+              ord ))
   in
   apply ctxt [] ops
 
@@ -859,7 +866,7 @@ let apply_manager_contents (type kind) ctxt mode chain_id
     ~chain_id
     operation
   >>= function
-  | Ok (ctxt, operation_results, internal_operations) -> (
+  | Ok (ctxt, operation_results, internal_operations, _) -> (
       apply_internal_manager_operations
         ctxt
         mode
