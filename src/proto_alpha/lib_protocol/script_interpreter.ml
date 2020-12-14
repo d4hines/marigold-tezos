@@ -152,43 +152,6 @@ let rec interp_stack_prefix_preserving_operation :
     aft * result =
  fun f n stk ->
   match (n, stk) with
-  | ( Prefix
-        (Prefix
-          (Prefix
-            (Prefix
-              (Prefix
-                (Prefix
-                  (Prefix
-                    (Prefix
-                      (Prefix
-                        (Prefix
-                          (Prefix
-                            (Prefix (Prefix (Prefix (Prefix (Prefix n))))))))))))))),
-      ( v0,
-        ( v1,
-          ( v2,
-            ( v3,
-              ( v4,
-                ( v5,
-                  ( v6,
-                    (v7, (v8, (v9, (va, (vb, (vc, (vd, (ve, (vf, rest)))))))))
-                  ) ) ) ) ) ) ) ) ->
-      interp_stack_prefix_preserving_operation f n rest
-      |> fun (rest', result) ->
-      ( ( v0,
-          ( v1,
-            ( v2,
-              ( v3,
-                ( v4,
-                  ( v5,
-                    ( v6,
-                      ( v7,
-                        (v8, (v9, (va, (vb, (vc, (vd, (ve, (vf, rest'))))))))
-                      ) ) ) ) ) ) ) ),
-        result )
-  | (Prefix (Prefix (Prefix (Prefix n))), (v0, (v1, (v2, (v3, rest))))) ->
-      interp_stack_prefix_preserving_operation f n rest
-      |> fun (rest', result) -> ((v0, (v1, (v2, (v3, rest')))), result)
   | (Prefix n, (v, rest)) ->
       interp_stack_prefix_preserving_operation f n rest
       |> fun (rest', result) -> ((v, rest'), result)
