@@ -49,6 +49,8 @@ type error += Cannot_serialize_storage
 
 type error += Michelson_too_many_recursive_calls
 
+type execution_ord = BFS | DFS
+
 let () =
   let open Data_encoding in
   let trace_encoding =
@@ -1479,7 +1481,8 @@ let execute logger ctxt mode step_constants ~entrypoint ~internal
     ( Script.expr
     * packed_internal_operation list
     * context
-    * Lazy_storage.diffs option )
+    * Lazy_storage.diffs option
+    * execution_ord)
     tzresult
     Lwt.t =
   parse_script ctxt unparsed_script ~legacy:true ~allow_forged_in_storage:true
@@ -1530,13 +1533,14 @@ let execute logger ctxt mode step_constants ~entrypoint ~internal
     | diff ->
         Some diff
   in
-  (storage, ops, ctxt, lazy_storage_diff)
+  (storage, ops, ctxt, lazy_storage_diff, BFS)
 
 type execution_result = {
   ctxt : context;
   storage : Script.expr;
   lazy_storage_diff : Lazy_storage.diffs option;
   operations : packed_internal_operation list;
+  execution_ord: execution_ord;
 }
 
 let execute ?(logger = (module No_trace : STEP_LOGGER)) ctxt mode
@@ -1550,5 +1554,5 @@ let execute ?(logger = (module No_trace : STEP_LOGGER)) ctxt mode
     ~internal
     script
     (Micheline.root parameter)
-  >|=? fun (storage, operations, ctxt, lazy_storage_diff) ->
-  {ctxt; storage; lazy_storage_diff; operations}
+  >|=? fun (storage, operations, ctxt, lazy_storage_diff, execution_ord) ->
+  {ctxt; storage; lazy_storage_diff; operations; execution_ord}

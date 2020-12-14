@@ -301,11 +301,11 @@ module Scripts = struct
         ~entrypoint
         ~parameter
         ~internal:true
-      >>=? fun {ctxt; storage; lazy_storage_diff; operations} ->
+      >>=? fun {ctxt; storage; lazy_storage_diff; operations; execution_ord} ->
       Logger.get_log ()
       >|=? fun trace ->
       let trace = Option.value ~default:[] trace in
-      ({ctxt; storage; lazy_storage_diff; operations}, trace)
+      ({ctxt; storage; lazy_storage_diff; operations; execution_ord}, trace)
   end
 
   let typecheck_data :
