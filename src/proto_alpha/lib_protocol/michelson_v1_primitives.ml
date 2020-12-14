@@ -38,6 +38,7 @@ type prim =
   | K_parameter
   | K_storage
   | K_code
+  | K_exec_ording
   | D_False
   | D_Elt
   | D_Left
@@ -47,6 +48,8 @@ type prim =
   | D_Some
   | D_True
   | D_Unit
+  | D_DFS
+  | D_BFS
   | I_PACK
   | I_UNPACK
   | I_BLAKE2B
@@ -186,7 +189,7 @@ type namespace =
   | (* prefix "K" *) Keyword_namespace
 
 let namespace = function
-  | K_code | K_parameter | K_storage ->
+  | K_code | K_parameter | K_storage | K_exec_ording ->
       Keyword_namespace
   | D_Elt
   | D_False
@@ -196,7 +199,9 @@ let namespace = function
   | D_Right
   | D_Some
   | D_True
-  | D_Unit ->
+  | D_Unit
+  | D_DFS
+  | D_BFS ->
       Constant_namespace
   | I_ABS
   | I_ADD
@@ -351,6 +356,8 @@ let string_of_prim = function
       "storage"
   | K_code ->
       "code"
+  | K_exec_ording ->
+      "exec_ording"
   | D_False ->
       "False"
   | D_Elt ->
@@ -369,6 +376,10 @@ let string_of_prim = function
       "True"
   | D_Unit ->
       "Unit"
+  | D_BFS ->
+      "BFS"
+  | D_DFS ->
+      "DFS"
   | I_PACK ->
       "PACK"
   | I_UNPACK ->
@@ -635,6 +646,8 @@ let prim_of_string = function
       ok K_storage
   | "code" ->
       ok K_code
+  | "exec_ording" ->
+      ok K_exec_ording
   | "False" ->
       ok D_False
   | "Elt" ->
@@ -653,6 +666,10 @@ let prim_of_string = function
       ok D_True
   | "Unit" ->
       ok D_Unit
+  | "BFS" ->
+      ok D_BFS
+  | "DFS" ->
+      ok D_DFS
   | "PACK" ->
       ok I_PACK
   | "UNPACK" ->
@@ -1111,7 +1128,10 @@ let prim_encoding =
          ("READ_TICKET", I_READ_TICKET);
          ("SPLIT_TICKET", I_SPLIT_TICKET);
          ("JOIN_TICKETS", I_JOIN_TICKETS);
-         ("GET_AND_UPDATE", I_GET_AND_UPDATE)
+         ("GET_AND_UPDATE", I_GET_AND_UPDATE);
+         ("exec_ording", K_exec_ording);
+         ("BFS", D_BFS);
+         ("DFS", D_DFS)
          (* New instructions must be added here, for backward compatibility of the encoding. *)
          (* Keep the comment above at the end of the list *)
         ]

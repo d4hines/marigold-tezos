@@ -255,6 +255,7 @@ module Script : sig
     | K_parameter
     | K_storage
     | K_code
+    | K_exec_ording
     | D_False
     | D_Elt
     | D_Left
@@ -264,6 +265,8 @@ module Script : sig
     | D_Some
     | D_True
     | D_Unit
+    | D_DFS
+    | D_BFS
     | I_PACK
     | I_UNPACK
     | I_BLAKE2B
