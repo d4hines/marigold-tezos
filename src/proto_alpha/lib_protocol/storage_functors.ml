@@ -486,14 +486,14 @@ struct
   let cache_empty ctx = C.carbonated_cache_init ctx
 
   let mem s i =
+    let key = data_key i in
     if cache_mem s i then return (C.project s, true)
     else
-      let key = C.absolute_key s (data_key i) in
       consume_mem_gas s key
       >>?= fun s -> C.mem s key >|= fun exists -> ok (C.project s, exists)
 
   let get s i =
-    let key = C.absolute_key s (data_key i) in
+    let key = data_key i in
     match cache_find_option s i with
     | Some b ->
         Lwt.return (of_bytes ~key b >|? fun v -> (C.project s, v))
@@ -502,11 +502,11 @@ struct
         >>=? fun s ->
         C.get s key
         >>=? fun b ->
-        let s = cache_add_raw s key b in
+        let s = cache_add_raw s (C.absolute_key s key) b in
         Lwt.return (of_bytes ~key b >|? fun v -> (C.project s, v))
 
   let get_option s i =
-    let key = C.absolute_key s (data_key i) in
+    let key = data_key i in
     match cache_find_option s i with
     | Some b ->
         Lwt.return (of_bytes ~key b >|? fun v -> (C.project s, Some v))
@@ -520,12 +520,12 @@ struct
           >>=? fun s ->
           C.get s key
           >>=? fun b ->
-          let s = cache_add_raw s key b in
+          let s = cache_add_raw s (C.absolute_key s key) b in
           Lwt.return (of_bytes ~key b >|? fun v -> (C.project s, Some v))
         else return (C.project s, None)
 
   let set s i v =
-    let key = C.absolute_key s (data_key i) in
+    let key = data_key i in
     existing_size s i
     >>=? fun (prev_size, _) ->
     consume_serialize_write_gas C.set s i v
@@ -533,21 +533,21 @@ struct
     C.set s key bytes
     >|=? fun t ->
     let size_diff = Bytes.length bytes - prev_size in
-    let u = cache_add_raw t key bytes in
+    let u = cache_add_raw t (C.absolute_key t key) bytes in
     (C.project u, size_diff)
 
   let init s i v =
-    let key = C.absolute_key s (data_key i) in
+    let key = data_key i in
     consume_serialize_write_gas C.init s i v
     >>=? fun (s, bytes) ->
     C.init s key bytes
     >|=? fun t ->
     let size = Bytes.length bytes in
-    let u = cache_add_raw t key bytes in
+    let u = cache_add_raw t (C.absolute_key t key) bytes in
     (C.project u, size)
 
   let init_set s i v =
-    let key = C.absolute_key s (data_key i) in
+    let key = data_key i in
     let init_set s i v = C.init_set s i v >|= ok in
     existing_size s i
     >>=? fun (prev_size, existed) ->
@@ -556,11 +556,11 @@ struct
     init_set s key bytes
     >|=? fun t ->
     let size_diff = Bytes.length bytes - prev_size in
-    let u = cache_add_raw t key bytes in
+    let u = cache_add_raw t (C.absolute_key t key) bytes in
     (C.project u, size_diff, existed)
 
   let remove s i =
-    let key = C.absolute_key s (data_key i) in
+    let key = data_key i in
     let remove s i = C.remove s i >|= ok in
     existing_size s i
     >>=? fun (prev_size, existed) ->
@@ -568,18 +568,18 @@ struct
     >>=? fun s ->
     remove s key
     >|=? fun t ->
-    let u = cache_remove_raw t key in
+    let u = cache_remove t i in
     (C.project u, prev_size, existed)
 
   let delete s i =
-    let key = C.absolute_key s (data_key i) in
+    let key = data_key i in
     existing_size s i
     >>=? fun (prev_size, _) ->
     consume_remove_gas C.delete s i
     >>=? fun s ->
     C.delete s key
     >|=? fun t ->
-    let u = cache_remove_raw t key in
+    let u = cache_remove t i in
     (C.project u, prev_size)
 
   let set_option s i v =

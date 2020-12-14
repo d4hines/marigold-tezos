@@ -50,5 +50,5 @@ let () =
       ("sapling", Test_sapling.tests);
       ("helpers rpcs", Test_helpers_rpcs.tests);
       ("script deserialize gas", Script_gas.tests);
-      ("carbonated storage cache", Cache.tests) ]
+      ("carbonated storage cache", Test_cache.tests) ]
   |> Lwt_main.run

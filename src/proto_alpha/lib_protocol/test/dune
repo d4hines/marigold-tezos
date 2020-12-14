@@ -52,3 +52,10 @@
  (alias runtest_lint)
  (deps (glob_files *.ml{,i}))
  (action (run %{lib:tezos-tooling:lint.sh} %{deps})))
+
+; runs only the `Quick tests and only for cache
+(rule
+ (alias runtest_proto_alpha_cache)
+ (deps (glob_files contracts/*))
+ (package tezos-protocol-alpha-tests)
+ (action (run %{exe:main.exe} test cache -v -q)))

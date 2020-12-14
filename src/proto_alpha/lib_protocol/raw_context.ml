@@ -26,7 +26,7 @@
 module Int_set = Set.Make (Compare.Int)
 
 module CacheMap = struct
- include Map.Make (Compare.List (Compare.String))
+  include Map.Make (Compare.List (Compare.String))
 end
 
 (*
@@ -223,9 +223,8 @@ let[@inline] update_temporary_lazy_storage_ids ctxt temporary_lazy_storage_ids
     =
   update_back ctxt {ctxt.back with temporary_lazy_storage_ids}
 
-let[@inline] update_carbonated_cache ctxt cc
-    =
-  update_back ctxt {ctxt.back with cc}
+let[@inline] update_carbonated_cache ctxt carbonated_cache =
+  update_back ctxt {ctxt.back with carbonated_cache}
 
 let record_endorsement ctxt k =
   match
@@ -767,7 +766,7 @@ let prepare ~level ~predecessor_timestamp ~timestamp ~fitness ctxt =
         internal_nonce = 0;
         internal_nonces_used = Int_set.empty;
         gas_counter_status = Unlimited_operation_gas;
-        decarbonated_cache = CacheMap.empty;
+        carbonated_cache = CacheMap.empty;
       };
   }
 
@@ -960,8 +959,7 @@ let absolute_key _ k = k
 
 let description = Storage_description.create ()
 
-let carbonated_cache_init ctx =
-  update_carbonated_cache ctx CacheMap.empty
+let carbonated_cache_init ctx = update_carbonated_cache ctx CacheMap.empty
 
 let carbonated_cache_mem ctx key = CacheMap.mem key (carbonated_cache ctx)
 
