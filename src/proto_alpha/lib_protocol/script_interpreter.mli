@@ -48,7 +48,7 @@ type execution_result = {
   storage : Script.expr;
   lazy_storage_diff : Lazy_storage.diffs option;
   operations : packed_internal_operation list;
-  execution_ord: Script_typed_ir.execution_ord;
+  execution_ord : Script_typed_ir.execution_ord;
 }
 
 type step_constants = {

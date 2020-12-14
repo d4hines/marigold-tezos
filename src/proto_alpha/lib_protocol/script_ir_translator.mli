@@ -229,7 +229,11 @@ val unparse_ty :
 val parse_toplevel :
   legacy:bool ->
   Script.expr ->
-  (Script.node * Script.node * Script.node * Script_typed_ir.execution_ord * Script_typed_ir.field_annot option)
+  ( Script.node
+  * Script.node
+  * Script.node
+  * Script_typed_ir.execution_ord
+  * Script_typed_ir.field_annot option )
   tzresult
 
 val add_field_annot :

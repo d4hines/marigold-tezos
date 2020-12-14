@@ -5963,7 +5963,12 @@ and parse_contract_for_script :
 and parse_toplevel :
     legacy:bool ->
     Script.expr ->
-    (Script.node * Script.node * Script.node * Script_typed_ir.execution_ord * field_annot option) tzresult =
+    ( Script.node
+    * Script.node
+    * Script.node
+    * Script_typed_ir.execution_ord
+    * field_annot option )
+    tzresult =
  fun ~legacy toplevel ->
   record_trace (Ill_typed_contract (toplevel, []))
   @@
@@ -6007,22 +6012,24 @@ and parse_toplevel :
               find_fields p s (Some (arg, loc, annot)) o rest
           | Some _ ->
               error (Duplicate_field (loc, K_code)) )
-        | Prim (loc, K_exec_ording, [(Prim (_, ord, [], _))], _) :: rest -> (
+        | Prim (loc, K_exec_ording, [Prim (_, ord, [], _)], _) :: rest -> (
           match o with
-          | None ->
-              (match ord with
-               | D_BFS ->
-                   find_fields p s c (Some Script_typed_ir.BFS) rest
-               | D_DFS ->
-                   find_fields p s c (Some Script_typed_ir.DFS) rest
-               | _ ->
-                   let allowed = [D_DFS; D_BFS] in
-                   error (Invalid_primitive (loc, allowed, K_exec_ording))
-              )
+          | None -> (
+            match ord with
+            | D_BFS ->
+                find_fields p s c (Some Script_typed_ir.BFS) rest
+            | D_DFS ->
+                find_fields p s c (Some Script_typed_ir.DFS) rest
+            | _ ->
+                let allowed = [D_DFS; D_BFS] in
+                error (Invalid_primitive (loc, allowed, K_exec_ording)) )
           | Some _ ->
-              error (Duplicate_field (loc, K_exec_ording))
-          )
-        | Prim (loc, ((K_parameter | K_storage | K_code | K_exec_ording) as name), args, _)
+              error (Duplicate_field (loc, K_exec_ording)) )
+        | Prim
+            ( loc,
+              ((K_parameter | K_storage | K_code | K_exec_ording) as name),
+              args,
+              _ )
           :: _ ->
             error (Invalid_arity (loc, name, 1, List.length args))
         | Prim (loc, name, _, _) :: _ ->
@@ -6037,8 +6044,10 @@ and parse_toplevel :
           error (Missing_field K_storage)
       | (Some _, Some _, None, _) ->
           error (Missing_field K_code)
-      | (Some (p, ploc, pannot), Some (s, sloc, sannot), Some (c, cloc, carrot), o)
-        ->
+      | ( Some (p, ploc, pannot),
+          Some (s, sloc, sannot),
+          Some (c, cloc, carrot),
+          o ) ->
           let maybe_root_name =
             (* root name can be attached to either the parameter
                  primitive or the toplevel constructor *)
@@ -6058,9 +6067,7 @@ and parse_toplevel :
                   ok (p, pannot, None) )
           in
           let default_ord =
-            match o with
-            | Some d -> d
-            | None -> Script_typed_ir.BFS
+            match o with Some d -> d | None -> Script_typed_ir.BFS
           in
           if legacy then
             (* legacy semantics ignores spurious annotations *)
@@ -6142,7 +6149,7 @@ let parse_code :
        ret_type_full
        code_field)
   >|=? fun (code, ctxt) ->
-    (Ex_code {code; arg_type; storage_type; execution_ord; root_name}, ctxt)
+  (Ex_code {code; arg_type; storage_type; execution_ord; root_name}, ctxt)
 
 let parse_storage :
     ?type_logger:type_logger ->
@@ -6179,7 +6186,8 @@ let parse_script :
     (ex_script * context) tzresult Lwt.t =
  fun ?type_logger ctxt ~legacy ~allow_forged_in_storage {code; storage} ->
   parse_code ~legacy ctxt ?type_logger ~code
-  >>=? fun (Ex_code {code; arg_type; storage_type; execution_ord; root_name}, ctxt) ->
+  >>=? fun ( Ex_code {code; arg_type; storage_type; execution_ord; root_name},
+             ctxt ) ->
   parse_storage
     ?type_logger
     ctxt
@@ -6188,7 +6196,8 @@ let parse_script :
     storage_type
     ~storage
   >|=? fun (storage, ctxt) ->
-    (Ex_script {code; arg_type; storage; storage_type; execution_ord; root_name}, ctxt)
+  ( Ex_script {code; arg_type; storage; storage_type; execution_ord; root_name},
+    ctxt )
 
 let typecheck_code :
     legacy:bool ->

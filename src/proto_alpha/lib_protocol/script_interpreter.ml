@@ -1480,11 +1480,13 @@ let execute logger ctxt mode step_constants ~entrypoint ~internal
     * packed_internal_operation list
     * context
     * Lazy_storage.diffs option
-    * execution_ord)
+    * execution_ord )
     tzresult
     Lwt.t =
   parse_script ctxt unparsed_script ~legacy:true ~allow_forged_in_storage:true
-  >>=? fun (Ex_script {code; arg_type; storage; storage_type; execution_ord; root_name}, ctxt) ->
+  >>=? fun ( Ex_script
+               {code; arg_type; storage; storage_type; execution_ord; root_name},
+             ctxt ) ->
   record_trace
     (Bad_contract_parameter step_constants.self)
     (find_entrypoint arg_type ~root_name entrypoint)
@@ -1538,7 +1540,7 @@ type execution_result = {
   storage : Script.expr;
   lazy_storage_diff : Lazy_storage.diffs option;
   operations : packed_internal_operation list;
-  execution_ord: execution_ord;
+  execution_ord : execution_ord;
 }
 
 let execute ?(logger = (module No_trace : STEP_LOGGER)) ctxt mode
