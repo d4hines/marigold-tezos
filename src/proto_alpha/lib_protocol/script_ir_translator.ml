@@ -669,48 +669,54 @@ let empty_set : type a. a comparable_ty -> a set =
 
     let compare = compare_comparable ty
   end) in
-  ( module struct
-    type elt = a
+  Set_box
+    ( module struct
+      type elt = a
 
-    let elt_ty = ty
+      type elt_ty = elt comparable_ty
 
-    module OPS = OPS
+      let elt_ty = ty
 
-    let boxed = OPS.empty
+      module OPS = OPS
 
-    let size = 0
-  end )
+      let boxed = OPS.empty
+
+      let size = 0
+    end )
 
 let set_update : type a. a -> bool -> a set -> a set =
- fun v b (module Box) ->
-  ( module struct
-    type elt = a
+ fun v b (Set_box (module Box)) ->
+  Set_box
+    ( module struct
+      type elt = a
 
-    let elt_ty = Box.elt_ty
+      type elt_ty = elt comparable_ty
 
-    module OPS = Box.OPS
+      let elt_ty = Box.elt_ty
 
-    let boxed =
-      if b then Box.OPS.add v Box.boxed else Box.OPS.remove v Box.boxed
+      module OPS = Box.OPS
 
-    let size =
-      let mem = Box.OPS.mem v Box.boxed in
-      if mem then if b then Box.size else Box.size - 1
-      else if b then Box.size + 1
-      else Box.size
-  end )
+      let boxed =
+        if b then Box.OPS.add v Box.boxed else Box.OPS.remove v Box.boxed
+
+      let size =
+        let mem = Box.OPS.mem v Box.boxed in
+        if mem then if b then Box.size else Box.size - 1
+        else if b then Box.size + 1
+        else Box.size
+    end )
 
 let set_mem : type elt. elt -> elt set -> bool =
- fun v (module Box) -> Box.OPS.mem v Box.boxed
+ fun v (Set_box (module Box)) -> Box.OPS.mem v Box.boxed
 
 let set_fold : type elt acc. (elt -> acc -> acc) -> elt set -> acc -> acc =
- fun f (module Box) -> Box.OPS.fold f Box.boxed
+ fun f (Set_box (module Box)) -> Box.OPS.fold f Box.boxed
 
 let set_size : type elt. elt set -> Script_int.n Script_int.num =
- fun (module Box) -> Script_int.(abs (of_int Box.size))
+ fun (Set_box (module Box)) -> Script_int.(abs (of_int Box.size))
 
 let map_key_ty : type a b. (a, b) map -> a comparable_ty =
- fun (module Box) -> Box.key_ty
+ fun (Map_box (module Box)) -> Box.key_ty
 
 let empty_map : type a b. a comparable_ty -> (a, b) map =
  fun ty ->
@@ -719,69 +725,78 @@ let empty_map : type a b. a comparable_ty -> (a, b) map =
 
     let compare = compare_comparable ty
   end) in
-  ( module struct
-    type key = a
+  Map_box
+    ( module struct
+      type key = a
 
-    type value = b
+      type value = b
 
-    let key_ty = ty
+      type key_ty = key comparable_ty
 
-    module OPS = OPS
+      let key_ty = ty
 
-    let boxed = (OPS.empty, 0)
-  end )
+      module OPS = OPS
+
+      let boxed = (OPS.empty, 0)
+    end )
 
 let map_get : type key value. key -> (key, value) map -> value option =
- fun k (module Box) -> Box.OPS.find_opt k (fst Box.boxed)
+ fun k (Map_box (module Box)) -> Box.OPS.find_opt k (fst Box.boxed)
 
 let map_update : type a b. a -> b option -> (a, b) map -> (a, b) map =
- fun k v (module Box) ->
-  ( module struct
-    type key = a
+ fun k v (Map_box (module Box)) ->
+  Map_box
+    ( module struct
+      type key = a
 
-    type value = b
+      type value = b
 
-    let key_ty = Box.key_ty
+      type key_ty = key comparable_ty
 
-    module OPS = Box.OPS
+      let key_ty = Box.key_ty
 
-    let boxed =
-      let (map, size) = Box.boxed in
-      let contains = Box.OPS.mem k map in
-      match v with
-      | Some v ->
-          (Box.OPS.add k v map, size + if contains then 0 else 1)
-      | None ->
-          (Box.OPS.remove k map, size - if contains then 1 else 0)
-  end )
+      module OPS = Box.OPS
+
+      let boxed =
+        let (map, size) = Box.boxed in
+        let contains = Box.OPS.mem k map in
+        match v with
+        | Some v ->
+            (Box.OPS.add k v map, size + if contains then 0 else 1)
+        | None ->
+            (Box.OPS.remove k map, size - if contains then 1 else 0)
+    end )
 
 let map_set : type a b. a -> b -> (a, b) map -> (a, b) map =
- fun k v (module Box) ->
-  ( module struct
-    type key = a
+ fun k v (Map_box (module Box)) ->
+  Map_box
+    ( module struct
+      type key = a
 
-    type value = b
+      type value = b
 
-    let key_ty = Box.key_ty
+      type key_ty = key comparable_ty
 
-    module OPS = Box.OPS
+      let key_ty = Box.key_ty
 
-    let boxed =
-      let (map, size) = Box.boxed in
-      (Box.OPS.add k v map, if Box.OPS.mem k map then size else size + 1)
-  end )
+      module OPS = Box.OPS
+
+      let boxed =
+        let (map, size) = Box.boxed in
+        (Box.OPS.add k v map, if Box.OPS.mem k map then size else size + 1)
+    end )
 
 let map_mem : type key value. key -> (key, value) map -> bool =
- fun k (module Box) -> Box.OPS.mem k (fst Box.boxed)
+ fun k (Map_box (module Box)) -> Box.OPS.mem k (fst Box.boxed)
 
 let map_fold :
     type key value acc.
     (key -> value -> acc -> acc) -> (key, value) map -> acc -> acc =
- fun f (module Box) -> Box.OPS.fold f (fst Box.boxed)
+ fun f (Map_box (module Box)) -> Box.OPS.fold f (fst Box.boxed)
 
 let map_size : type key value. (key, value) map -> Script_int.n Script_int.num
     =
- fun (module Box) -> Script_int.(abs (of_int (snd Box.boxed)))
+ fun (Map_box (module Box)) -> Script_int.(abs (of_int (snd Box.boxed)))
 
 (* ---- Unparsing (Typed IR -> Untyped expressions) of types -----------------*)
 
@@ -6653,10 +6668,10 @@ let rec unparse_data :
       let items = map_fold (fun k v acc -> (k, v) :: acc) map [] in
       unparse_items ctxt ~stack_depth:(stack_depth + 1) mode kt vt items
       >|=? fun (items, ctxt) -> (Micheline.Seq (-1, items), ctxt)
-  | (Big_map_t (_kt, _vt, _), {id = Some id; diff = (module Diff); _})
+  | (Big_map_t (_kt, _vt, _), {id = Some id; diff = Map_box (module Diff); _})
     when Diff.OPS.is_empty (fst Diff.boxed) ->
       return (Micheline.Int (-1, Big_map.Id.unparse_to_z id), ctxt)
-  | (Big_map_t (kt, vt, _), {id = Some id; diff = (module Diff); _}) ->
+  | (Big_map_t (kt, vt, _), {id = Some id; diff = Map_box (module Diff); _}) ->
       let items =
         Diff.OPS.fold (fun k v acc -> (k, v) :: acc) (fst Diff.boxed) []
       in
@@ -6669,7 +6684,7 @@ let rec unparse_data :
             [Int (-1, Big_map.Id.unparse_to_z id); Seq (-1, items)],
             [] ),
         ctxt )
-  | (Big_map_t (kt, vt, _), {id = None; diff = (module Diff); _}) ->
+  | (Big_map_t (kt, vt, _), {id = None; diff = Map_box (module Diff); _}) ->
       let items =
         Diff.OPS.fold
           (fun k v acc -> match v with None -> acc | Some v -> (k, v) :: acc)
@@ -7126,7 +7141,7 @@ let extract_lazy_storage_updates ctxt mode ~temporary ids_to_copy acc ty x =
     | (_, Big_map_t (_, _, _), map) ->
         diff_of_big_map ctxt mode ~temporary ~ids_to_copy map
         >|=? fun (diff, id, ctxt) ->
-        let (module Map) = map.diff in
+        let (Map_box (module Map)) = map.diff in
         let map = {map with diff = empty_map Map.key_ty; id = Some id} in
         let diff = Lazy_storage.make Big_map id diff in
         let ids_to_copy = Lazy_storage.IdSet.add Big_map id ids_to_copy in
@@ -7168,7 +7183,7 @@ let extract_lazy_storage_updates ctxt mode ~temporary ids_to_copy acc ty x =
         >|=? fun (ctxt, l, ids_to_copy, acc) ->
         let reversed = {length = l.length; elements = List.rev l.elements} in
         (ctxt, reversed, ids_to_copy, acc)
-    | (Map_f has_lazy_storage, Map_t (_, ty, _), (module M)) ->
+    | (Map_f has_lazy_storage, Map_t (_, ty, _), Map_box (module M)) ->
         fold_left_s
           (fun (ctxt, m, ids_to_copy, acc) (k, x) ->
             aux ctxt mode ~temporary ids_to_copy acc ty x ~has_lazy_storage
@@ -7184,12 +7199,18 @@ let extract_lazy_storage_updates ctxt mode ~temporary ids_to_copy acc ty x =
 
           type value = M.value
 
+          type key_ty = key comparable_ty
+
           let key_ty = M.key_ty
 
           let boxed = (m, snd M.boxed)
         end in
         ( ctxt,
-          (module M : Boxed_map with type key = M.key and type value = M.value),
+          Map_box
+            (module M : Boxed_map
+              with type key = M.key
+               and type value = M.value
+               and type key_ty = M.key comparable_ty ),
           ids_to_copy,
           acc )
     | (_, Option_t (_, _), None) ->

@@ -26,6 +26,49 @@
 
 (* ---- Parametrized typed IR implementation ----------------------------------*)
 module Make (P : Script_typed_ir_parameters.Type) = struct
+  (* ---- Parametrized types --------------------------------------------------*)
+  type tez = P.Tez.t
+
+  type 't num = 't P.Script_int.num
+
+  type z = P.Script_int.z
+
+  type n = P.Script_int.n
+
+  type transaction = P.Sapling.transaction
+
+  type state = P.Sapling.state
+
+  type memo_size = P.Sapling.Memo_size.t
+
+  type big_map_id = P.Big_map.Id.t
+
+  type signature = P.Signature.t
+
+  type public_key = P.Signature.Public_key.t
+
+  type public_key_hash = P.Signature.Public_key_hash.t
+
+  type packed_internal_operation = P.Operation.packed_internal_operation
+
+  type timestamp = P.Script_timestamp.t
+
+  type node = P.Script.node
+
+  type location = P.Script.location
+
+  type diffs = P.Lazy_storage.diffs
+
+  type contract = P.Contract.t
+
+  type chain_id = P.Chain_id.t
+
+  type bls12_381_g1 = P.Bls12_381.G1.t
+
+  type bls12_381_g2 = P.Bls12_381.G2.t
+
+  type bls12_381_fr = P.Bls12_381.Fr.t
+
   (* ---- Auxiliary types -----------------------------------------------------*)
 
   type var_annot = Var_annot of string
@@ -34,7 +77,7 @@ module Make (P : Script_typed_ir_parameters.Type) = struct
 
   type field_annot = Field_annot of string
 
-  type address = Contract.t * string
+  type address = contract * string
 
   type ('a, 'b) pair = 'a * 'b
 
@@ -49,13 +92,13 @@ module Make (P : Script_typed_ir_parameters.Type) = struct
     | Nat_key : type_annot option -> n num comparable_ty
     | Signature_key : type_annot option -> signature comparable_ty
     | String_key : type_annot option -> string comparable_ty
-    | Bytes_key : type_annot option -> Bytes.t comparable_ty
-    | Mutez_key : type_annot option -> Tez.t comparable_ty
+    | Bytes_key : type_annot option -> bytes comparable_ty
+    | Mutez_key : type_annot option -> tez comparable_ty
     | Bool_key : type_annot option -> bool comparable_ty
     | Key_hash_key : type_annot option -> public_key_hash comparable_ty
     | Key_key : type_annot option -> public_key comparable_ty
-    | Timestamp_key : type_annot option -> Script_timestamp.t comparable_ty
-    | Chain_id_key : type_annot option -> Chain_id.t comparable_ty
+    | Timestamp_key : type_annot option -> timestamp comparable_ty
+    | Chain_id_key : type_annot option -> chain_id comparable_ty
     | Address_key : type_annot option -> address comparable_ty
     | Pair_key :
         ('a comparable_ty * field_annot option)
@@ -71,36 +114,13 @@ module Make (P : Script_typed_ir_parameters.Type) = struct
         'v comparable_ty * type_annot option
         -> 'v option comparable_ty
 
-  module type Boxed_set = sig
-    type elt
-
-    val elt_ty : elt comparable_ty
-
-    module OPS : S.SET with type elt = elt
-
-    val boxed : OPS.t
-
-    val size : int
-  end
-
-  type 'elt set = (module Boxed_set with type elt = 'elt)
-
-  module type Boxed_map = sig
-    type key
-
-    type value
-
-    val key_ty : key comparable_ty
-
-    module OPS : S.MAP with type key = key
-
-    val boxed : value OPS.t * int
-  end
+  type 'elt set = Set_box of ('elt comparable_ty, 'elt) P.set [@@unboxed]
 
   type ('key, 'value) map =
-    (module Boxed_map with type key = 'key and type value = 'value)
+    | Map_box of ('key comparable_ty, 'key, 'value) P.map
+  [@@unboxed]
 
-  type operation = packed_internal_operation * Lazy_storage.diffs option
+  type operation = packed_internal_operation * diffs option
 
   type 'a ticket = {ticketer : address; contents : 'a; amount : n num}
 
@@ -117,7 +137,7 @@ module Make (P : Script_typed_ir_parameters.Type) = struct
 
   and ('arg, 'ret) lambda =
     | Lam :
-        ('arg * end_of_stack, 'ret * end_of_stack) descr * Script.node
+        ('arg * end_of_stack, 'ret * end_of_stack) descr * node
         -> ('arg, 'ret) lambda
 
   and 'arg typed_contract = 'arg ty * address
@@ -129,10 +149,10 @@ module Make (P : Script_typed_ir_parameters.Type) = struct
     | Signature_t : type_annot option -> signature ty
     | String_t : type_annot option -> string ty
     | Bytes_t : type_annot option -> bytes ty
-    | Mutez_t : type_annot option -> Tez.t ty
+    | Mutez_t : type_annot option -> tez ty
     | Key_hash_t : type_annot option -> public_key_hash ty
     | Key_t : type_annot option -> public_key ty
-    | Timestamp_t : type_annot option -> Script_timestamp.t ty
+    | Timestamp_t : type_annot option -> timestamp ty
     | Address_t : type_annot option -> address ty
     | Bool_t : type_annot option -> bool ty
     | Pair_t :
@@ -156,18 +176,14 @@ module Make (P : Script_typed_ir_parameters.Type) = struct
         'k comparable_ty * 'v ty * type_annot option
         -> ('k, 'v) big_map ty
     | Contract_t : 'arg ty * type_annot option -> 'arg typed_contract ty
-    | Sapling_transaction_t :
-        Sapling.Memo_size.t * type_annot option
-        -> Sapling.transaction ty
-    | Sapling_state_t :
-        Sapling.Memo_size.t * type_annot option
-        -> Sapling.state ty
+    | Sapling_transaction_t : memo_size * type_annot option -> transaction ty
+    | Sapling_state_t : memo_size * type_annot option -> state ty
     | Operation_t : type_annot option -> operation ty
-    | Chain_id_t : type_annot option -> Chain_id.t ty
+    | Chain_id_t : type_annot option -> chain_id ty
     | Never_t : type_annot option -> never ty
-    | Bls12_381_g1_t : type_annot option -> Bls12_381.G1.t ty
-    | Bls12_381_g2_t : type_annot option -> Bls12_381.G2.t ty
-    | Bls12_381_fr_t : type_annot option -> Bls12_381.Fr.t ty
+    | Bls12_381_g1_t : type_annot option -> bls12_381_g1 ty
+    | Bls12_381_g2_t : type_annot option -> bls12_381_g2 ty
+    | Bls12_381_fr_t : type_annot option -> bls12_381_fr ty
     | Ticket_t : 'a comparable_ty * type_annot option -> 'a ticket ty
 
   and 'ty stack_ty =
@@ -177,7 +193,7 @@ module Make (P : Script_typed_ir_parameters.Type) = struct
     | Empty_t : end_of_stack stack_ty
 
   and ('key, 'value) big_map = {
-    id : Big_map.Id.t option;
+    id : big_map_id option;
     diff : ('key, 'value option) map;
     key_type : 'key comparable_ty;
     value_type : 'value ty;
@@ -188,20 +204,20 @@ module Make (P : Script_typed_ir_parameters.Type) = struct
   (* ---- Instructions --------------------------------------------------------*)
 
   (* The low-level, typed instructions, as a GADT whose parameters
-    encode the typing rules.
+   encode the typing rules.
 
-    The left parameter is the typed shape of the stack before the
-    instruction, the right one the shape after. Any program whose
-    construction is accepted by OCaml's type-checker is guaranteed to
-    be type-safe. Overloadings of the concrete syntax are already
-    resolved in this representation, either by using different
-    constructors or type witness parameters.
+   The left parameter is the typed shape of the stack before the
+   instruction, the right one the shape after. Any program whose
+   construction is accepted by OCaml's type-checker is guaranteed to
+   be type-safe. Overloadings of the concrete syntax are already
+   resolved in this representation, either by using different
+   constructors or type witness parameters.
 
-    When adding a new instruction, please check whether it is duplicating a data
-    (rule of thumb: the type variable appears twice in the after stack, beware
-    it might be hidden in a witness).
-    If it is, please protect it with [check_dupable_ty].
-    *)
+   When adding a new instruction, please check whether it is duplicating a data
+   (rule of thumb: the type variable appears twice in the after stack, beware
+   it might be hidden in a witness).
+   If it is, please protect it with [check_dupable_ty].
+*)
   and ('bef, 'aft) instr =
     (* stack ops *)
     | Drop : (_ * 'rest, 'rest) instr
@@ -293,30 +309,20 @@ module Make (P : Script_typed_ir_parameters.Type) = struct
     | Bytes_size : (bytes * 'rest, n num * 'rest) instr
     (* timestamp operations *)
     | Add_seconds_to_timestamp
-        : ( z num * (Script_timestamp.t * 'rest),
-            Script_timestamp.t * 'rest )
-          instr
+        : (z num * (timestamp * 'rest), timestamp * 'rest) instr
     | Add_timestamp_to_seconds
-        : ( Script_timestamp.t * (z num * 'rest),
-            Script_timestamp.t * 'rest )
-          instr
+        : (timestamp * (z num * 'rest), timestamp * 'rest) instr
     | Sub_timestamp_seconds
-        : ( Script_timestamp.t * (z num * 'rest),
-            Script_timestamp.t * 'rest )
-          instr
-    | Diff_timestamps
-        : ( Script_timestamp.t * (Script_timestamp.t * 'rest),
-            z num * 'rest )
-          instr
+        : (timestamp * (z num * 'rest), timestamp * 'rest) instr
+    | Diff_timestamps : (timestamp * (timestamp * 'rest), z num * 'rest) instr
     (* tez operations *)
-    | Add_tez : (Tez.t * (Tez.t * 'rest), Tez.t * 'rest) instr
-    | Sub_tez : (Tez.t * (Tez.t * 'rest), Tez.t * 'rest) instr
-    | Mul_teznat : (Tez.t * (n num * 'rest), Tez.t * 'rest) instr
-    | Mul_nattez : (n num * (Tez.t * 'rest), Tez.t * 'rest) instr
+    | Add_tez : (tez * (tez * 'rest), tez * 'rest) instr
+    | Sub_tez : (tez * (tez * 'rest), tez * 'rest) instr
+    | Mul_teznat : (tez * (n num * 'rest), tez * 'rest) instr
+    | Mul_nattez : (n num * (tez * 'rest), tez * 'rest) instr
     | Ediv_teznat
-        : (Tez.t * (n num * 'rest), (Tez.t, Tez.t) pair option * 'rest) instr
-    | Ediv_tez
-        : (Tez.t * (Tez.t * 'rest), (n num, Tez.t) pair option * 'rest) instr
+        : (tez * (n num * 'rest), (tez, tez) pair option * 'rest) instr
+    | Ediv_tez : (tez * (tez * 'rest), (n num, tez) pair option * 'rest) instr
     (* boolean operations *)
     | Or : (bool * (bool * 'rest), bool * 'rest) instr
     | And : (bool * (bool * 'rest), bool * 'rest) instr
@@ -387,7 +393,7 @@ module Make (P : Script_typed_ir_parameters.Type) = struct
         'p ty * string
         -> (address * 'rest, 'p typed_contract option * 'rest) instr
     | Transfer_tokens
-        : ( 'arg * (Tez.t * ('arg typed_contract * 'rest)),
+        : ( 'arg * (tez * ('arg typed_contract * 'rest)),
             operation * 'rest )
           instr
     | Implicit_account
@@ -397,12 +403,12 @@ module Make (P : Script_typed_ir_parameters.Type) = struct
         * 'p ty
         * ('p * 'g, operation boxed_list * 'g) lambda
         * field_annot option
-        -> ( public_key_hash option * (Tez.t * ('g * 'rest)),
+        -> ( public_key_hash option * (tez * ('g * 'rest)),
              operation * (address * 'rest) )
            instr
     | Set_delegate : (public_key_hash option * 'rest, operation * 'rest) instr
-    | Now : ('rest, Script_timestamp.t * 'rest) instr
-    | Balance : ('rest, Tez.t * 'rest) instr
+    | Now : ('rest, timestamp * 'rest) instr
+    | Balance : ('rest, tez * 'rest) instr
     | Level : ('rest, n num * 'rest) instr
     | Check_signature
         : (public_key * (signature * (bytes * 'rest)), bool * 'rest) instr
@@ -416,14 +422,14 @@ module Make (P : Script_typed_ir_parameters.Type) = struct
     | Sender : ('rest, address * 'rest) instr
     | Self : 'p ty * string -> ('rest, 'p typed_contract * 'rest) instr
     | Self_address : ('rest, address * 'rest) instr
-    | Amount : ('rest, Tez.t * 'rest) instr
+    | Amount : ('rest, tez * 'rest) instr
     | Sapling_empty_state : {
-        memo_size : Sapling.Memo_size.t;
+        memo_size : memo_size;
       }
-        -> ('rest, Sapling.state * 'rest) instr
+        -> ('rest, state * 'rest) instr
     | Sapling_verify_update
-        : ( Sapling.transaction * (Sapling.state * 'rest),
-            (z num, Sapling.state) pair option * 'rest )
+        : ( transaction * (state * 'rest),
+            (z num, state) pair option * 'rest )
           instr
     | Dig :
         int * ('x * 'rest, 'rest, 'bef, 'aft) stack_prefix_preservation_witness
@@ -439,46 +445,34 @@ module Make (P : Script_typed_ir_parameters.Type) = struct
     | Dropn :
         int * ('rest, 'rest, 'bef, _) stack_prefix_preservation_witness
         -> ('bef, 'rest) instr
-    | ChainId : ('rest, Chain_id.t * 'rest) instr
+    | ChainId : ('rest, chain_id * 'rest) instr
     | Never : (never * 'rest, 'aft) instr
     | Voting_power : (public_key_hash * 'rest, n num * 'rest) instr
     | Total_voting_power : ('rest, n num * 'rest) instr
     | Keccak : (bytes * 'rest, bytes * 'rest) instr
     | Sha3 : (bytes * 'rest, bytes * 'rest) instr
     | Add_bls12_381_g1
-        : ( Bls12_381.G1.t * (Bls12_381.G1.t * 'rest),
-            Bls12_381.G1.t * 'rest )
-          instr
+        : (bls12_381_g1 * (bls12_381_g1 * 'rest), bls12_381_g1 * 'rest) instr
     | Add_bls12_381_g2
-        : ( Bls12_381.G2.t * (Bls12_381.G2.t * 'rest),
-            Bls12_381.G2.t * 'rest )
-          instr
+        : (bls12_381_g2 * (bls12_381_g2 * 'rest), bls12_381_g2 * 'rest) instr
     | Add_bls12_381_fr
-        : ( Bls12_381.Fr.t * (Bls12_381.Fr.t * 'rest),
-            Bls12_381.Fr.t * 'rest )
-          instr
+        : (bls12_381_fr * (bls12_381_fr * 'rest), bls12_381_fr * 'rest) instr
     | Mul_bls12_381_g1
-        : ( Bls12_381.G1.t * (Bls12_381.Fr.t * 'rest),
-            Bls12_381.G1.t * 'rest )
-          instr
+        : (bls12_381_g1 * (bls12_381_fr * 'rest), bls12_381_g1 * 'rest) instr
     | Mul_bls12_381_g2
-        : ( Bls12_381.G2.t * (Bls12_381.Fr.t * 'rest),
-            Bls12_381.G2.t * 'rest )
-          instr
+        : (bls12_381_g2 * (bls12_381_fr * 'rest), bls12_381_g2 * 'rest) instr
     | Mul_bls12_381_fr
-        : ( Bls12_381.Fr.t * (Bls12_381.Fr.t * 'rest),
-            Bls12_381.Fr.t * 'rest )
-          instr
+        : (bls12_381_fr * (bls12_381_fr * 'rest), bls12_381_fr * 'rest) instr
     | Mul_bls12_381_z_fr
-        : (Bls12_381.Fr.t * (_ num * 'rest), Bls12_381.Fr.t * 'rest) instr
+        : (bls12_381_fr * (_ num * 'rest), bls12_381_fr * 'rest) instr
     | Mul_bls12_381_fr_z
-        : (_ num * (Bls12_381.Fr.t * 'rest), Bls12_381.Fr.t * 'rest) instr
-    | Int_bls12_381_fr : (Bls12_381.Fr.t * 'rest, z num * 'rest) instr
-    | Neg_bls12_381_g1 : (Bls12_381.G1.t * 'rest, Bls12_381.G1.t * 'rest) instr
-    | Neg_bls12_381_g2 : (Bls12_381.G2.t * 'rest, Bls12_381.G2.t * 'rest) instr
-    | Neg_bls12_381_fr : (Bls12_381.Fr.t * 'rest, Bls12_381.Fr.t * 'rest) instr
+        : (_ num * (bls12_381_fr * 'rest), bls12_381_fr * 'rest) instr
+    | Int_bls12_381_fr : (bls12_381_fr * 'rest, z num * 'rest) instr
+    | Neg_bls12_381_g1 : (bls12_381_g1 * 'rest, bls12_381_g1 * 'rest) instr
+    | Neg_bls12_381_g2 : (bls12_381_g2 * 'rest, bls12_381_g2 * 'rest) instr
+    | Neg_bls12_381_fr : (bls12_381_fr * 'rest, bls12_381_fr * 'rest) instr
     | Pairing_check_bls12_381
-        : ( (Bls12_381.G1.t, Bls12_381.G2.t) pair boxed_list * 'rest,
+        : ( (bls12_381_g1, bls12_381_g2) pair boxed_list * 'rest,
             bool * 'rest )
           instr
     | Comb :
@@ -542,12 +536,12 @@ module Make (P : Script_typed_ir_parameters.Type) = struct
         -> ('a * 'before, 'b) dup_n_gadt_witness
 
   (* Type witness for operations that work deep in the stack ignoring
-    (and preserving) a prefix.
+   (and preserving) a prefix.
 
-    The two right parameters are the shape of the stack with the (same)
-    prefix before and after the transformation. The two left
-    parameters are the shape of the stack without the prefix before and
-    after. The inductive definition makes it so by construction. *)
+   The two right parameters are the shape of the stack with the (same)
+   prefix before and after the transformation. The two left
+   parameters are the shape of the stack without the prefix before and
+   after. The inductive definition makes it so by construction. *)
   and ('bef, 'aft, 'bef_suffix, 'aft_suffix) stack_prefix_preservation_witness =
     | Prefix :
         ('fbef, 'faft, 'bef, 'aft) stack_prefix_preservation_witness
@@ -559,14 +553,14 @@ module Make (P : Script_typed_ir_parameters.Type) = struct
     | Rest : ('bef, 'aft, 'bef, 'aft) stack_prefix_preservation_witness
 
   and ('bef, 'aft) descr = {
-    loc : Script.location;
+    loc : location;
     bef : 'bef stack_ty;
     aft : 'aft stack_ty;
     instr : ('bef, 'aft) instr;
   }
 end
 
-(* ---- Parametrized typed IR signature ---------------------------------------*)
+(* ---- Parametrized typed IR signature --------------------------------------*)
 module type S = module type of Make (struct
   module Tez = struct
     type t
