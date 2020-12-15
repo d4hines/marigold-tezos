@@ -681,7 +681,7 @@ let test_unparse_comb_data () =
     (z, (z, (z, z)))
     ~expected_readable:(pair_prim [z_prim; z_prim; z_prim; z_prim])
     ~expected_optimized:(Micheline.Seq (-1, [z_prim; z_prim; z_prim; z_prim]))
-  >>=? fun _ -> return_unit*)
+  >>=? fun _ -> return_unit
 
 (* Generate all the possible syntaxes for pairs *)
 let gen_pairs left right =
@@ -764,7 +764,7 @@ let test_optimal_comb () =
   let comb5_ty = pair_ty leaf_ty comb4_ty in
   let comb5_v = (leaf_v, comb4_v) in
   check_optimal_comb __LOC__ ctxt comb5_ty comb5_v 5
-  >>=? fun _ctxt -> return_unit *)
+  >>=? fun _ctxt -> return_unit
 
 let tests =
   [ Test.tztest
