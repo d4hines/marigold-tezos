@@ -1218,8 +1218,8 @@ let extract_compare_sized_step :
 
 (* Extracting the size of arguments from a pair of an IR instruction and a
    stack. *)
-let extract_ir_sized_step :
-    type a s b u. Alpha_context.t -> (a, s, b, u) descr -> b -> ir_sized_step = assert false
+(* let extract_ir_sized_step : *)
+    (* type a s b u. Alpha_context.t -> (a, s, b, u) descr -> b -> ir_sized_step = fun assert false *)
   (* fun (type a s b u) ctxt (descr : (a, s, b, u) descr) (stack : b) ->
    match (descr.instr, stack) with
    | (KDrop, _) ->
