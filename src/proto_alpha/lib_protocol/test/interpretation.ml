@@ -49,8 +49,8 @@ let run_script ctx ?(step_constants = default_step_constants) contract
     ~internal:false
   >>=?? fun res -> return res
 
-let run_step ctxt code param =
-  Script_interpreter.step None ctxt default_step_constants code param
+let run_step ctxt code accu stack =
+  Script_interpreter.step None ctxt default_step_constants code accu stack
 
 (** Runs a script with an ill-typed parameter and verifies that a
    Bad_contract_parameter error is returned *)
@@ -82,25 +82,27 @@ let read_file filename =
   close_in ch ; s
 
 (* Confront the Michelson interpreter to deep recursions. *)
-let test_stack_overflow () = assert false
-
-(* test_context ()
- * >>=? fun ctxt ->
- * let descr instr =
- *   Script_typed_cps_ir.{loc = 0; bef = Empty_t; aft = Empty_t; instr}
- * in
- * let enorme_et_seq n =
- *   let rec aux n acc =
- *     if n = 0 then acc else aux (n - 1) (descr (Seq (acc, descr Nop)))
- *   in
- *   aux n (descr Nop)
- * in
- * run_step ctxt (enorme_et_seq 100_000) ()
- * >>= function
- * | Ok _ ->
- *     return ()
- * | Error _ ->
- *     Alcotest.failf "Unexpected error (%s)" __LOC__ *)
+let test_stack_overflow () =
+  let open Script_typed_cps_ir in
+  test_context ()
+  >>=? fun ctxt ->
+  let stack = Script_typed_cps_ir.Item_t (Unit_t None, Empty_t, None) in
+  let descr kinstr =
+    Script_typed_cps_ir.{kloc = 0; kbef = stack; kaft = stack; kinstr}
+  in
+  let kinfo = {iloc = -1; kstack_ty = stack} in
+  let enorme_et_seq n =
+    let rec aux n acc =
+      if n = 0 then acc else aux (n - 1) (KNop (kinfo, acc))
+    in
+    aux n (KHalt kinfo)
+  in
+  run_step ctxt (descr (enorme_et_seq 100_000)) () ()
+  >>= function
+  | Ok _ ->
+      return ()
+  | Error _ ->
+      Alcotest.failf "Unexpected error (%s)" __LOC__
 
 (** Test the encoding/decoding of script_interpreter.ml specific errors *)
 
