@@ -75,13 +75,17 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    fees_storage.mli fees_storage.ml
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
+   script_typed_ir_parameters.ml
+   script_typed_ir_functor.ml
    script_typed_ir.ml
    script_tc_errors.ml
    michelson_v1_gas.mli michelson_v1_gas.ml
    script_ir_annot.mli script_ir_annot.ml
    script_ir_translator.mli script_ir_translator.ml
    script_tc_errors_registration.ml
-   script_interpreter.mli script_interpreter.ml
+   script_interpreter_parameters.ml
+   script_interpreter_functor.ml
+   script_interpreter.ml
    baking.mli baking.ml
    amendment.mli amendment.ml
    apply_results.mli apply_results.ml
@@ -159,13 +163,17 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    fees_storage.mli fees_storage.ml
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
+   script_typed_ir_parameters.ml
+   script_typed_ir_functor.ml
    script_typed_ir.ml
    script_tc_errors.ml
    michelson_v1_gas.mli michelson_v1_gas.ml
    script_ir_annot.mli script_ir_annot.ml
    script_ir_translator.mli script_ir_translator.ml
    script_tc_errors_registration.ml
-   script_interpreter.mli script_interpreter.ml
+   script_interpreter_parameters.ml
+   script_interpreter_functor.ml
+   script_interpreter.ml
    baking.mli baking.ml
    amendment.mli amendment.ml
    apply_results.mli apply_results.ml
@@ -243,13 +251,17 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    fees_storage.mli fees_storage.ml
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
+   script_typed_ir_parameters.ml
+   script_typed_ir_functor.ml
    script_typed_ir.ml
    script_tc_errors.ml
    michelson_v1_gas.mli michelson_v1_gas.ml
    script_ir_annot.mli script_ir_annot.ml
    script_ir_translator.mli script_ir_translator.ml
    script_tc_errors_registration.ml
-   script_interpreter.mli script_interpreter.ml
+   script_interpreter_parameters.ml
+   script_interpreter_functor.ml
+   script_interpreter.ml
    baking.mli baking.ml
    amendment.mli amendment.ml
    apply_results.mli apply_results.ml
@@ -347,12 +359,16 @@ include Tezos_raw_protocol_alpha.Main
    Fees_storage
    Sapling_validator
    Alpha_context
+   Script_typed_ir_parameters
+   Script_typed_ir_functor
    Script_typed_ir
    Script_tc_errors
    Michelson_v1_gas
    Script_ir_annot
    Script_ir_translator
    Script_tc_errors_registration
+   Script_interpreter_parameters
+   Script_interpreter_functor
    Script_interpreter
    Baking
    Amendment
@@ -467,13 +483,17 @@ include Tezos_raw_protocol_alpha.Main
    fees_storage.mli fees_storage.ml
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
+   script_typed_ir_parameters.ml
+   script_typed_ir_functor.ml
    script_typed_ir.ml
    script_tc_errors.ml
    michelson_v1_gas.mli michelson_v1_gas.ml
    script_ir_annot.mli script_ir_annot.ml
    script_ir_translator.mli script_ir_translator.ml
    script_tc_errors_registration.ml
-   script_interpreter.mli script_interpreter.ml
+   script_interpreter_parameters.ml
+   script_interpreter_functor.ml
+   script_interpreter.ml
    baking.mli baking.ml
    amendment.mli amendment.ml
    apply_results.mli apply_results.ml
