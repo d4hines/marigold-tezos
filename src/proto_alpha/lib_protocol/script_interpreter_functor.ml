@@ -26,17 +26,48 @@
 
 (* ---- Parametrized interpreter interface ------------------------------------*)
 module type S = sig
-  type execution_trace =
-    (Script.location * Gas.t * (Script.expr * string option) list) list
+  (* type parameters*)
+  type script
 
-  type error +=
-    | Reject of Script.location * Script.expr * execution_trace option
+  type location
 
-  type error += Overflow of Script.location * execution_trace option
+  type expr
 
-  type error += Runtime_contract_error : Contract.t * Script.expr -> error
+  type gas
 
-  type error += Bad_contract_parameter of Contract.t (* `Permanent *)
+  type contract
+
+  type context
+
+  type storage_diffs
+
+  type tez
+
+  type packed_internal_operation
+
+  type chain_id
+
+  type ('bef, 'aft) descr
+
+  type 'a lwt
+
+  type unparsing_mode
+
+  type 'a tzresult
+
+  type error = ..
+
+  (* script values *)
+
+  type execution_trace = (location * gas * (expr * string option) list) list
+
+  type error += Reject of location * expr * execution_trace option
+
+  type error += Overflow of location * execution_trace option
+
+  type error += Runtime_contract_error : contract * expr -> error
+
+  type error += Bad_contract_parameter of contract (* `Permanent *)
 
   type error += Cannot_serialize_failure
 
@@ -46,45 +77,42 @@ module type S = sig
 
   type execution_result = {
     ctxt : context;
-    storage : Script.expr;
-    lazy_storage_diff : Lazy_storage.diffs option;
+    storage : expr;
+    lazy_storage_diff : storage_diffs option;
     operations : packed_internal_operation list;
   }
 
   type step_constants = {
-    source : Contract.t;
-    payer : Contract.t;
-    self : Contract.t;
-    amount : Tez.t;
-    chain_id : Chain_id.t;
+    source : contract;
+    payer : contract;
+    self : contract;
+    amount : tez;
+    chain_id : chain_id;
   }
 
   (** [STEP_LOGGER] is the module type of logging
-      modules as passed to the Michelson interpreter.
-      Note that logging must be performed by side-effects
-      on an underlying log structure. *)
+        modules as passed to the Michelson interpreter.
+        Note that logging must be performed by side-effects
+        on an underlying log structure. *)
   module type STEP_LOGGER = sig
     (** [log_interp] is called at each call of the internal
-        function [interp]. [interp] is called when starting
-        the interpretation of a script and subsequently
-        at each [Exec] instruction. *)
-    val log_interp :
-      context -> ('bef, 'aft) Script_typed_ir.descr -> 'bef -> unit
+          function [interp]. [interp] is called when starting
+          the interpretation of a script and subsequently
+          at each [Exec] instruction. *)
+    val log_interp : context -> ('bef, 'aft) descr -> 'bef -> unit
 
     (** [log_entry] is called {i before} executing
-        each instruction but {i after} gas for
-        this instruction has been successfully consumed. *)
-    val log_entry :
-      context -> ('bef, 'aft) Script_typed_ir.descr -> 'bef -> unit
+          each instruction but {i after} gas for
+          this instruction has been successfully consumed. *)
+    val log_entry : context -> ('bef, 'aft) descr -> 'bef -> unit
 
     (** [log_exit] is called {i after} executing each
-        instruction. *)
-    val log_exit :
-      context -> ('bef, 'aft) Script_typed_ir.descr -> 'aft -> unit
+          instruction. *)
+    val log_exit : context -> ('bef, 'aft) descr -> 'aft -> unit
 
     (** [get_log] allows to obtain an execution trace, if
-        any was produced. *)
-    val get_log : unit -> execution_trace option tzresult Lwt.t
+          any was produced. *)
+    val get_log : unit -> execution_trace option tzresult lwt
   end
 
   type logger = (module STEP_LOGGER)
@@ -93,20 +121,20 @@ module type S = sig
     logger ->
     context ->
     step_constants ->
-    ('bef, 'aft) Script_typed_ir.descr ->
+    ('bef, 'aft) descr ->
     'bef ->
-    ('aft * context) tzresult Lwt.t
+    ('aft * context) tzresult lwt
 
   val execute :
     ?logger:logger ->
-    Alpha_context.t ->
-    Script_ir_translator.unparsing_mode ->
+    context ->
+    unparsing_mode ->
     step_constants ->
-    script:Script.t ->
+    script:script ->
     entrypoint:string ->
-    parameter:Script.expr ->
+    parameter:expr ->
     internal:bool ->
-    execution_result tzresult Lwt.t
+    execution_result tzresult lwt
 end
 
 (* ---- Parametrized interpreter implementation -------------------------------*)
@@ -117,7 +145,7 @@ module Make (P : Script_interpreter_parameters.Type) :
      and type expr = P.Script.expr
      and type gas = P.Gas.t
      and type contract = P.Contract.t
-     and type context = P.Alpha_context.context
+     and type context = P.Raw_context.t
      and type storage_diffs = P.Lazy_storage.diffs
      and type tez = P.Tez.t
      and type packed_internal_operation = P.Operation.packed_internal_operation
@@ -128,10 +156,45 @@ module Make (P : Script_interpreter_parameters.Type) :
      and type 'a tzresult = 'a P.Error_monad.tzresult
      and type error = P.Error_monad.error = struct
   open P
-  open Alpha_context
+  open Pervasives
+  open Error_monad
+  open Raw_context
   open Script
   open Script_typed_ir
   open Script_ir_translator
+  open Michelson_v1_primitives
+  open Operation
+
+  (* ---- Parametrized types --------------------------------------------------*)
+  type script = Script.t
+
+  type location = Script.location
+
+  type expr = Script.expr
+
+  type gas = Gas.t
+
+  type contract = Contract.t
+
+  type context = Raw_context.t
+
+  type storage_diffs = Lazy_storage.diffs
+
+  type tez = Tez.t
+
+  type packed_internal_operation = Operation.packed_internal_operation
+
+  type chain_id = Chain_id.t
+
+  type ('bef, 'aft) descr = ('bef, 'aft) Script_typed_ir.descr
+
+  type 'a lwt = 'a Lwt.t
+
+  type unparsing_mode = Script_ir_translator.unparsing_mode
+
+  type 'a tzresult = 'a Error_monad.tzresult
+
+  type error = Error_monad.error = ..
 
   (* ---- Run-time errors -----------------------------------------------------*)
 
@@ -252,8 +315,6 @@ module Make (P : Script_interpreter_parameters.Type) :
 
   (* ---- interpreter ---------------------------------------------------------*)
 
-  module Interp_costs = Michelson_v1_gas.Cost_of.Interpreter
-
   let rec interp_stack_prefix_preserving_operation :
       type fbef bef faft aft result.
       (fbef -> (faft * result) tzresult Lwt.t) ->
@@ -349,7 +410,7 @@ module Make (P : Script_interpreter_parameters.Type) :
       match Data_encoding.Binary.of_bytes Script.expr_encoding bytes with
       | None ->
           Lwt.return
-            ( Gas.consume ctxt (Interp_costs.unpack_failed bytes)
+            ( Gas.consume ctxt (Script_interpreter_cost.unpack_failed bytes)
             >|? fun ctxt -> (None, ctxt) )
       | Some expr -> (
           Gas.consume ctxt (Script.deserialized_cost expr)
@@ -364,7 +425,7 @@ module Make (P : Script_interpreter_parameters.Type) :
           | Ok (value, ctxt) ->
               ok (Some value, ctxt)
           | Error _ignored ->
-              Gas.consume ctxt (Interp_costs.unpack_failed bytes)
+              Gas.consume ctxt (Script_interpreter_cost.unpack_failed bytes)
               >|? fun ctxt -> (None, ctxt) )
     else return (None, ctxt)
 
@@ -378,7 +439,7 @@ module Make (P : Script_interpreter_parameters.Type) :
       b ->
       (a * context) tzresult Lwt.t =
    fun logger ~stack_depth ctxt step_constants ({instr; loc; _} as descr) stack ->
-    let gas = cost_of_instr descr stack in
+    let gas = Script_interpreter_cost.cost_of_instr descr stack in
     Gas.consume ctxt gas
     >>?= fun ctxt ->
     let module Log = (val logger) in
@@ -568,7 +629,7 @@ module Make (P : Script_interpreter_parameters.Type) :
             Z.zero
             ss.elements
         in
-        Gas.consume ctxt (Interp_costs.concat_string total_length)
+        Gas.consume ctxt (Script_interpreter_cost.concat_string total_length)
         >>?= fun ctxt ->
         let s = String.concat "" ss.elements in
         logged_return ((s, rest), ctxt)
@@ -597,7 +658,7 @@ module Make (P : Script_interpreter_parameters.Type) :
             Z.zero
             ss.elements
         in
-        Gas.consume ctxt (Interp_costs.concat_string total_length)
+        Gas.consume ctxt (Script_interpreter_cost.concat_string total_length)
         >>?= fun ctxt ->
         let s = Bytes.concat Bytes.empty ss.elements in
         logged_return ((s, rest), ctxt)
@@ -816,8 +877,8 @@ module Make (P : Script_interpreter_parameters.Type) :
             let full_expr =
               Micheline.Seq
                 ( 0,
-                  [ Prim (0, I_PUSH, [ty_expr; const_expr], []);
-                    Prim (0, I_PAIR, [], []);
+                  [ Prim (0, i_push, [ty_expr; const_expr], []);
+                    Prim (0, i_pair, [], []);
                     expr ] )
             in
             let lam' = Lam (full_descr, full_expr) in
@@ -945,9 +1006,9 @@ module Make (P : Script_interpreter_parameters.Type) :
           Micheline.strip_locations
             (Seq
                ( 0,
-                 [ Prim (0, K_parameter, [unparsed_param_type], []);
-                   Prim (0, K_storage, [unparsed_storage_type], []);
-                   Prim (0, K_code, [code], []) ] ))
+                 [ Prim (0, k_parameter, [unparsed_param_type], []);
+                   Prim (0, k_storage, [unparsed_storage_type], []);
+                   Prim (0, k_code, [code], []) ] ))
         in
         collect_lazy_storage ctxt storage_type init
         >>?= fun (to_duplicate, ctxt) ->
@@ -1055,8 +1116,8 @@ module Make (P : Script_interpreter_parameters.Type) :
               b
               stk
               (* This is a cheap upper bound of the number recursive calls to
-               `interp_stack_prefix_preserving_operation`, which does
-               ((n / 16) + log2 (n % 16)) iterations *)
+                 `interp_stack_prefix_preserving_operation`, which does
+                 ((n / 16) + log2 (n % 16)) iterations *)
               ~stack_depth:(stack_depth + 4 + (n / 16)))
           n'
           stack
@@ -1343,15 +1404,20 @@ module Make (P : Script_interpreter_parameters.Type) :
 
   let execute ?(logger = (module No_trace : STEP_LOGGER)) ctxt mode
       step_constants ~script ~entrypoint ~parameter ~internal =
-    execute
-      logger
-      ctxt
-      mode
-      step_constants
-      ~entrypoint
-      ~internal
-      script
-      (Micheline.root parameter)
-    >|=? fun (storage, operations, ctxt, lazy_storage_diff) ->
-    {ctxt; storage; lazy_storage_diff; operations}
+    let script : script = script in
+    let parameter : expr = parameter in
+    let value : execution_result tzresult lwt =
+      execute
+        logger
+        ctxt
+        mode
+        step_constants
+        ~entrypoint
+        ~internal
+        script
+        (Micheline.root parameter)
+      >|=? fun (storage, operations, ctxt, lazy_storage_diff) ->
+      {ctxt; storage; lazy_storage_diff; operations}
+    in
+    value
 end
