@@ -327,3 +327,52 @@ let cost_of_instr : type b a. (b, a) descr -> b -> Gas.cost =
       Interp_costs.split_ticket ticket.amount amount_a amount_b
   | (Join_tickets ty, ((ticket_a, ticket_b), _)) ->
       Interp_costs.join_tickets ty ticket_a ticket_b
+
+include Script_interpreter_functor.Make (struct
+  include Alpha_context
+  module Pervasives = Pervasives
+  module Z = Z
+  module Signature = Signature
+  module Bls12_381 = Bls12_381
+  module Chain_id = Chain_id
+  module Compare = Compare
+  module Data_encoding = Data_encoding
+  module Bytes = Bytes
+  module TzEndian = TzEndian
+  module String = String
+  module Raw_hashes = Raw_hashes
+  module Option = Option
+  module Micheline = Micheline
+  module Lwt = Lwt
+  module List = List
+  module Format = Format
+  module Raw_context = Alpha_context
+  module Error_monad = Error_monad
+
+  module Michelson_v1_primitives = struct
+    include Michelson_v1_primitives
+
+    let i_push = I_PUSH
+
+    let i_pair = I_PAIR
+
+    let k_parameter = K_parameter
+
+    let k_storage = K_storage
+
+    let k_code = K_code
+  end
+
+  module Alpha_context = Alpha_context
+  module Operation = Alpha_context
+  module Script_ir_translator = Script_ir_translator
+  module Script_typed_ir = Script_typed_ir
+
+  module Script_interpreter_cost = struct
+    let cost_of_instr = cost_of_instr
+
+    let unpack_failed = unpack_failed
+
+    let concat_string = concat_string
+  end
+end)
