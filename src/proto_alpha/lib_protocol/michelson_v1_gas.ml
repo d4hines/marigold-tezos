@@ -785,14 +785,16 @@ module Cost_of = struct
 
     let empty_set = atomic_step_cost cost_N_Empty_set
 
-    let set_iter (type a) ((module Box) : a Script_typed_ir.set) =
+    let set_iter (type a) (Set_box (module Box) : a Script_typed_ir.set) =
       atomic_step_cost (cost_N_Set_iter Box.size)
 
-    let set_mem (type a) (elt : a) ((module Box) : a Script_typed_ir.set) =
+    let set_mem (type a) (elt : a)
+        (Set_box (module Box) : a Script_typed_ir.set) =
       let elt_size = size_of_comparable Box.elt_ty elt in
       atomic_step_cost (cost_N_Set_mem elt_size Box.size)
 
-    let set_update (type a) (elt : a) ((module Box) : a Script_typed_ir.set) =
+    let set_update (type a) (elt : a)
+        (Set_box (module Box) : a Script_typed_ir.set) =
       let elt_size = size_of_comparable Box.elt_ty elt in
       atomic_step_cost (cost_N_Set_update elt_size Box.size)
 
@@ -800,24 +802,26 @@ module Cost_of = struct
 
     let empty_map = atomic_step_cost cost_N_Empty_map
 
-    let map_map (type k v) ((module Box) : (k, v) Script_typed_ir.map) =
+    let map_map (type k v) (Map_box (module Box) : (k, v) Script_typed_ir.map)
+        =
       atomic_step_cost (cost_N_Map_map (snd Box.boxed))
 
-    let map_iter (type k v) ((module Box) : (k, v) Script_typed_ir.map) =
+    let map_iter (type k v) (Map_box (module Box) : (k, v) Script_typed_ir.map)
+        =
       atomic_step_cost (cost_N_Map_iter (snd Box.boxed))
 
     let map_mem (type k v) (elt : k)
-        ((module Box) : (k, v) Script_typed_ir.map) =
+        (Map_box (module Box) : (k, v) Script_typed_ir.map) =
       let elt_size = size_of_comparable Box.key_ty elt in
       atomic_step_cost (cost_N_Map_mem elt_size (snd Box.boxed))
 
     let map_get (type k v) (elt : k)
-        ((module Box) : (k, v) Script_typed_ir.map) =
+        (Map_box (module Box) : (k, v) Script_typed_ir.map) =
       let elt_size = size_of_comparable Box.key_ty elt in
       atomic_step_cost (cost_N_Map_get elt_size (snd Box.boxed))
 
     let map_update (type k v) (elt : k)
-        ((module Box) : (k, v) Script_typed_ir.map) =
+        (Map_box (module Box) : (k, v) Script_typed_ir.map) =
       let elt_size = size_of_comparable Box.key_ty elt in
       atomic_step_cost (cost_N_Map_update elt_size (snd Box.boxed))
 

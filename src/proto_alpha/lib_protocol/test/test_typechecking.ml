@@ -12,7 +12,7 @@ open Micheline
 
 exception Expression_from_string
 
-let expression_from_string str : Script.expr tzresult Lwt.t =
+let expression_from_string str : Script.expr Error_monad.tzresult Lwt.t =
   let (ast, errs) = Michelson_v1_parser.parse_expression ~check:false str in
   ( match errs with
   | [] ->
@@ -583,6 +583,8 @@ let test_parse_comb_data () =
 
     type value = n num option
 
+    type key_ty = key comparable_ty
+
     let key_ty = Nat_key None
 
     module OPS = Environment.Map.Make (struct
@@ -594,11 +596,14 @@ let test_parse_comb_data () =
     let boxed = (OPS.empty, 0)
 
     module type S =
-      Boxed_map with type key = n num and type value = n num option
+      Boxed_map
+        with type key = n num
+         and type value = n num option
+         and type key_ty = key comparable_ty
   end in
   let expected_big_map =
     let open Script_typed_ir in
-    let diff = (module M : M.S) in
+    let diff = Map_box (module M : M.S) in
     let nat_key_ty = Nat_key None in
     {id = Some big_map_id; diff; key_type = nat_key_ty; value_type = nat_ty}
   in
@@ -608,8 +613,10 @@ let test_parse_comb_data () =
     && big_map1.key_type = big_map2.key_type
     && big_map1.value_type = big_map2.value_type
     &&
-    let module Diff1 = (val big_map1.diff : M.S) in
-    let module Diff2 = (val big_map2.diff : M.S) in
+    let (Map_box diff1) = big_map1.diff in
+    let (Map_box diff2) = big_map2.diff in
+    let module Diff1 = (val diff1 : M.S) in
+    let module Diff2 = (val diff2 : M.S) in
     snd Diff1.boxed = snd Diff2.boxed
     && Diff1.OPS.bindings (fst Diff1.boxed)
        = Diff2.OPS.bindings (fst Diff2.boxed)
