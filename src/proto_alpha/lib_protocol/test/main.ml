@@ -1,9 +1,38 @@
 [@@@warning "-21"]
+[@@@warning "-26"]
 
 open Tezos_raw_protocol_alpha
 open Alpha_context
 open Script
 open Printf
+
+let force x =
+  match x with
+  | Ok x ->
+      x
+  | Error es ->
+      Format.printf "Errors :\n" ;
+      List.iter (Format.printf "- %a\n" Protocol.Environment.Error_monad.pp) es ;
+      raise (Failure "force")
+
+let force_global x =
+  match x with
+  | Ok x ->
+      x
+  | Error es ->
+      Format.printf "Errors :\n" ;
+      List.iter (Format.printf "- %a\n" pp) es ;
+      raise (Failure "force")
+
+let force_lwt x = force (Lwt_main.run x)
+
+let force_global_lwt x = force_global (Lwt_main.run x)
+
+let micheline_canonical_to_string c =
+  Fmt.str
+    "%a"
+    Micheline_printer.print_expr
+    (Micheline_printer.printable Michelson_v1_primitives.string_of_prim c)
 
 let register_two_contracts () =
   Context.init ~initial_balances:[1_000_000_000_000L; 1_000_000_000_000L] 2
@@ -22,6 +51,10 @@ let make_contract ~script ~originator ~amount b =
   >>=? fun b ->
   Incremental.finalize_block b >>=? fun b -> return (b, originated_contract)
 
+let get_pkh_from_contract x = Contract.is_implicit x |> Option.get
+
+let logid label x = print_endline (label ^ ": " ^ x); x
+
 let fa12_transfer ~token ~from ~to_ ~amount b =
   let from_address = Contract.is_implicit from |> Option.get in
   let to_address = Contract.is_implicit to_ |> Option.get in
@@ -31,20 +64,27 @@ let fa12_transfer ~token ~from ~to_ ~amount b =
       (Signature.Public_key_hash.to_b58check from_address)
       (Signature.Public_key_hash.to_b58check to_address)
       amount
-    |> Expr.from_string |> lazy_expr
+    |> logid "params" |> Expr.from_string |> lazy_expr
   in
-  Incremental.begin_construction b
-  >>=? fun b ->
-  Op.transaction
-    (I b)
-    ~entrypoint:"transfer"
-    ~parameters
-    ~fee:Tez.zero
-    from
-    token
-    Tez.zero
-  >>=? fun op ->
-  Incremental.add_operation b op >>=? fun b -> Incremental.finalize_block b
+  let b = Incremental.begin_construction b |> force_global_lwt in
+  (* let op =
+    Op.transaction
+      (I b)
+      ~entrypoint:"transfer"
+      ~parameters
+      ~fee:Tez.zero
+      from
+      token
+      Tez.zero
+    |> force_global_lwt
+  in
+  let b = Incremental.add_operation b op |> force_global_lwt in *)
+  (* let b = Incremental.finalize_block b |> force_global_lwt in *)
+  let context = Incremental.alpha_ctxt b in
+  let (_, storage_opt) = Alpha_context.Contract.get_storage context token |> force_lwt in
+  let storage = Option.get storage_opt in
+  storage
+  
 
 let read_file filename =
   let ch = open_in filename in
@@ -68,9 +108,8 @@ Pair
 let make_initial_storage address =
   let address = Signature.Public_key_hash.to_b58check address in
   sprintf {|Pair {Elt "%s" (Pair 100000000000000 {})} 100000000000000|} address
-  |> Expr.from_string |> lazy_expr
+  |> logid "initial storage" |> Expr.from_string |> lazy_expr
 
-let get_pkh_from_contract x = Contract.is_implicit x |> Option.get
 
 let main () =
   (* Register two contracts, bob and alie, each with 
@@ -88,22 +127,10 @@ let main () =
   make_contract ~script ~originator:alice ~amount:500L b
   (* this block has the contract ready to be called *)
   >>=? fun (b, craft_token_contract) ->
-  print_endline "here2" ;
   (* Call the contract *)
-  fa12_transfer ~token:craft_token_contract ~from:alice ~to_:bob ~amount:400L b
-  >>=? (fun b ->
-         let open Environment_context in
-         let (Context ctx) = b.context in
-         ( match ctx.kind with
-         | Memory_context.Memory ->
-             ()
-         | Shell_context.Shell ->
-             () ) ;
-         Environment_context.Context.get b.context [alice_address]
-         >|= fun b -> Ok (b |> Option.get))
-  >>=? fun value ->
-  print_endline "something" ;
-  Bytes.to_string value |> print_endline ;
+  let x = fa12_transfer ~token:craft_token_contract ~from:alice ~to_:bob ~amount:400L b in
+  print_endline "amounts";
+  print_endline @@ micheline_canonical_to_string x ;
   return ()
 
 let _ =
