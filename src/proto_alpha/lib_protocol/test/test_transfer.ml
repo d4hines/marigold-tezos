@@ -345,6 +345,7 @@ let test_transfer_from_implicit_to_originated_contract () =
   Op.origination (I b) contract ~script:Op.dummy_script
   >>=? fun (operation, new_contract) ->
   Incremental.add_operation b operation
+  
   >>=? fun b ->
   two_over_n_of_balance b bootstrap_contract 4L
   >>=? fun amount2 ->
