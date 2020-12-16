@@ -104,3 +104,5 @@ val execute :
   parameter:Script.expr ->
   internal:bool ->
   execution_result tzresult Lwt.t
+
+val default_exec_ord : exec_ord
