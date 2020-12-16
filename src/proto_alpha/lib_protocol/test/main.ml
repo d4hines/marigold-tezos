@@ -1,53 +1,114 @@
-(*****************************************************************************)
-(*                                                                           *)
-(* Open Source License                                                       *)
-(* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
-(*                                                                           *)
-(* Permission is hereby granted, free of charge, to any person obtaining a   *)
-(* copy of this software and associated documentation files (the "Software"),*)
-(* to deal in the Software without restriction, including without limitation *)
-(* the rights to use, copy, modify, merge, publish, distribute, sublicense,  *)
-(* and/or sell copies of the Software, and to permit persons to whom the     *)
-(* Software is furnished to do so, subject to the following conditions:      *)
-(*                                                                           *)
-(* The above copyright notice and this permission notice shall be included   *)
-(* in all copies or substantial portions of the Software.                    *)
-(*                                                                           *)
-(* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR*)
-(* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  *)
-(* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL   *)
-(* THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER*)
-(* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING   *)
-(* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER       *)
-(* DEALINGS IN THE SOFTWARE.                                                 *)
-(*                                                                           *)
-(*****************************************************************************)
+[@@@warning "-21"]
 
-let () =
-  Alcotest_lwt.run
-    "protocol_alpha"
-    [ ("transfer", Transfer.tests);
-      ("origination", Origination.tests);
-      ("activation", Activation.tests);
-      ("revelation", Reveal.tests);
-      ("endorsement", Endorsement.tests);
-      ("double endorsement", Double_endorsement.tests);
-      ("double baking", Double_baking.tests);
-      ("seed", Seed.tests);
-      ("baking", Baking.tests);
-      ("delegation", Delegation.tests);
-      ("rolls", Rolls.tests);
-      ("combined", Combined_operations.tests);
-      ("qty", Qty.tests);
-      ("voting", Voting.tests);
-      ("interpretation", Interpretation.tests);
-      ("typechecking", Typechecking.tests);
-      ("gas properties", Gas_properties.tests);
-      ("gas levels", Gas_levels.tests);
-      ("saturation arithmetic", Saturation.tests);
-      ("gas cost functions", Gas_costs.tests);
-      ("lazy storage diff", Lazy_storage_diff.tests);
-      ("sapling", Test_sapling.tests);
-      ("helpers rpcs", Test_helpers_rpcs.tests);
-      ("script deserialize gas", Script_gas.tests) ]
-  |> Lwt_main.run
+open Tezos_raw_protocol_alpha
+open Alpha_context
+open Script
+open Printf
+
+let register_two_contracts () =
+  Context.init ~initial_balances:[1_000_000_000_000L; 1_000_000_000_000L] 2
+  >|=? fun (b, contracts) ->
+  let contract_1 = List.nth contracts 0 in
+  let contract_2 = List.nth contracts 1 in
+  (b, contract_1, contract_2)
+
+let make_contract ~script ~originator ~amount b =
+  let amount = Tez.of_mutez amount |> Option.get in
+  Incremental.begin_construction b
+  >>=? fun b ->
+  Op.origination (I b) originator ~script ~credit:amount
+  >>=? fun (op, originated_contract) ->
+  Incremental.add_operation b op
+  >>=? fun b ->
+  Incremental.finalize_block b >>=? fun b -> return (b, originated_contract)
+
+let fa12_transfer ~token ~from ~to_ ~amount b =
+  let from_address = Contract.is_implicit from |> Option.get in
+  let to_address = Contract.is_implicit to_ |> Option.get in
+  let parameters =
+    Printf.sprintf
+      {|Pair "%s" (Pair "%s" %Ld)|}
+      (Signature.Public_key_hash.to_b58check from_address)
+      (Signature.Public_key_hash.to_b58check to_address)
+      amount
+    |> Expr.from_string |> lazy_expr
+  in
+  Incremental.begin_construction b
+  >>=? fun b ->
+  Op.transaction
+    (I b)
+    ~entrypoint:"transfer"
+    ~parameters
+    ~fee:Tez.zero
+    from
+    token
+    Tez.zero
+  >>=? fun op ->
+  Incremental.add_operation b op >>=? fun b -> Incremental.finalize_block b
+
+let read_file filename =
+  let ch = open_in filename in
+  let s = really_input_string ch (in_channel_length ch) in
+  close_in ch ; s
+
+let fa12_contract =
+  sprintf "{%s}" (read_file "/workspaces/repos/fa1.2/morley/fa1.2.tz")
+  |> Expr.from_string |> lazy_expr
+
+(* (pair
+  (big_map %accounts address
+    (pair (nat :balance)
+          (map :approvals address
+                          nat)))
+  (nat %fields))
+
+Pair
+  {Elt "tz1KtBg8nLf3bizWRjaCGLtz46Ls5vyXwTFa" (Pair 100000000000000 {})}
+  100000000000000 *)
+let make_initial_storage address =
+  let address = Signature.Public_key_hash.to_b58check address in
+  sprintf {|Pair {Elt "%s" (Pair 100000000000000 {})} 100000000000000|} address
+  |> Expr.from_string |> lazy_expr
+
+let get_pkh_from_contract x = Contract.is_implicit x |> Option.get
+
+let main () =
+  (* Register two contracts, bob and alie, each with 
+  a million tez  *)
+  register_two_contracts ()
+  >>=? fun (b, alice, bob) ->
+  (* Initially, our storage is going to have a ton of of craft tokens,
+  all in Alice's custody *)
+  let alice_address =
+    Signature.Public_key_hash.to_b58check (get_pkh_from_contract alice)
+  in
+  let storage = make_initial_storage @@ get_pkh_from_contract alice in
+  let script = Script.{code = fa12_contract; storage} in
+  (* Originate the contract with 1000 tez in its account *)
+  make_contract ~script ~originator:alice ~amount:500L b
+  (* this block has the contract ready to be called *)
+  >>=? fun (b, craft_token_contract) ->
+  print_endline "here2" ;
+  (* Call the contract *)
+  fa12_transfer ~token:craft_token_contract ~from:alice ~to_:bob ~amount:400L b
+  >>=? (fun b ->
+         let open Environment_context in
+         let (Context ctx) = b.context in
+         ( match ctx.kind with
+         | Memory_context.Memory ->
+             ()
+         | Shell_context.Shell ->
+             () ) ;
+         Environment_context.Context.get b.context [alice_address]
+         >|= fun b -> Ok (b |> Option.get))
+  >>=? fun value ->
+  print_endline "something" ;
+  Bytes.to_string value |> print_endline ;
+  return ()
+
+let _ =
+  match main () |> Lwt_main.run with
+  | Ok _ ->
+      ()
+  | Error err ->
+      Format.printf "%a" Error_monad.pp_print_error err
