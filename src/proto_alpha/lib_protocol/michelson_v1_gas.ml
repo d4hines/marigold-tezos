@@ -246,6 +246,9 @@ module Cost_of = struct
     (* model N_Dip *)
     let cost_N_Dip = Z.of_int 100
 
+    (* model N_Make_DFS *)
+    let cost_N_Make_DFS = Z.of_int 1
+
     (* model N_DipN *)
     let cost_N_DipN size = Z.of_int (100 + (4 * size))
 
@@ -931,6 +934,8 @@ module Cost_of = struct
     let loop_left = atomic_step_cost cost_N_Loop_left
 
     let dip = atomic_step_cost cost_N_Dip
+
+    let make_dfs = atomic_step_cost cost_N_Make_DFS
 
     let check_signature (pkey : Signature.public_key) b =
       let cost =

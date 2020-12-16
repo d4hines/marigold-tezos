@@ -513,7 +513,7 @@ let pp_operation_result ppf
   Format.fprintf ppf "@]@."
 
 let pp_internal_operation ppf
-    (Internal_operation {source; operation; nonce = _}) =
+    (Internal_operation {source; operation; nonce = _; exec_ord = _}) =
   pp_manager_operation_content
     source
     true

@@ -749,44 +749,64 @@ let apply_manager_operation_content :
 type success_or_failure = Success of context | Failure
 
 let apply_internal_manager_operations ctxt mode ~payer ~chain_id ops =
+  let rec ording ops bfs_list dfs_stack =
+    match ops with
+    | [] ->
+        (bfs_list, dfs_stack)
+    | (Internal_operation i as op) :: rest -> (
+      match i.exec_ord with
+      | BFS ->
+          ording rest (bfs_list @ [op]) dfs_stack
+      | DFS ->
+          ording rest bfs_list (dfs_stack @ [[op]]) )
+  in
   let rec apply ctxt applied worklist =
     match worklist with
     | [] ->
         Lwt.return (Success ctxt, List.rev applied)
-    | Internal_operation ({source; operation; nonce} as op) :: rest -> (
-        ( if internal_nonce_already_recorded ctxt nonce then
-          fail (Internal_operation_replay (Internal_operation op))
-        else
-          let ctxt = record_internal_nonce ctxt nonce in
-          apply_manager_operation_content
-            ctxt
-            mode
-            ~source
-            ~payer
-            ~chain_id
-            ~internal:true
-            operation )
-        >>= function
-        | Error errors ->
-            let result =
-              Internal_operation_result
-                (op, Failed (manager_kind op.operation, errors))
-            in
-            let skipped =
-              List.rev_map
-                (fun (Internal_operation op) ->
-                  Internal_operation_result
-                    (op, Skipped (manager_kind op.operation)))
-                rest
-            in
-            Lwt.return (Failure, List.rev (skipped @ (result :: applied)))
-        | Ok (ctxt, result, emitted) ->
-            apply
+    | q :: s -> (
+      match q with
+      | [] ->
+          apply ctxt applied s
+      | Internal_operation ({source; operation; nonce; exec_ord = _} as op)
+        :: rest -> (
+          ( if internal_nonce_already_recorded ctxt nonce then
+            fail (Internal_operation_replay (Internal_operation op))
+          else
+            let ctxt = record_internal_nonce ctxt nonce in
+            apply_manager_operation_content
               ctxt
-              (Internal_operation_result (op, Applied result) :: applied)
-              (rest @ emitted) )
+              mode
+              ~source
+              ~payer
+              ~chain_id
+              ~internal:true
+              operation )
+          >>= function
+          | Error errors ->
+              let result =
+                Internal_operation_result
+                  (op, Failed (manager_kind op.operation, errors))
+              in
+              let skipped =
+                List.rev_map
+                  (fun (Internal_operation op) ->
+                    Internal_operation_result
+                      (op, Skipped (manager_kind op.operation)))
+                  rest
+              in
+              Lwt.return (Failure, List.rev (skipped @ (result :: applied)))
+          | Ok (ctxt, result, emitted) ->
+              let (b, d) = ording emitted rest [] in
+              let nl = d @ (b :: s) in
+              apply
+                ctxt
+                (Internal_operation_result (op, Applied result) :: applied)
+                nl ) )
   in
-  apply ctxt [] ops
+  let (iniBfs, iniDfs) = ording ops [] [] in
+  let initStack = iniDfs @ [iniBfs] in
+  apply ctxt [] initStack
 
 let precheck_manager_contents (type kind) ctxt
     (op : kind Kind.manager contents) : context tzresult Lwt.t =

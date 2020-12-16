@@ -264,6 +264,7 @@ module Script : sig
     | D_Some
     | D_True
     | D_Unit
+    | I_MAKE_DFS
     | I_PACK
     | I_UNPACK
     | I_BLAKE2B
@@ -1312,10 +1313,13 @@ and _ manager_operation =
 
 and counter = Z.t
 
+and exec_ord = BFS | DFS
+
 type 'kind internal_operation = {
   source : Contract.contract;
   operation : 'kind manager_operation;
   nonce : int;
+  exec_ord : exec_ord;
 }
 
 type packed_manager_operation =
@@ -1406,6 +1410,8 @@ module Operation : sig
 
   val check_signature :
     public_key -> Chain_id.t -> _ operation -> unit tzresult
+
+  val exec_ord_encoding : exec_ord Data_encoding.t
 
   val internal_operation_encoding : packed_internal_operation Data_encoding.t
 

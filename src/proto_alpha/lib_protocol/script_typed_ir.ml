@@ -378,6 +378,7 @@ and ('bef, 'aft) instr =
   | Contract :
       'p ty * string
       -> (address * 'rest, 'p typed_contract option * 'rest) instr
+  | Make_dfs : (operation * 'rest, operation * 'rest) instr
   | Transfer_tokens
       : ( 'arg * (Tez.t * ('arg typed_contract * 'rest)),
           operation * 'rest )

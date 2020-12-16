@@ -245,6 +245,8 @@ let number_of_generated_growing_types : type b a. (b, a) instr -> int =
      - produce only constants
      - have types bounded by parameters
      - etc. *)
+  | Make_dfs ->
+      0
   | Drop ->
       0
   | Dup ->
@@ -5084,6 +5086,10 @@ and parse_instr :
         loc
         (Contract (t, entrypoint))
         (Item_t (Option_t (Contract_t (t, None), None), rest, annot))
+  | (Prim (loc, I_MAKE_DFS, [], annot), Item_t (Operation_t None, rest, _)) ->
+      parse_var_annot loc annot
+      >>?= fun annot ->
+      typed ctxt loc Make_dfs (Item_t (Operation_t None, rest, annot))
   | ( Prim (loc, I_TRANSFER_TOKENS, [], annot),
       Item_t (p, Item_t (Mutez_t _, Item_t (Contract_t (cp, _), rest, _), _), _)
     ) ->

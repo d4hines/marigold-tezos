@@ -257,6 +257,8 @@ module Cost_of : sig
 
     val contract : Gas.cost
 
+    val make_dfs : Gas.cost
+
     val transfer_tokens : Gas.cost
 
     val implicit_account : Gas.cost

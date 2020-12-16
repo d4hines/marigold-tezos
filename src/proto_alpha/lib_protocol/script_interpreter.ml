@@ -145,6 +145,8 @@ let () =
 
 (* ---- interpreter ---------------------------------------------------------*)
 
+let default_exec_ord = BFS
+
 module Interp_costs = Michelson_v1_gas.Cost_of.Interpreter
 
 let rec interp_stack_prefix_preserving_operation :
@@ -446,6 +448,8 @@ let cost_of_instr : type b a. (b, a) descr -> b -> Gas.cost =
       Interp_costs.address
   | (Contract _, _) ->
       Interp_costs.contract
+  | (Make_dfs, _) ->
+      Interp_costs.make_dfs
   | (Transfer_tokens, _) ->
       Interp_costs.transfer_tokens
   | (Implicit_account, _) ->
@@ -1096,6 +1100,11 @@ let rec step_bounded :
         logged_return ((maybe_contract, rest), ctxt)
     | _ ->
         logged_return ((None, rest), ctxt) )
+  | (Make_dfs, ((Internal_operation op, s), rest)) ->
+      Gas.consume ctxt Interp_costs.make_dfs
+      >>?= fun ctxt ->
+      logged_return
+        (((Internal_operation {op with exec_ord = DFS}, s), rest), ctxt)
   | (Transfer_tokens, (p, (amount, ((tp, (destination, entrypoint)), rest))))
     ->
       collect_lazy_storage ctxt tp p
@@ -1127,7 +1136,12 @@ let rec step_bounded :
       >>?= fun (ctxt, nonce) ->
       logged_return
         ( ( ( Internal_operation
-                {source = step_constants.self; operation; nonce},
+                {
+                  source = step_constants.self;
+                  operation;
+                  nonce;
+                  exec_ord = default_exec_ord;
+                },
               lazy_storage_diff ),
             rest ),
           ctxt )
@@ -1188,7 +1202,12 @@ let rec step_bounded :
       >>?= fun (ctxt, nonce) ->
       logged_return
         ( ( ( Internal_operation
-                {source = step_constants.self; operation; nonce},
+                {
+                  source = step_constants.self;
+                  operation;
+                  nonce;
+                  exec_ord = default_exec_ord;
+                },
               lazy_storage_diff ),
             ((contract, "default"), rest) ),
           ctxt )
@@ -1198,7 +1217,12 @@ let rec step_bounded :
       >>?= fun (ctxt, nonce) ->
       logged_return
         ( ( ( Internal_operation
-                {source = step_constants.self; operation; nonce},
+                {
+                  source = step_constants.self;
+                  operation;
+                  nonce;
+                  exec_ord = default_exec_ord;
+                },
               None ),
             rest ),
           ctxt )

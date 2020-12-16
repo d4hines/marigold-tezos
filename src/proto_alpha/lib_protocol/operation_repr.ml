@@ -59,6 +59,8 @@ type raw = Operation.t = {shell : Operation.shell_header; proto : bytes}
 
 let raw_encoding = Operation.encoding
 
+type exec_ord = BFS | DFS
+
 type 'kind operation = {
   shell : Operation.shell_header;
   protocol_data : 'kind protocol_data;
@@ -157,6 +159,7 @@ type 'kind internal_operation = {
   source : Contract_repr.contract;
   operation : 'kind manager_operation;
   nonce : int;
+  exec_ord : exec_ord;
 }
 
 type packed_manager_operation =
@@ -635,15 +638,33 @@ module Encoding = struct
          Operation.shell_header_encoding
          (obj1 (req "contents" contents_list_encoding))
 
+  let exec_ord_encoding =
+    let of_int8 = function
+      | 0 ->
+          BFS
+      | 1 ->
+          DFS
+      | _ ->
+          invalid_arg "exec_ord_of_int8"
+    in
+    let to_int8 = function BFS -> 0 | DFS -> 1 in
+    let open Data_encoding in
+    splitted
+      ~binary:(conv to_int8 of_int8 int8)
+      ~json:(string_enum [("BFS", BFS); ("DFS", DFS)])
+
   let internal_operation_encoding =
     def "operation.alpha.internal_operation"
     @@ conv
-         (fun (Internal_operation {source; operation; nonce}) ->
-           ((source, nonce), Manager operation))
-         (fun ((source, nonce), Manager operation) ->
-           Internal_operation {source; operation; nonce})
+         (fun (Internal_operation {source; operation; nonce; exec_ord}) ->
+           ((source, nonce, exec_ord), Manager operation))
+         (fun ((source, nonce, exec_ord), Manager operation) ->
+           Internal_operation {source; operation; nonce; exec_ord})
          (merge_objs
-            (obj2 (req "source" Contract_repr.encoding) (req "nonce" uint16))
+            (obj3
+               (req "source" Contract_repr.encoding)
+               (req "nonce" uint16)
+               (req "exec_ord" exec_ord_encoding))
             Manager_operations.encoding)
 end
 
@@ -656,6 +677,8 @@ let contents_list_encoding = Encoding.contents_list_encoding
 let protocol_data_encoding = Encoding.protocol_data_encoding
 
 let unsigned_operation_encoding = Encoding.unsigned_operation_encoding
+
+let exec_ord_encoding = Encoding.exec_ord_encoding
 
 let internal_operation_encoding = Encoding.internal_operation_encoding
 
