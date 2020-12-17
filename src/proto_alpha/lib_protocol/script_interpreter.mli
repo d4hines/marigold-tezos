@@ -24,6 +24,7 @@
 (*****************************************************************************)
 
 open Alpha_context
+open Script_typed_cps_ir
 
 type execution_trace =
   (Script.location * Gas.t * (Script.expr * string option) list) list
@@ -127,3 +128,53 @@ val kstep :
   'a ->
   's ->
   ('r * 'f * context) tzresult Lwt.t
+
+(** Internal interpretation loop
+    ============================
+
+    The following types and the following function are exposed
+    in the interface to allow the inference of a gas model in
+    snoop.
+
+    Strictly speaking, they should not be considered as part of
+    the interface since they expose implementation details that
+    may change in the future.
+
+*)
+
+(** Internally, the interpretation loop uses a local gas counter. *)
+type local_gas_counter = int
+
+(** During the evaluation, the gas level in the context is outdated. *)
+type outdated_context = OutDatedContext of context [@@unboxed]
+
+(** The interpreter uses a control stack with specific cases for loops
+    and DIP. See the details in the implementation file. *)
+type (_, _, _, _) konts =
+  | KNil : ('r, 'f, 'r, 'f) konts
+  | KCons :
+      ('a, 's, 'b, 't) kinstr * ('b, 't, 'r, 'f) konts
+      -> ('a, 's, 'r, 'f) konts
+  | KUndip : 'b * ('b, 'a * 's, 'r, 'f) konts -> ('a, 's, 'r, 'f) konts
+  | KLoop_in :
+      ('a, 's, bool, 'a * 's) kinstr * ('a, 's, 'r, 'f) konts
+      -> (bool, 'a * 's, 'r, 'f) konts
+  | KLoop_in_left :
+      ('a, 's, ('a, 'b) Script_typed_ir.union, 's) kinstr
+      * ('b, 's, 'r, 'f) konts
+      -> (('a, 'b) Script_typed_ir.union, 's, 'r, 'f) konts
+
+(** [run logger ctxt step_constants local_gas_counter i k ks accu stack]
+    evaluates [k] (having [i] as predecessor) under the control flow
+    stack [ks] and the A-stack represented by [accu] and [stack]. *)
+val run :
+  logger option ->
+  outdated_context ->
+  step_constants ->
+  local_gas_counter ->
+  ('c, 'u, 'd, 'v) kinstr ->
+  ('a, 's, 'b, 't) kinstr ->
+  ('b, 't, 'r, 'f) konts ->
+  'a ->
+  's ->
+  ('r * 'f * outdated_context * local_gas_counter) tzresult Lwt.t
