@@ -1,10 +1,18 @@
 [@@@warning "-21"]
+
+[@@@warning "-20"]
+
 [@@@warning "-26"]
 
 open Tezos_raw_protocol_alpha
 open Alpha_context
 open Script
 open Printf
+open Show
+
+let () = Printexc.record_backtrace true
+
+let ( >>=?? ) x k = x >>= fun x -> Lwt.return (Environment.wrap_error x) >>=? k
 
 let force x =
   match x with
@@ -53,7 +61,13 @@ let make_contract ~script ~originator ~amount b =
 
 let get_pkh_from_contract x = Contract.is_implicit x |> Option.get
 
-let logid label x = print_endline (label ^ ": " ^ x); x
+let logid label x =
+  print_endline (label ^ ": " ^ x) ;
+  x
+
+let get_next_context b =
+  Incremental.begin_construction b
+  >>=? fun b -> return (Incremental.alpha_ctxt b)
 
 let fa12_transfer ~token ~from ~to_ ~amount b =
   let from_address = Contract.is_implicit from |> Option.get in
@@ -66,26 +80,19 @@ let fa12_transfer ~token ~from ~to_ ~amount b =
       amount
     |> logid "params" |> Expr.from_string |> lazy_expr
   in
-  let b = Incremental.begin_construction b |> force_global_lwt in
-  (* let op =
-    Op.transaction
-      (I b)
-      ~entrypoint:"transfer"
-      ~parameters
-      ~fee:Tez.zero
-      from
-      token
-      Tez.zero
-    |> force_global_lwt
-  in
-  let b = Incremental.add_operation b op |> force_global_lwt in *)
-  (* let b = Incremental.finalize_block b |> force_global_lwt in *)
-  let context = Incremental.alpha_ctxt b in
-  let (_, storage_opt) = Alpha_context.Contract.get_storage context token |> force_lwt in
-  let storage = Option.get storage_opt in
-  storage
-  
-
+  Incremental.begin_construction b
+  >>=? fun b ->
+  Op.transaction
+    (I b)
+    ~entrypoint:"transfer"
+    ~parameters
+    ~fee:Tez.zero
+    from
+    token
+    Tez.zero
+  >>=? fun op ->
+  Incremental.add_operation b op >>=? fun b -> Incremental.finalize_block b
+let x= Script_interpreter.step
 let read_file filename =
   let ch = open_in filename in
   let s = really_input_string ch (in_channel_length ch) in
@@ -94,7 +101,9 @@ let read_file filename =
 let fa12_contract =
   sprintf "{%s}" (read_file "/workspaces/repos/fa1.2/morley/fa1.2.tz")
   |> Expr.from_string |> lazy_expr
-
+let dexter_contract = 
+  sprintf "{%s}" (read_file "/workspaces/repos/joseph/dexter/ligo/dexter.tz")
+  |> Expr.from_string |> lazy_expr
 (* (pair
   (big_map %accounts address
     (pair (nat :balance)
@@ -110,8 +119,7 @@ let make_initial_storage address =
   sprintf {|Pair {Elt "%s" (Pair 100000000000000 {})} 100000000000000|} address
   |> logid "initial storage" |> Expr.from_string |> lazy_expr
 
-
-let main () =
+let setup_fa12_token () =
   (* Register two contracts, bob and alie, each with 
   a million tez  *)
   register_two_contracts ()
@@ -126,16 +134,49 @@ let main () =
   (* Originate the contract with 1000 tez in its account *)
   make_contract ~script ~originator:alice ~amount:500L b
   (* this block has the contract ready to be called *)
-  >>=? fun (b, craft_token_contract) ->
-  (* Call the contract *)
-  let x = fa12_transfer ~token:craft_token_contract ~from:alice ~to_:bob ~amount:400L b in
-  print_endline "amounts";
-  print_endline @@ micheline_canonical_to_string x ;
+  >>=? fun (b, token) -> get_next_context b
+  >>=? fun ctx -> return (ctx, token, alice, bob)
+
+let (context, token, alice, bob) = (setup_fa12_token ()) |> force_global_lwt
+
+let print_alice_balance () =
+  let alice_address =
+    Signature.Public_key_hash.to_b58check (get_pkh_from_contract alice)
+  in
+  let (_, storage_opt) =
+    Alpha_context.Contract.get_storage context token
+    |> force_lwt
+  in
+  let storage = Option.get storage_opt in
+  Show.show_canonical Show.pp_prim storage |> print_endline ;
+  print_endline @@ micheline_canonical_to_string storage ;
+  let big_map_id =
+    match storage |> Obj.magic with
+    | Canonical (Prim (0, D_Pair, [Int (1, x); _], [])) ->
+        x
+    | _ ->
+        assert false
+  in
+  let big_map_id : Big_map.Id.t = Obj.magic big_map_id in
+  let comparable_ty = Script_typed_ir.Address_key None in
+  let z = Expr.from_string (sprintf {|"%s"|} alice_address) in
+  Script_ir_translator.parse_comparable_data context comparable_ty (Micheline.root z)
+  >>=?? fun (address, context) -> Script_ir_translator.hash_comparable_data context comparable_ty address
+  >>=?? fun (hash, context) ->
+  Big_map.get_opt context big_map_id hash
+  >>=?? fun (_ctx, foo) ->
+  (* let (left, right) = foo |> Option.get in *)
+  print_endline "Hello";
+  print_endline @@ micheline_canonical_to_string (Option.get foo) ;
+  Printf.printf "exists: %b\n%!" (foo |> Option.is_some);
   return ()
 
-let _ =
-  match main () |> Lwt_main.run with
-  | Ok _ ->
-      ()
-  | Error err ->
-      Format.printf "%a" Error_monad.pp_print_error err
+let _ = Lwt_main.run @@ print_alice_balance ()
+
+(* let () =
+  let open Core in
+  let open Core_bench in
+  Command.run
+    (Bench.make_command
+        [ Bench.Test.create ~name:"run_script" (fun () ->
+              run_script () |> Lwt_main.run) ]) *)
