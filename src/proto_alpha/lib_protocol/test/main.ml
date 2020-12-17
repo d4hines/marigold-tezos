@@ -149,7 +149,7 @@ let make_run_fa12_transfer script context token alice bob =
     >>=? fun (((_, storage), ()), ctx) ->
     Script_ir_translator.unparse_data ctx Readable storage_type storage
   in
-  let run_script () = run_script () >>=?? fun _ -> return () in
+  let run_script () = run_script() |> Lwt.map (fun _ -> ()) in
   return (run_script, eval_script)
 
 let read_file filename =
