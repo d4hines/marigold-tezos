@@ -101,15 +101,6 @@ let fa12_transfer ~token ~from ~to_ ~amount b =
   Incremental.add_operation b op >>=? fun b -> Incremental.finalize_block b
 
 let make_run_fa12_transfer script context token alice bob =
-  let module No_trace : Script_interpreter.STEP_LOGGER = struct
-    let log_interp _ctxt _descr _stack = ()
-
-    let log_entry _ctxt _descr _stack = ()
-
-    let log_exit _ctxt _descr _stack = ()
-
-    let get_log () = return_none
-  end in
   let step_constants : Script_interpreter.step_constants =
     {
       source = alice;
@@ -139,14 +130,13 @@ let make_run_fa12_transfer script context token alice bob =
     arg_type
     (Micheline.root parameters)
   >>=?? fun (arg, context) ->
-  let logger = (module No_trace : Script_interpreter.STEP_LOGGER) in
-  let input = ((arg, storage), ()) in
+  let input = ((arg, storage)) in
   let run_script () =
-    Script_interpreter.step logger context step_constants code input
+    Script_interpreter.step None context step_constants code input ((), ())
   in
   let eval_script () =
     run_script ()
-    >>=? fun (((_, storage), ()), ctx) ->
+    >>=? fun ((_, storage), _, ctx) ->
     Script_ir_translator.unparse_data ctx Readable storage_type storage
   in
   let run_script () = run_script() |> Lwt.map (fun _ -> ()) in
@@ -222,7 +212,7 @@ let print_alice_balance () =
         assert false
   in
   let big_map_id : Big_map.Id.t = Obj.magic big_map_id in
-  let comparable_ty = Script_typed_ir.Address_key None in
+  let comparable_ty = Script_typed_cps_ir.Address_key None in
   let z = Expr.from_string (sprintf {|"%s"|} alice_address) in
   Script_ir_translator.parse_comparable_data
     context
@@ -239,6 +229,8 @@ let print_alice_balance () =
   Printf.printf "exists: %b\n%!" (foo |> Option.is_some) ;
   return ()
 
+let run_script_batch () = List.init 100 (fun _ -> run_script ()) |> Lwt.all
+
 let _ =
   Lwt_main.run
     ( eval_script ()
@@ -254,4 +246,6 @@ let () =
   Command.run
     (Bench.make_command
         [ Bench.Test.create ~name:"run_script" (fun () ->
-              run_script () |> Lwt_main.run) ])
+              run_script () |> Lwt_main.run);
+          Bench.Test.create ~name:"run_script_batch" (fun () ->
+            run_script_batch () |> Lwt_main.run) ])
