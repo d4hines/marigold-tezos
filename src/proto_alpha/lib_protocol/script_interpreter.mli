@@ -172,6 +172,36 @@ type (_, _, _, _) konts =
       ('a, 's, ('a, 'b) Script_typed_ir.union, 's) kinstr
       * ('b, 's, 'r, 'f) konts
       -> (('a, 'b) Script_typed_ir.union, 's, 'r, 'f) konts
+  | KIter :
+      ('a, 'b * 's, 'b, 's) kinstr * 'a list * ('b, 's, 'r, 'f) konts
+      -> ('b, 's, 'r, 'f) konts
+  | KList_mapping :
+      ('a, 'c * 's, 'b, 'c * 's) kinstr
+      * 'a list
+      * 'b list
+      * int
+      * ('b Script_typed_ir.boxed_list, 'c * 's, 'r, 'f) konts
+      -> ('c, 's, 'r, 'f) konts
+  | KList_mapped :
+      ('a, 'c * 's, 'b, 'c * 's) kinstr
+      * 'a list
+      * 'b list
+      * int
+      * ('b Script_typed_ir.boxed_list, 'c * 's, 'r, 'f) konts
+      -> ('b, 'c * 's, 'r, 'f) konts
+  | KMap_mapping :
+      ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
+      * ('a * 'b) list
+      * ('a, 'c) Script_typed_ir.map
+      * (('a, 'c) Script_typed_ir.map, 'd * 's, 'r, 'f) konts
+      -> ('d, 's, 'r, 'f) konts
+  | KMap_mapped :
+      ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
+      * ('a * 'b) list
+      * ('a, 'c) Script_typed_ir.map
+      * 'a
+      * (('a, 'c) Script_typed_ir.map, 'd * 's, 'r, 'f) konts
+      -> ('c, 'd * 's, 'r, 'f) konts
 
 (** [run logger ctxt step_constants local_gas_counter i k ks accu stack]
     evaluates [k] (having [i] as predecessor) under the control flow
