@@ -205,36 +205,11 @@ type ('bef_top, 'bef, 'res_top, 'res) kinstr =
       * ('a, 'c * 's, 'b, 'c * 's) kinstr
       * ('b boxed_list, 'c * 's, 'r, 'f) kinstr
       -> ('a boxed_list, 'c * 's, 'r, 'f) kinstr
-  | KList_mapping :
-      ('c, 's) kinfo
-      * ('b, 'c * 's) kinfo
-      * ('a, 'c * 's, 'b, 'c * 's) kinstr
-      * 'a list
-      * 'b list
-      * int
-      * ('b boxed_list, 'c * 's, 'r, 'f) kinstr
-      -> ('c, 's, 'r, 'f) kinstr
-  | KList_mapped :
-      ('b, 'c * 's) kinfo
-      * ('c, 's) kinfo
-      * ('a, 'c * 's, 'b, 'c * 's) kinstr
-      * 'a list
-      * 'b list
-      * int
-      * ('b boxed_list, 'c * 's, 'r, 'f) kinstr
-      -> ('b, 'c * 's, 'r, 'f) kinstr
   | KList_iter :
       ('a boxed_list, 'b * 's) kinfo
-      * ('b, 's) kinfo
       * ('a, 'b * 's, 'b, 's) kinstr
       * ('b, 's, 'r, 'f) kinstr
       -> ('a boxed_list, 'b * 's, 'r, 'f) kinstr
-  | KIter :
-      ('b, 's) kinfo
-      * ('a, 'b * 's, 'b, 's) kinstr
-      * 'a list
-      * ('b, 's, 'r, 'f) kinstr
-      -> ('b, 's, 'r, 'f) kinstr
   | KList_size :
       ('a boxed_list, 's) kinfo * (n num, 's, 'r, 'f) kinstr
       -> ('a boxed_list, 's, 'r, 'f) kinstr
@@ -247,7 +222,6 @@ type ('bef_top, 'bef, 'res_top, 'res) kinstr =
       -> ('a, 's, 'r, 'f) kinstr
   | KSet_iter :
       ('a set, 'b * 's) kinfo
-      * ('b, 's) kinfo
       * ('a, 'b * 's, 'b, 's) kinstr
       * ('b, 's, 'r, 'f) kinstr
       -> ('a set, 'b * 's, 'r, 'f) kinstr
@@ -272,31 +246,11 @@ type ('bef_top, 'bef, 'res_top, 'res) kinstr =
       -> ('a, 's, 'r, 'f) kinstr
   | KMap_map :
       (('a, 'b) map, 'd * 's) kinfo
-      * ('d, 's) kinfo
-      * ('c, 'd * 's) kinfo
       * ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
       * (('a, 'c) map, 'd * 's, 'r, 'f) kinstr
       -> (('a, 'b) map, 'd * 's, 'r, 'f) kinstr
-  | KMap_mapping :
-      ('d, 's) kinfo
-      * ('c, 'd * 's) kinfo
-      * ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
-      * ('a * 'b) list
-      * ('a, 'c) map
-      * (('a, 'c) map, 'd * 's, 'r, 'f) kinstr
-      -> ('d, 's, 'r, 'f) kinstr
-  | KMap_mapped :
-      ('c, 'd * 's) kinfo
-      * ('d, 's) kinfo
-      * ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
-      * ('a * 'b) list
-      * ('a, 'c) map
-      * 'a
-      * (('a, 'c) map, 'd * 's, 'r, 'f) kinstr
-      -> ('c, 'd * 's, 'r, 'f) kinstr
   | KMap_iter :
       (('a, 'b) map, 'c * 's) kinfo
-      * ('c, 's) kinfo
       * ('a * 'b, 'c * 's, 'c, 's) kinstr
       * ('c, 's, 'r, 'f) kinstr
       -> (('a, 'b) map, 'c * 's, 'r, 'f) kinstr
@@ -904,19 +858,13 @@ let kinfo_of_kinstr : type a s b f. (a, s, b, f) kinstr -> (a, s) kinfo =
       kinfo
   | KList_map (kinfo, _, _) ->
       kinfo
-  | KList_mapping (kinfo, _, _, _, _, _, _) ->
-      kinfo
-  | KList_mapped (kinfo, _, _, _, _, _, _) ->
-      kinfo
-  | KList_iter (kinfo, _, _, _) ->
-      kinfo
-  | KIter (kinfo, _, _, _) ->
+  | KList_iter (kinfo, _, _) ->
       kinfo
   | KList_size (kinfo, _) ->
       kinfo
   | KEmpty_set (kinfo, _, _) ->
       kinfo
-  | KSet_iter (kinfo, _, _, _) ->
+  | KSet_iter (kinfo, _, _) ->
       kinfo
   | KSet_mem (kinfo, _) ->
       kinfo
@@ -926,13 +874,9 @@ let kinfo_of_kinstr : type a s b f. (a, s, b, f) kinstr -> (a, s) kinfo =
       kinfo
   | KEmpty_map (kinfo, _, _, _) ->
       kinfo
-  | KMap_map (kinfo, _, _, _, _) ->
+  | KMap_map (kinfo, _, _) ->
       kinfo
-  | KMap_mapping (kinfo, _, _, _, _, _) ->
-      kinfo
-  | KMap_mapped (kinfo, _, _, _, _, _, _) ->
-      kinfo
-  | KMap_iter (kinfo, _, _, _) ->
+  | KMap_iter (kinfo, _, _) ->
       kinfo
   | KMap_mem (kinfo, _) ->
       kinfo
@@ -1553,7 +1497,7 @@ let rec translate_instr :
         | Refl ->
             let kinfo' = {kloc = i.loc; kstack_ty = lift_stack_ty lo i.aft} in
             let ki = translate_instr i (coerce_lift li) lo (KHalt kinfo') in
-            return @@ KList_iter (kinfo, kinfo', ki, k) ) )
+            return @@ KList_iter (kinfo, ki, k) ) )
     | List_size -> (
       match li with
       | IndLift li -> (
@@ -1573,7 +1517,7 @@ let rec translate_instr :
         | Refl ->
             let kinfo' = {kloc = i.loc; kstack_ty = lift_stack_ty lo i.aft} in
             let ki = translate_instr i (coerce_lift li) lo (KHalt kinfo') in
-            return @@ KSet_iter (kinfo, kinfo', ki, k) ) )
+            return @@ KSet_iter (kinfo, ki, k) ) )
     | Set_mem -> (
       match li with
       | IndLift li -> (
@@ -1625,18 +1569,7 @@ let rec translate_instr :
               let ki =
                 translate_instr i (coerce_lift li) (coerce_lift lo) khalt
               in
-              let kinfo_mapped =
-                match (kinfo_of_kinstr k).kstack_ty with
-                | Item_t (ty, s, a) ->
-                    {kinfo with kstack_ty = Item_t (snd (unmap_ty ty), s, a)}
-              in
-              let kinfo_mapping =
-                match kinfo.kstack_ty with
-                | Item_t (_, kstack_ty, _) ->
-                    {kloc = kinfo.kloc; kstack_ty}
-              in
-              return @@ KMap_map (kinfo, kinfo_mapping, kinfo_mapped, ki, k) )
-        ) )
+              return @@ KMap_map (kinfo, ki, k) ) ) )
     | Map_iter i -> (
       match li with
       | IndLift li' -> (
@@ -1646,12 +1579,7 @@ let rec translate_instr :
               KHalt {kloc = i.loc; kstack_ty = lift_stack_ty lo i.aft}
             in
             let ki = translate_instr i (coerce_lift li) lo khalt in
-            let kinfo_iter =
-              match kinfo.kstack_ty with
-              | Item_t (_, kstack_ty, _) ->
-                  {kinfo with kstack_ty}
-            in
-            return @@ KMap_iter (kinfo, kinfo_iter, ki, k) ) )
+            return @@ KMap_iter (kinfo, ki, k) ) )
     | Map_mem -> (
       match li with
       | IndLift li -> (
