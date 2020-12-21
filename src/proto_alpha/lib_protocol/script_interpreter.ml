@@ -767,24 +767,22 @@ let get_log (logger : logger option) =
   Interpretation loop
   ===================
 
-*)
+  The stack of control is a list of [kinstr]. This type is documented
+  in the module [Script_typed_cps_ir].
 
-(*
+  Since [kinstr] denotes a list  of instructions, the stack of control
+  can be seen as a list  of instruction sequences, each representing a
+  form of delimited continuation (i.e.  a control stack fragment). The
+  [konts] GADT  ensures that the input  and output stack types  of the
+  continuations are consistent.
 
-   The stack of control is a list of [kinstr]. Since [kinstr]
-   denotes a list of instructions, the stack of control can be
-   seen as a list of instruction sequences, each representing
-   a form of delimited continuation (i.e. a control stack
-   fragment). The [konts] GADT ensures that the input and output
-   stack types of the continuations are consistent.
+  Loops have a special treatment because their control stack is reused
+  as is during the next iteration. This avoids the reallocation of a
+  control stack cell at each iteration.
 
-   Loops have a special treatment because their control stack
-   is reused as is during the next iteration. This avoids the
-   reallocation of a control stack cell at each iteration.
-
-   Dip also has a dedicated constructor in the control stack.
-   This allows the stack prefix to be restored after the execution
-   of the [Dip]'s body.
+  Dip also has a dedicated constructor in the control stack.  This
+  allows the stack prefix to be restored after the execution of the
+  [Dip]'s body.
 
 *)
 type (_, _, _, _) konts =
