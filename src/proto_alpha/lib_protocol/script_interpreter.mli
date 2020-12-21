@@ -165,6 +165,7 @@ type (_, _, _, _) konts =
   | KCons :
       ('a, 's, 'b, 't) kinstr * ('b, 't, 'r, 'f) konts
       -> ('a, 's, 'r, 'f) konts
+  | KReturn : 's * ('a, 's, 'r, 'f) konts -> ('a, end_of_stack, 'r, 'f) konts
   | KUndip : 'b * ('b, 'a * 's, 'r, 'f) konts -> ('a, 's, 'r, 'f) konts
   | KLoop_in :
       ('a, 's, bool, 'a * 's) kinstr * ('a, 's, 'r, 'f) konts

@@ -760,14 +760,21 @@ let get_log (logger : logger option) =
   [konts] GADT  ensures that the input  and output stack types  of the
   continuations are consistent.
 
-  Loops have a special treatment because their control stack is reused
-  as is during the next iteration. This avoids the reallocation of a
-  control stack cell at each iteration. A similar reasoning applies
-  to higher-order iterators (i.e. MAPs and ITERs).
+  - [KNil] represents the end of execution.
 
-  Dip also has a dedicated constructor in the control stack.  This
-  allows the stack prefix to be restored after the execution of the
-  [Dip]'s body.
+  - [KCons] provides the next continuation to execute.
+
+  - [KReturn] implements stack restoration after a function call
+    performed by [KExec].
+
+  - [KUndip] is decidated to [KDip]. This allows the stack prefix to
+    be restored after the execution of the [Dip]'s body.
+
+  - Thanks to [KLoop_in] and [KLoop_in_left], loops have a special
+    treatment.  The same control stack is reused during each iteration.
+    This avoids the reallocation of a control stack cell at each iteration.
+    A similar remark applies to higher-order iterators over lists and
+    maps (i.e. [KList_*] and [KMap_*]).
 
 *)
 type (_, _, _, _) konts =
@@ -775,6 +782,7 @@ type (_, _, _, _) konts =
   | KCons :
       ('a, 's, 'b, 't) kinstr * ('b, 't, 'r, 'f) konts
       -> ('a, 's, 'r, 'f) konts
+  | KReturn : 's * ('a, 's, 'r, 'f) konts -> ('a, end_of_stack, 'r, 'f) konts
   | KUndip : 'b * ('b, 'a * 's, 'r, 'f) konts -> ('a, 's, 'r, 'f) konts
   | KLoop_in :
       ('a, 's, bool, 'a * 's) kinstr * ('a, 's, 'r, 'f) konts
@@ -920,6 +928,8 @@ and next :
       Lwt.return (Ok (accu, stack, ctxt, gas))
   | KCons (k, ks) ->
       (step [@ocaml.tailcall]) logger ctxt sc gas k ks accu stack
+  | KReturn (stack', ks) ->
+      next logger ctxt sc gas ks accu stack'
   | KLoop_in (ki, ks') ->
       let (accu', stack') = stack in
       if accu then
@@ -1473,10 +1483,10 @@ and step :
           (run [@ocaml.tailcall]) logger ctxt sc gas i b ks accu stack
       | KExec (_, k) ->
           let arg = accu and (code, stack) = stack in
-          ( use_gas_counter_in_ctxt ctxt gas
-          @@ fun ctxt -> interp logger ctxt sc code arg )
-          >>=? fun (res, ctxt, gas) ->
-          (run [@ocaml.tailcall]) logger ctxt sc gas i k ks res stack
+          let (Lam (code, _)) = code in
+          let code = code.kinstr in
+          let ks = KReturn (stack, KCons (k, ks)) in
+          (run [@ocaml.tailcall]) logger ctxt sc gas i code ks arg ((), ())
       | KApply (_, capture_ty, k) -> (
           let capture = accu in
           let (lam, stack) = stack in
