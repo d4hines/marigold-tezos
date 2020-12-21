@@ -1029,12 +1029,12 @@ and step :
             KList_mapping (kinfo_mapping, kinfo_mapped, body, xs, ys, len, k)
           in
           let (accu, stack) = stack in
-          (step [@ocaml.tailcall]) logger ctxt sc gas k ks accu stack
+          (run [@ocaml.tailcall]) logger ctxt sc gas i k ks accu stack
       | KList_mapping (kinfo_mapping, kinfo_mapped, body, xs, ys, len, k) -> (
         match xs with
         | [] ->
             let ys = {elements = List.rev ys; length = len} in
-            (step [@ocaml.tailcall]) logger ctxt sc gas k ks ys (accu, stack)
+            (run [@ocaml.tailcall]) logger ctxt sc gas i k ks ys (accu, stack)
         | x :: xs ->
             let ks =
               KCons
@@ -1042,7 +1042,7 @@ and step :
                     (kinfo_mapped, kinfo_mapping, body, xs, ys, len, k),
                   ks )
             in
-            (step [@ocaml.tailcall]) logger ctxt sc gas body ks x (accu, stack)
+            (run [@ocaml.tailcall]) logger ctxt sc gas i body ks x (accu, stack)
         )
       | KList_mapped (kinfo_mapped, kinfo_mapping, body, xs, ys, len, k) ->
           let k =
@@ -1050,7 +1050,7 @@ and step :
               (kinfo_mapping, kinfo_mapped, body, xs, accu :: ys, len, k)
           in
           let (accu, stack) = stack in
-          (step [@ocaml.tailcall]) logger ctxt sc gas k ks accu stack
+          (run [@ocaml.tailcall]) logger ctxt sc gas i k ks accu stack
       | KList_size (_, k) ->
           let list = accu in
           let len = Script_int.(abs (of_int list.length)) in
@@ -1059,14 +1059,14 @@ and step :
           let xs = accu.elements in
           let k = KIter (kinfo_iter, body, xs, k) in
           let (accu, stack) = stack in
-          (step [@ocaml.tailcall]) logger ctxt sc gas k ks accu stack
+          (run [@ocaml.tailcall]) logger ctxt sc gas i k ks accu stack
       | KIter (kinfo, body, xs, k) -> (
         match xs with
         | [] ->
-            (step [@ocaml.tailcall]) logger ctxt sc gas k ks accu stack
+            (run [@ocaml.tailcall]) logger ctxt sc gas i k ks accu stack
         | x :: xs ->
             let ks = KCons (KIter (kinfo, body, xs, k), ks) in
-            (step [@ocaml.tailcall]) logger ctxt sc gas body ks x (accu, stack)
+            (run [@ocaml.tailcall]) logger ctxt sc gas i body ks x (accu, stack)
         )
       (* sets *)
       | KEmpty_set (_, ty, k) ->
@@ -1078,7 +1078,7 @@ and step :
           let l = List.rev (set_fold (fun e acc -> e :: acc) set []) in
           let kiter = KIter (kinfo_iter, body, l, k) in
           let (accu, stack) = stack in
-          (step [@ocaml.tailcall]) logger ctxt sc gas kiter ks accu stack
+          (run [@ocaml.tailcall]) logger ctxt sc gas i kiter ks accu stack
       | KSet_mem (_, k) ->
           let (set, stack) = stack in
           let res = set_mem accu set in
@@ -1102,11 +1102,11 @@ and step :
             KMap_mapping (kinfo_mapping, kinfo_mapped, body, xs, ys, k)
           in
           let (accu, stack) = stack in
-          (step [@ocaml.tailcall]) logger ctxt sc gas km ks accu stack
+          (run [@ocaml.tailcall]) logger ctxt sc gas i km ks accu stack
       | KMap_mapping (kinfo_mapping, kinfo_mapped, body, xs, ys, k) -> (
         match xs with
         | [] ->
-            (step [@ocaml.tailcall]) logger ctxt sc gas k ks ys (accu, stack)
+            (run [@ocaml.tailcall]) logger ctxt sc gas i k ks ys (accu, stack)
         | (xk, xv) :: xs ->
             let ks =
               KCons
@@ -1115,20 +1115,20 @@ and step :
             in
             let res = (xk, xv) in
             let stack = (accu, stack) in
-            (step [@ocaml.tailcall]) logger ctxt sc gas body ks res stack )
+            (run [@ocaml.tailcall]) logger ctxt sc gas i body ks res stack )
       | KMap_mapped (kinfo_mapped, kinfo_mapping, body, xs, ys, yk, k) ->
           let ys = map_update yk (Some accu) ys in
           let k =
             KMap_mapping (kinfo_mapping, kinfo_mapped, body, xs, ys, k)
           in
           let (accu, stack) = stack in
-          (step [@ocaml.tailcall]) logger ctxt sc gas k ks accu stack
+          (run [@ocaml.tailcall]) logger ctxt sc gas i k ks accu stack
       | KMap_iter (_, kinfo_iter, body, k) ->
           let map = accu in
           let l = List.rev (map_fold (fun k v a -> (k, v) :: a) map []) in
           let kiter = KIter (kinfo_iter, body, l, k) in
           let (accu, stack) = stack in
-          (step [@ocaml.tailcall]) logger ctxt sc gas kiter ks accu stack
+          (run [@ocaml.tailcall]) logger ctxt sc gas i kiter ks accu stack
       | KMap_mem (_, k) ->
           let (map, stack) = stack in
           let res = map_mem accu map in
