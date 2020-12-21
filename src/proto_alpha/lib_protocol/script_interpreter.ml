@@ -26,9 +26,69 @@
 
 (*
 
-   This module implements an interpreter for Michelson. It takes the
-   form of a [step] function that interprets script instructions in a
-   dedicated abstract machine.
+  This module implements an interpreter for Michelson. It takes the
+  form of a [step] function that interprets script instructions in a
+  dedicated abstract machine.
+
+  The interpreter is written in a small-step style: an execution
+  [step] only interprets a single instruction by updating the
+  configuration of a dedicated abstract machine.
+
+  This abstract machine has two components:
+
+  - a stack to control which instructions must be executed ; and
+
+  - a stack of values where instructions get their inputs and put
+    their outputs.
+
+  In addition, the machine has access to effectful primitives to interact
+  with the execution environment (e.g. the tezos node). These primitives
+  live in the [Lwt+State+Error] monad. Hence, this interpreter produces
+  a computation in the [Lwt+State+Error] monad.
+
+  This interpreter enjoys the following properties:
+
+  - The interpreter is tail-recursive, hence it is robust to stack
+    overflow. This property is checked by the compiler thanks to the
+    [@ocaml.tailcall] annotation of each recursive calls.
+
+  - The interpreter is type-preserving. Thanks to GADTs, the
+    typing rules of Michelson are statically checked by the OCaml
+    typechecker: a Michelson program cannot go wrong.
+
+  - The interpreter is tagless. Thanks to GADTs, the exact shape
+    of the stack is known statically so the interpreter does not
+    have to check that the input stack has the shape expected by
+    the instruction to be executed.
+
+  Outline
+  =======
+
+  This file is organized as follows:
+
+  1. Runtime errors:
+     The standard incantations to register the errors
+     that can be produced by this module's functions.
+
+  2. Gas accounting:
+     The function [cost_of_instr] assigns a gas consumption
+     to an instruction and a stack of values according to
+     the cost model. This function is used in the interpretation
+     loop. Several auxiliary functions are given to deal with
+     gas accounting.
+
+  3. Logging:
+     One can instrument the interpreter with logging functions.
+
+  4. Interpretation loop:
+     This is the main functionality of this module, aka the
+     [step] function.
+
+  5. Interface functions:
+     This part of the module builds high-level functions
+     on top the more basic [step] function.
+
+  Implementation details are explained along the file.
 
 *)
 
@@ -142,30 +202,6 @@ let () =
     (function Cannot_serialize_storage -> Some () | _ -> None)
     (fun () -> Cannot_serialize_storage)
 
-(* ---- interpreter ---------------------------------------------------------*)
-
-let rec interp_stack_prefix_preserving_operation :
-    type fbef bef faft aft result.
-    (fbef -> faft * result) ->
-    (fbef, faft, bef, aft) stack_prefix_preservation_witness ->
-    bef ->
-    aft * result =
- fun f n stk ->
-  match (n, stk) with
-  | (Prefix n, (v, rest)) ->
-      interp_stack_prefix_preserving_operation f n rest
-      |> fun (rest', result) -> ((v, rest'), result)
-  | (Rest, v) ->
-      f v
-
-type step_constants = {
-  source : Contract.t;
-  payer : Contract.t;
-  self : Contract.t;
-  amount : Tez.t;
-  chain_id : Chain_id.t;
-}
-
 (*
 
    Computing the cost of Michelson instructions
@@ -173,7 +209,8 @@ type step_constants = {
 
    The function [cost_of_instr] provides a cost model for Michelson
    instructions. It is used by the interpreter to track the
-   consumption of gas.
+   consumption of gas. This consumption may depend on the values
+   on the stack.
 
  *)
 
@@ -648,8 +685,8 @@ let use_gas_counter_in_ctxt ctxt local_gas_counter f =
    [step] calls [consume] at the beginning of each execution step.
 
    [consume'] is used in the implementation of [KConcat_string]
-   and [KConcat_bytes] because the cost depends on the final
-   result of the concatenation.
+   and [KConcat_bytes] because in that special cases, the cost
+   is expressed with respec to the final result of the concatenation.
 
 *)
 
@@ -730,37 +767,6 @@ let get_log (logger : logger option) =
   Interpretation loop
   ===================
 
-  The interpreter is written in a small-step style: an execution
-  [step] only interprets a single instruction by updating the
-  configuration of a dedicated abstract machine.
-
-  This abstract machine has two components:
-
-  - a stack to control which instructions must be executed ; and
-
-  - a stack of values where instructions get their inputs and put
-    their outputs.
-
-  In addition, the machine has access to effectful primitives to interact
-  with the execution environment (e.g. the tezos node). These primitives
-  live in the [Lwt+State+Error] monad. Hence, this interpreter produces
-  a computation in the [Lwt+State+Error] monad.
-
-  This interpreter enjoys the following properties:
-
-  - The interpreter is tail-recursive, hence it is robust to stack
-    overflow. This property is checked by the compiler thanks to the
-    [@ocaml.tailcall] annotation of each recursive calls.
-
-  - The interpreter is type-preserving. Thanks to GADTs, the
-    typing rules of Michelson are statically checked by the OCaml
-    typechecker: a Michelson program cannot go wrong.
-
-  - The interpreter is tagless. Thanks to GADTs, the exact shape
-    of the stack is known statically so the interpreter does not
-    have to check that the input stack has the shape expected by
-    the instruction to be executed.
-
 *)
 
 (*
@@ -796,6 +802,35 @@ type (_, _, _, _) konts =
 
 (*
 
+    The interpreter is parameterized by a small set of values.
+
+*)
+type step_constants = {
+  source : Contract.t;
+  payer : Contract.t;
+  self : Contract.t;
+  amount : Tez.t;
+  chain_id : Chain_id.t;
+}
+
+let rec interp_stack_prefix_preserving_operation :
+    type fbef bef faft aft result.
+    (fbef -> faft * result) ->
+    (fbef, faft, bef, aft) stack_prefix_preservation_witness ->
+    bef ->
+    aft * result =
+ fun f n stk ->
+  match (n, stk) with
+  | (Prefix n, (v, rest)) ->
+      let (rest', result) =
+        interp_stack_prefix_preserving_operation f n rest
+      in
+      ((v, rest'), result)
+  | (Rest, v) ->
+      f v
+
+(*
+
    As announced earlier, the step function produces a computation in
    the [Lwt+State+Error] monad. The [State] monad is implemented by
    having the [context] passed as input and returned updated as
@@ -813,7 +848,7 @@ type (_, _, _, _) konts =
    function. Since these arguments are (most likely) stored in
    hardware registers and since the tail-recursive calls are compiled
    into direct jumps, this interpretation technique offers good
-   performances.
+   performances while saving safety thanks to a rich typing.
 
    For each impure instruction, the interpreter makes use of monadic
    bindings to compose monadic primitives with the [step] function.
@@ -2160,7 +2195,12 @@ let kstep logger ctxt step_constants kinstr accu stack =
 let step logger ctxt step_constants descr stack =
   step_descr false logger ctxt step_constants descr stack
 
-(* ---- contract handling ---------------------------------------------------*)
+(*
+
+   High-level functions
+   ====================
+
+*)
 let execute logger ctxt mode step_constants ~entrypoint ~internal
     unparsed_script arg :
     ( Script.expr
