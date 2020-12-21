@@ -23,6 +23,15 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(** This is the Michelson interpreter.
+
+    This module offers a way to execute either a Michelson script or a
+    Michelson instruction.
+
+    Implementation details are documented in the .ml file.
+
+*)
+
 open Alpha_context
 open Script_typed_cps_ir
 
