@@ -75,6 +75,9 @@ type (_, _, _, _) continuation =
   | KCons :
       ('a, 's, 'b, 't) kinstr * ('b, 't, 'r, 'f) continuation
       -> ('a, 's, 'r, 'f) continuation
+  | KReturn :
+      's * ('a, 's, 'r, 'f) continuation
+      -> ('a, end_of_stack, 'r, 'f) continuation
   | KUndip :
       'b * ('b, 'a * 's, 'r, 'f) continuation
       -> ('a, 's, 'r, 'f) continuation

@@ -245,6 +245,9 @@ type (_, _, _, _) continuation =
   | KCons :
       ('a, 's, 'b, 't) kinstr * ('b, 't, 'r, 'f) continuation
       -> ('a, 's, 'r, 'f) continuation
+  | KReturn :
+      's * ('a, 's, 'r, 'f) continuation
+      -> ('a, end_of_stack, 'r, 'f) continuation
   | KUndip :
       'b * ('b, 'a * 's, 'r, 'f) continuation
       -> ('a, 's, 'r, 'f) continuation
@@ -986,6 +989,12 @@ and next :
         let (accu', stack') = stack in
         if accu then (step [@ocaml.tailcall]) logger g gas ki ks0 accu' stack'
         else (next [@ocaml.tailcall]) logger g gas ks' accu' stack' )
+  | KReturn (stack', ks) -> (
+    match consume_control gas ks0 with
+    | None ->
+        Lwt.return (Gas.gas_exhausted_error (update_context gas ctxt))
+    | Some gas ->
+        next logger g gas ks accu stack' )
   | KLoop_in_left (ki, ks') -> (
     match consume_control gas ks0 with
     | None ->
@@ -1558,10 +1567,10 @@ and step :
           (run [@ocaml.tailcall]) logger g gas i b ks accu stack
       | IExec (_, k) ->
           let arg = accu and (code, stack) = stack in
-          ( use_gas_counter_in_ctxt ctxt gas
-          @@ fun ctxt -> interp logger (ctxt, sc) code arg )
-          >>=? fun (res, ctxt, gas) ->
-          (run [@ocaml.tailcall]) logger (ctxt, sc) gas i k ks res stack
+          let (Lam (code, _)) = code in
+          let code = code.kinstr in
+          let ks = KReturn (stack, KCons (k, ks)) in
+          (run [@ocaml.tailcall]) logger g gas i code ks arg ((), ())
       | IApply (_, capture_ty, k) ->
           let capture = accu in
           let (lam, stack) = stack in
