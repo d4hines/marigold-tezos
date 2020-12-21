@@ -57,5 +57,11 @@ let prepare_first_block ctxt ~typecheck ~level ~timestamp ~fitness =
   | Edo_008 ->
       return ctxt
 
-let prepare ctxt ~level ~predecessor_timestamp ~timestamp ~fitness =
-  Raw_context.prepare ~level ~predecessor_timestamp ~timestamp ~fitness ctxt
+let prepare ctxt ~level ~predecessor_timestamp ~timestamp ~fitness ~cache =
+  Raw_context.prepare
+    ~level
+    ~predecessor_timestamp
+    ~timestamp
+    ~fitness
+    ~cache
+    ctxt

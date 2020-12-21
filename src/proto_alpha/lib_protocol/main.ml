@@ -122,7 +122,9 @@ let begin_partial_application ~chain_id ~ancestor_context:ctxt
   let level = block_header.shell.level in
   let fitness = predecessor_fitness in
   let timestamp = block_header.shell.timestamp in
-  Alpha_context.prepare ~level ~predecessor_timestamp ~timestamp ~fitness ctxt
+  let cache = Alpha_context.get_cache ctxt in
+  Alpha_context.prepare
+    ~level ~predecessor_timestamp ~timestamp ~fitness ~cache ctxt
   >>=? fun ctxt ->
   Apply.begin_application ctxt chain_id block_header predecessor_timestamp
   >|=? fun (ctxt, baker, block_delay) ->
@@ -138,7 +140,9 @@ let begin_application ~chain_id ~predecessor_context:ctxt
   let level = block_header.shell.level in
   let fitness = predecessor_fitness in
   let timestamp = block_header.shell.timestamp in
-  Alpha_context.prepare ~level ~predecessor_timestamp ~timestamp ~fitness ctxt
+  let cache = Alpha_context.get_cache ctxt in
+  Alpha_context.prepare
+    ~level ~predecessor_timestamp ~timestamp ~fitness ~cache ctxt
   >>=? fun ctxt ->
   Apply.begin_application ctxt chain_id block_header predecessor_timestamp
   >|=? fun (ctxt, baker, block_delay) ->
@@ -154,7 +158,9 @@ let begin_construction ~chain_id ~predecessor_context:ctxt
     ?(protocol_data : block_header_data option) () =
   let level = Int32.succ pred_level in
   let fitness = pred_fitness in
-  Alpha_context.prepare ~level ~predecessor_timestamp ~timestamp ~fitness ctxt
+  let cache = Alpha_context.get_cache ctxt in
+  Alpha_context.prepare
+    ~level ~predecessor_timestamp ~timestamp ~fitness ~cache ctxt
   >>=? fun ctxt ->
   ( match protocol_data with
   | None ->

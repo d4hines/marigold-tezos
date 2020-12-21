@@ -129,8 +129,6 @@ module Make_subcontext (R : REGISTER) (C : Raw_context.T) (N : NAME) :
     in
     Storage_description.register_named_subcontext description N.name
 
-  let carbonated_cache_init = C.carbonated_cache_init
-
   let carbonated_cache_mem = C.carbonated_cache_mem
 
   let carbonated_cache_find_option = C.carbonated_cache_find_option
@@ -470,10 +468,10 @@ struct
     let key = C.absolute_key ctx (data_key i) in
     C.carbonated_cache_find_option ctx key
 
-  let cache_add ctx i v =
+  (* let cache_add ctx i v =
     let key = C.absolute_key ctx (data_key i) in
     let bytes = to_bytes v in
-    C.carbonated_cache_add ctx key bytes
+    C.carbonated_cache_add ctx key bytes *)
 
   let cache_add_raw ctx key bytes = C.carbonated_cache_add ctx key bytes
 
@@ -481,9 +479,7 @@ struct
     let key = C.absolute_key ctx (data_key i) in
     C.carbonated_cache_remove ctx key
 
-  let cache_remove_raw ctx key = C.carbonated_cache_remove ctx key
-
-  let cache_empty ctx = C.carbonated_cache_init ctx
+  (* let cache_remove_raw ctx key = C.carbonated_cache_remove ctx key *)
 
   let mem s i =
     let key = data_key i in
@@ -853,11 +849,6 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
       C.check_enough_gas t g
 
     let description = description
-
-    let carbonated_cache_init c =
-      let (t, i) = unpack c in
-      let u = C.carbonated_cache_init t in
-      pack u i
 
     let carbonated_cache_mem c k =
       let (t, _) = unpack c in

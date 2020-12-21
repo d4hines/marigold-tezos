@@ -35,11 +35,13 @@ let rpc_init ({block_hash; block_header; context} : Updater.rpc_context) =
   let level = block_header.level in
   let timestamp = block_header.timestamp in
   let fitness = block_header.fitness in
+  let cache = Alpha_context.get_cache context in
   Alpha_context.prepare
     ~level
     ~predecessor_timestamp:timestamp
     ~timestamp
     ~fitness
+    ~cache
     context
   >|=? fun context -> {block_hash; block_header; context}
 

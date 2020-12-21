@@ -337,7 +337,9 @@ let get_rewards = rewards
 
 let get_fees = fees
 
-let get_carbonated_cache ctx = CacheMap.bindings (carbonated_cache ctx)
+let get_cache ctx = carbonated_cache ctx
+
+let get_cache_list ctx = CacheMap.bindings (carbonated_cache ctx)
 
 type error += Undefined_operation_nonce (* `Permanent *)
 
@@ -626,6 +628,10 @@ let set_first_level ctxt level =
   in
   Context.set ctxt first_level_key bytes >|= ok
 
+let init_carbonated_cache ctxt =
+  update_carbonated_cache ctxt CacheMap.empty
+
+
 type error += Failed_to_parse_parameter of bytes
 
 type error += Failed_to_decode_parameter of Data_encoding.json * string
@@ -724,7 +730,7 @@ let check_inited ctxt =
       if Compare.String.(s = version_value) then ok_unit
       else storage_error (Incompatible_protocol_version s)
 
-let prepare ~level ~predecessor_timestamp ~timestamp ~fitness ctxt =
+let prepare ~level ~predecessor_timestamp ~timestamp ~fitness ~cache ctxt =
   Raw_level_repr.of_int32 level
   >>?= fun level ->
   Fitness_repr.to_int64 fitness
@@ -766,7 +772,7 @@ let prepare ~level ~predecessor_timestamp ~timestamp ~fitness ctxt =
         internal_nonce = 0;
         internal_nonces_used = Int_set.empty;
         gas_counter_status = Unlimited_operation_gas;
-        carbonated_cache = CacheMap.empty;
+        carbonated_cache = cache;
       };
   }
 
@@ -803,7 +809,13 @@ let prepare_first_block ~level ~timestamp ~fitness ctxt =
   | Edo_008 ->
       return ctxt )
   >>=? fun ctxt ->
-  prepare ctxt ~level ~predecessor_timestamp:timestamp ~timestamp ~fitness
+  prepare
+    ctxt
+    ~level
+    ~predecessor_timestamp:timestamp
+    ~timestamp
+    ~fitness
+    ~cache:CacheMap.empty
   >|=? fun ctxt -> (previous_proto, ctxt)
 
 let activate ctxt h = Updater.activate (context ctxt) h >|= update_context ctxt
@@ -872,8 +884,6 @@ module type T = sig
   val check_enough_gas : context -> Gas_limit_repr.cost -> unit tzresult
 
   val description : context Storage_description.t
-
-  val carbonated_cache_init : context -> context
 
   val carbonated_cache_mem : context -> key -> bool
 
@@ -958,8 +968,6 @@ let project x = x
 let absolute_key _ k = k
 
 let description = Storage_description.create ()
-
-let carbonated_cache_init ctx = update_carbonated_cache ctx CacheMap.empty
 
 let carbonated_cache_mem ctx key = CacheMap.mem key (carbonated_cache ctx)
 

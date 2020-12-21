@@ -49,11 +49,35 @@ val storage_error : storage_error -> 'a tzresult
 (** Abstract view of the context.
     Includes a handle to the functional key-value database
     ({!Context.t}) along with some in-memory values (gas, etc.). *)
+
 type t
 
 type context = t
 
 type root_context = t
+
+(** module for cache map : string list -> bytes  *)
+module CacheMap : sig
+  type key = string list
+
+  type 'a t
+
+  val empty : 'a t
+
+  val is_empty : 'a t -> bool
+
+  val mem : key -> 'a t -> bool
+
+  val add : key -> 'a -> 'a t -> 'a t
+
+  val update : key -> ('a option -> 'a option) -> 'a t -> 'a t
+
+  val remove : key -> 'a t -> 'a t
+
+  val bindings : 'a t -> (key * 'a) list
+
+  val find_opt : key -> 'a t -> 'a option
+end
 
 (** Retrieves the state of the database and gives its abstract view.
     It also returns wether this is the first block validated
@@ -63,6 +87,7 @@ val prepare :
   predecessor_timestamp:Time.t ->
   timestamp:Time.t ->
   fitness:Fitness.t ->
+  cache:bytes CacheMap.t ->
   Context.t ->
   context tzresult Lwt.t
 
@@ -121,7 +146,9 @@ val get_rewards : context -> Tez_repr.t
 
 val get_deposits : context -> Tez_repr.t Signature.Public_key_hash.Map.t
 
-val get_carbonated_cache : context -> (string list * bytes) list
+val get_cache : context -> bytes CacheMap.t
+
+val get_cache_list : context -> (CacheMap.key * bytes) list
 
 type error += Gas_limit_too_high (* `Permanent *)
 
@@ -254,9 +281,6 @@ module type T = sig
   val check_enough_gas : context -> Gas_limit_repr.cost -> unit tzresult
 
   val description : context Storage_description.t
-
-  (** Internally used in {!Storage_functors} to init de-carbonated cache *)
-  val carbonated_cache_init : context -> context
 
   (** Internally used in {!Storage_functors} to get de-carbonated cache *)
   val carbonated_cache_mem : context -> key -> bool
