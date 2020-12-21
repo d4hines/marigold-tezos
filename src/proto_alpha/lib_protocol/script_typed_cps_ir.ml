@@ -85,6 +85,10 @@ open Script_typed_ir
    ('aft_top, 'aft, 'res_top, 'res) kinstr ->
    ('bef_top, 'bef, 'res_top, 'res) kinstr
 
+   where [bef_top] and [bef] are the types of the stack top and rest
+   before the instruction chain, and [res_top] and [res] are the types
+   of the stack top and rest after the instruction chain
+
    Notations:
    ----------
 
@@ -92,8 +96,9 @@ open Script_typed_ir
    to assign types to stack cell contents while we use 's, 't,
    'u, 'v, ... to assign types to stacks.
 
-   The types for the final result and stack rest of a whole sequence of instructions
-   are written 'r and 'f (standing for "result" and "final stack rest", respectively).
+   The types for the final result and stack rest of a whole
+   sequence of instructions are written 'r and 'f
+   (standing for "result" and "final stack rest", respectively).
 
    Instructions for internal execution steps
    =========================================
