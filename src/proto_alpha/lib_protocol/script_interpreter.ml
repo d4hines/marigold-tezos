@@ -204,6 +204,90 @@ let () =
 
 (*
 
+  Control stack
+  =============
+
+  The stack of control is a list of [kinstr]. This type is documented
+  in the module [Script_typed_cps_ir].
+
+  Since [kinstr] denotes a list  of instructions, the stack of control
+  can be seen as a list  of instruction sequences, each representing a
+  form of delimited continuation (i.e.  a control stack fragment). The
+  [continuation] GADT  ensures that the input  and output stack types  of the
+  continuations are consistent.
+
+  Loops have a special treatment because their control stack is reused
+  as is during the next iteration. This avoids the reallocation of a
+  control stack cell at each iteration.
+
+  Higher-order iterators (i.e. MAPs and ITERs) need internal instructions
+  to implement [step] as a tail-recursive function. Roughly speaking,
+  these instructions help in decomposing the execution of [I f c]
+  (where [I] is an higher-order iterator over a container [c]) into
+  three phases: to start the iteration, to execute [f] if there are
+  elements to be processed in [c], and to loop.
+
+  Dip also has a dedicated constructor in the control stack.  This
+  allows the stack prefix to be restored after the execution of the
+  [Dip]'s body.
+
+  Following the same style as in [kinstr], [continuation] has four
+  arguments, two for each stack types. More precisely, with
+
+            [('bef_top, 'bef, 'aft_top, 'aft) continuation]
+
+  we encode the fact that the stack before executing the continuation
+  has type [('bef_top * 'bef)] and that the stack after this execution
+  has type [('aft_top * 'aft)].
+
+*)
+type (_, _, _, _) continuation =
+  | KNil : ('r, 'f, 'r, 'f) continuation
+  | KCons :
+      ('a, 's, 'b, 't) kinstr * ('b, 't, 'r, 'f) continuation
+      -> ('a, 's, 'r, 'f) continuation
+  | KUndip :
+      'b * ('b, 'a * 's, 'r, 'f) continuation
+      -> ('a, 's, 'r, 'f) continuation
+  | KLoop_in :
+      ('a, 's, bool, 'a * 's) kinstr * ('a, 's, 'r, 'f) continuation
+      -> (bool, 'a * 's, 'r, 'f) continuation
+  | KLoop_in_left :
+      ('a, 's, ('a, 'b) union, 's) kinstr * ('b, 's, 'r, 'f) continuation
+      -> (('a, 'b) union, 's, 'r, 'f) continuation
+  | KIter :
+      ('a, 'b * 's, 'b, 's) kinstr * 'a list * ('b, 's, 'r, 'f) continuation
+      -> ('b, 's, 'r, 'f) continuation
+  | KList_mapping :
+      ('a, 'c * 's, 'b, 'c * 's) kinstr
+      * 'a list
+      * 'b list
+      * int
+      * ('b boxed_list, 'c * 's, 'r, 'f) continuation
+      -> ('c, 's, 'r, 'f) continuation
+  | KList_mapped :
+      ('a, 'c * 's, 'b, 'c * 's) kinstr
+      * 'a list
+      * 'b list
+      * int
+      * ('b boxed_list, 'c * 's, 'r, 'f) continuation
+      -> ('b, 'c * 's, 'r, 'f) continuation
+  | KMap_mapping :
+      ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
+      * ('a * 'b) list
+      * ('a, 'c) map
+      * (('a, 'c) map, 'd * 's, 'r, 'f) continuation
+      -> ('d, 's, 'r, 'f) continuation
+  | KMap_mapped :
+      ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
+      * ('a * 'b) list
+      * ('a, 'c) map
+      * 'a
+      * (('a, 'c) map, 'd * 's, 'r, 'f) continuation
+      -> ('c, 'd * 's, 'r, 'f) continuation
+
+(*
+
    Computing the cost of Michelson instructions
    ============================================
 
@@ -604,6 +688,30 @@ let cost_of_instr : type a s r f. (a, s, r, f) kinstr -> a -> s -> Gas.cost =
       Interp_costs.read_ticket
  [@@ocaml.inline always]
 
+let cost_of_control : type a s r f. (a, s, r, f) continuation -> Gas.cost =
+ fun ks ->
+  match ks with
+  | KNil ->
+      Gas.free
+  | KCons (_, _) ->
+      Gas.free
+  | KUndip (_, _) ->
+      Gas.free
+  | KLoop_in (_, _) ->
+      Gas.free
+  | KLoop_in_left (_, _) ->
+      Gas.free
+  | KIter (_, _, _) ->
+      Gas.free
+  | KList_mapping (_, _, _, _, _) ->
+      Gas.free
+  | KList_mapped (_, _, _, _, _) ->
+      Gas.free
+  | KMap_mapping (_, _, _, _) ->
+      Gas.free
+  | KMap_mapped (_, _, _, _, _) ->
+      Gas.free
+
 (*
 
    Gas update and check for gas exhaustion
@@ -693,6 +801,11 @@ let consume' ctxt local_gas_counter cost =
       Ok local_gas_counter
   [@@ocaml.inline always]
 
+let consume_control local_gas_counter ks =
+  let cost = cost_of_control ks in
+  update_and_check local_gas_counter (cost :> int)
+  [@@ocaml.inline always]
+
 (*
 
     Execution instrumentation
@@ -719,6 +832,8 @@ module type STEP_LOGGER = sig
 
   val log_entry : ('a, 's, 'b, 'f, 'a * 's) logging_function
 
+  val log_control : ('a, 's, 'b, 'f) continuation -> unit
+
   val log_exit : ('a, 's, 'b, 'f, 'u) logging_function
 
   val get_log : unit -> execution_trace option tzresult Lwt.t
@@ -738,6 +853,10 @@ let log_exit (logger : logger) ctxt gas kprev k accu stack =
   let kinfo_prev = kinfo_of_kinstr kprev and kinfo = kinfo_of_kinstr k in
   Log.log_exit k ctxt kinfo_prev.kloc kinfo.kstack_ty (accu, stack)
 
+let log_control (logger : logger) ks =
+  let module Log = (val logger) in
+  Log.log_control ks
+
 let get_log (logger : logger option) =
   match logger with
   | None ->
@@ -752,84 +871,7 @@ let get_log (logger : logger option) =
   Interpretation loop
   ===================
 
-  The stack of control is a list of [kinstr]. This type is documented
-  in the module [Script_typed_cps_ir].
-
-  Since [kinstr] denotes a list  of instructions, the stack of control
-  can be seen as a list  of instruction sequences, each representing a
-  form of delimited continuation (i.e.  a control stack fragment). The
-  [continuation] GADT  ensures that the input  and output stack types  of the
-  continuations are consistent.
-
-  Loops have a special treatment because their control stack is reused
-  as is during the next iteration. This avoids the reallocation of a
-  control stack cell at each iteration.
-
-  Higher-order iterators (i.e. MAPs and ITERs) need internal instructions
-  to implement [step] as a tail-recursive function. Roughly speaking,
-  these instructions help in decomposing the execution of [I f c]
-  (where [I] is an higher-order iterator over a container [c]) into
-  three phases: to start the iteration, to execute [f] if there are
-  elements to be processed in [c], and to loop.
-
-  Dip also has a dedicated constructor in the control stack.  This
-  allows the stack prefix to be restored after the execution of the
-  [Dip]'s body.
-
-  Following the same style as in [kinstr], [continuation] has four
-  arguments, two for each stack types. More precisely, with
-
-            [('bef_top, 'bef, 'aft_top, 'aft) continuation]
-
-  we encode the fact that the stack before executing the continuation
-  has type [('bef_top * 'bef)] and that the stack after this execution
-  has type [('aft_top * 'aft)].
-
-*)
-type (_, _, _, _) continuation =
-  | KNil : ('r, 'f, 'r, 'f) continuation
-  | KCons :
-      ('a, 's, 'b, 't) kinstr * ('b, 't, 'r, 'f) continuation
-      -> ('a, 's, 'r, 'f) continuation
-  | KUndip :
-      'b * ('b, 'a * 's, 'r, 'f) continuation
-      -> ('a, 's, 'r, 'f) continuation
-  | KLoop_in :
-      ('a, 's, bool, 'a * 's) kinstr * ('a, 's, 'r, 'f) continuation
-      -> (bool, 'a * 's, 'r, 'f) continuation
-  | KLoop_in_left :
-      ('a, 's, ('a, 'b) union, 's) kinstr * ('b, 's, 'r, 'f) continuation
-      -> (('a, 'b) union, 's, 'r, 'f) continuation
-  | KIter :
-      ('a, 'b * 's, 'b, 's) kinstr * 'a list * ('b, 's, 'r, 'f) continuation
-      -> ('b, 's, 'r, 'f) continuation
-  | KList_mapping :
-      ('a, 'c * 's, 'b, 'c * 's) kinstr
-      * 'a list
-      * 'b list
-      * int
-      * ('b boxed_list, 'c * 's, 'r, 'f) continuation
-      -> ('c, 's, 'r, 'f) continuation
-  | KList_mapped :
-      ('a, 'c * 's, 'b, 'c * 's) kinstr
-      * 'a list
-      * 'b list
-      * int
-      * ('b boxed_list, 'c * 's, 'r, 'f) continuation
-      -> ('b, 'c * 's, 'r, 'f) continuation
-  | KMap_mapping :
-      ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
-      * ('a * 'b) list
-      * ('a, 'c) map
-      * (('a, 'c) map, 'd * 's, 'r, 'f) continuation
-      -> ('d, 's, 'r, 'f) continuation
-  | KMap_mapped :
-      ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
-      * ('a * 'b) list
-      * ('a, 'c) map
-      * 'a
-      * (('a, 'c) map, 'd * 's, 'r, 'f) continuation
-      -> ('c, 'd * 's, 'r, 'f) continuation
+ *)
 
 (*
 
@@ -932,57 +974,90 @@ and next :
     a ->
     s ->
     (r * f * outdated_context * local_gas_counter) tzresult Lwt.t =
- fun logger ((ctxt, _) as g) gas ks accu stack ->
-  match ks with
+ fun logger ((ctxt, _) as g) gas ks0 accu stack ->
+  (match logger with None -> () | Some logger -> log_control logger ks0) ;
+  match ks0 with
   | KNil ->
       Lwt.return (Ok (accu, stack, ctxt, gas))
   | KCons (k, ks) ->
       (step [@ocaml.tailcall]) logger g gas k ks accu stack
-  | KLoop_in (ki, ks') ->
-      let (accu', stack') = stack in
-      if accu then (step [@ocaml.tailcall]) logger g gas ki ks accu' stack'
-      else (next [@ocaml.tailcall]) logger g gas ks' accu' stack'
+  | KLoop_in (ki, ks') -> (
+    match consume_control gas ks0 with
+    | None ->
+        Lwt.return (Gas.gas_exhausted_error (update_context gas ctxt))
+    | Some gas ->
+        let (accu', stack') = stack in
+        if accu then (step [@ocaml.tailcall]) logger g gas ki ks0 accu' stack'
+        else (next [@ocaml.tailcall]) logger g gas ks' accu' stack' )
   | KLoop_in_left (ki, ks') -> (
-    match accu with
-    | L v ->
-        (step [@ocaml.tailcall]) logger g gas ki ks v stack
-    | R v ->
-        (next [@ocaml.tailcall]) logger g gas ks' v stack )
-  | KUndip (x, ks) ->
-      next logger g gas ks x (accu, stack)
+    match consume_control gas ks0 with
+    | None ->
+        Lwt.return (Gas.gas_exhausted_error (update_context gas ctxt))
+    | Some gas -> (
+      match accu with
+      | L v ->
+          (step [@ocaml.tailcall]) logger g gas ki ks0 v stack
+      | R v ->
+          (next [@ocaml.tailcall]) logger g gas ks' v stack ) )
+  | KUndip (x, ks) -> (
+    match consume_control gas ks0 with
+    | None ->
+        Lwt.return (Gas.gas_exhausted_error (update_context gas ctxt))
+    | Some gas ->
+        next logger g gas ks x (accu, stack) )
   | KIter (body, xs, ks) -> (
-    match xs with
-    | [] ->
-        next logger g gas ks accu stack
-    | x :: xs ->
-        let ks = KIter (body, xs, ks) in
-        (step [@ocaml.tailcall]) logger g gas body ks x (accu, stack) )
+    match consume_control gas ks0 with
+    | None ->
+        Lwt.return (Gas.gas_exhausted_error (update_context gas ctxt))
+    | Some gas -> (
+      match xs with
+      | [] ->
+          next logger g gas ks accu stack
+      | x :: xs ->
+          let ks = KIter (body, xs, ks) in
+          (step [@ocaml.tailcall]) logger g gas body ks x (accu, stack) ) )
   | KList_mapping (body, xs, ys, len, ks) -> (
-    match xs with
-    | [] ->
-        let ys = {elements = List.rev ys; length = len} in
-        next logger g gas ks ys (accu, stack)
-    | x :: xs ->
-        let ks = KList_mapped (body, xs, ys, len, ks) in
-        (step [@ocaml.tailcall]) logger g gas body ks x (accu, stack) )
-  | KList_mapped (body, xs, ys, len, ks) ->
-      let ks = KList_mapping (body, xs, accu :: ys, len, ks) in
-      let (accu, stack) = stack in
-      next logger g gas ks accu stack
+    match consume_control gas ks0 with
+    | None ->
+        Lwt.return (Gas.gas_exhausted_error (update_context gas ctxt))
+    | Some gas -> (
+      match xs with
+      | [] ->
+          let ys = {elements = List.rev ys; length = len} in
+          next logger g gas ks ys (accu, stack)
+      | x :: xs ->
+          let ks = KList_mapped (body, xs, ys, len, ks) in
+          (step [@ocaml.tailcall]) logger g gas body ks x (accu, stack) ) )
+  | KList_mapped (body, xs, ys, len, ks) -> (
+    match consume_control gas ks0 with
+    | None ->
+        Lwt.return (Gas.gas_exhausted_error (update_context gas ctxt))
+    | Some gas ->
+        let ks = KList_mapping (body, xs, accu :: ys, len, ks) in
+        let (accu, stack) = stack in
+        next logger g gas ks accu stack )
   | KMap_mapping (body, xs, ys, ks) -> (
-    match xs with
-    | [] ->
-        next logger g gas ks ys (accu, stack)
-    | (xk, xv) :: xs ->
-        let ks = KMap_mapped (body, xs, ys, xk, ks) in
-        let res = (xk, xv) in
-        let stack = (accu, stack) in
-        (step [@ocaml.tailcall]) logger g gas body ks res stack )
-  | KMap_mapped (body, xs, ys, yk, ks) ->
-      let ys = map_update yk (Some accu) ys in
-      let ks = KMap_mapping (body, xs, ys, ks) in
-      let (accu, stack) = stack in
-      next logger g gas ks accu stack
+    match consume_control gas ks0 with
+    | None ->
+        Lwt.return (Gas.gas_exhausted_error (update_context gas ctxt))
+    | Some gas -> (
+      match xs with
+      | [] ->
+          next logger g gas ks ys (accu, stack)
+      | (xk, xv) :: xs ->
+          let ks = KMap_mapped (body, xs, ys, xk, ks) in
+          let res = (xk, xv) in
+          let stack = (accu, stack) in
+          (step [@ocaml.tailcall]) logger g gas body ks res stack ) )
+  | KMap_mapped (body, xs, ys, yk, ks) -> (
+    match consume_control gas ks0 with
+    | None ->
+        Lwt.return (Gas.gas_exhausted_error (update_context gas ctxt))
+    | Some gas ->
+        let ys = map_update yk (Some accu) ys in
+        let ks = KMap_mapping (body, xs, ys, ks) in
+        let (accu, stack) = stack in
+        next logger g gas ks accu stack )
 
 and step :
     type a s b t r f.

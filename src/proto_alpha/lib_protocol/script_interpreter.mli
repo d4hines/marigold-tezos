@@ -68,6 +68,54 @@ type step_constants = {
   chain_id : Chain_id.t;
 }
 
+(** The interpreter uses a control stack with specific cases for loops
+    and DIP. See the details in the implementation file. *)
+type (_, _, _, _) continuation =
+  | KNil : ('r, 'f, 'r, 'f) continuation
+  | KCons :
+      ('a, 's, 'b, 't) kinstr * ('b, 't, 'r, 'f) continuation
+      -> ('a, 's, 'r, 'f) continuation
+  | KUndip :
+      'b * ('b, 'a * 's, 'r, 'f) continuation
+      -> ('a, 's, 'r, 'f) continuation
+  | KLoop_in :
+      ('a, 's, bool, 'a * 's) kinstr * ('a, 's, 'r, 'f) continuation
+      -> (bool, 'a * 's, 'r, 'f) continuation
+  | KLoop_in_left :
+      ('a, 's, ('a, 'b) Script_typed_ir.union, 's) kinstr
+      * ('b, 's, 'r, 'f) continuation
+      -> (('a, 'b) Script_typed_ir.union, 's, 'r, 'f) continuation
+  | KIter :
+      ('a, 'b * 's, 'b, 's) kinstr * 'a list * ('b, 's, 'r, 'f) continuation
+      -> ('b, 's, 'r, 'f) continuation
+  | KList_mapping :
+      ('a, 'c * 's, 'b, 'c * 's) kinstr
+      * 'a list
+      * 'b list
+      * int
+      * ('b Script_typed_ir.boxed_list, 'c * 's, 'r, 'f) continuation
+      -> ('c, 's, 'r, 'f) continuation
+  | KList_mapped :
+      ('a, 'c * 's, 'b, 'c * 's) kinstr
+      * 'a list
+      * 'b list
+      * int
+      * ('b Script_typed_ir.boxed_list, 'c * 's, 'r, 'f) continuation
+      -> ('b, 'c * 's, 'r, 'f) continuation
+  | KMap_mapping :
+      ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
+      * ('a * 'b) list
+      * ('a, 'c) Script_typed_ir.map
+      * (('a, 'c) Script_typed_ir.map, 'd * 's, 'r, 'f) continuation
+      -> ('d, 's, 'r, 'f) continuation
+  | KMap_mapped :
+      ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
+      * ('a * 'b) list
+      * ('a, 'c) Script_typed_ir.map
+      * 'a
+      * (('a, 'c) Script_typed_ir.map, 'd * 's, 'r, 'f) continuation
+      -> ('c, 'd * 's, 'r, 'f) continuation
+
 type ('a, 's, 'b, 'f, 'u) logging_function =
   ('a, 's, 'b, 'f) Script_typed_cps_ir.kinstr ->
   context ->
@@ -91,6 +139,8 @@ module type STEP_LOGGER = sig
       each instruction but {i after} gas for
       this instruction has been successfully consumed. *)
   val log_entry : ('a, 's, 'b, 'f, 'a * 's) logging_function
+
+  val log_control : ('a, 's, 'b, 'f) continuation -> unit
 
   (** [log_exit] is called {i after} executing each
       instruction. *)
@@ -157,54 +207,6 @@ type local_gas_counter = int
 (** During the evaluation, the gas level in the context is outdated. *)
 type outdated_context = OutDatedContext of context [@@unboxed]
 
-(** The interpreter uses a control stack with specific cases for loops
-    and DIP. See the details in the implementation file. *)
-type (_, _, _, _) continuation =
-  | KNil : ('r, 'f, 'r, 'f) continuation
-  | KCons :
-      ('a, 's, 'b, 't) kinstr * ('b, 't, 'r, 'f) continuation
-      -> ('a, 's, 'r, 'f) continuation
-  | KUndip :
-      'b * ('b, 'a * 's, 'r, 'f) continuation
-      -> ('a, 's, 'r, 'f) continuation
-  | KLoop_in :
-      ('a, 's, bool, 'a * 's) kinstr * ('a, 's, 'r, 'f) continuation
-      -> (bool, 'a * 's, 'r, 'f) continuation
-  | KLoop_in_left :
-      ('a, 's, ('a, 'b) Script_typed_ir.union, 's) kinstr
-      * ('b, 's, 'r, 'f) continuation
-      -> (('a, 'b) Script_typed_ir.union, 's, 'r, 'f) continuation
-  | KIter :
-      ('a, 'b * 's, 'b, 's) kinstr * 'a list * ('b, 's, 'r, 'f) continuation
-      -> ('b, 's, 'r, 'f) continuation
-  | KList_mapping :
-      ('a, 'c * 's, 'b, 'c * 's) kinstr
-      * 'a list
-      * 'b list
-      * int
-      * ('b Script_typed_ir.boxed_list, 'c * 's, 'r, 'f) continuation
-      -> ('c, 's, 'r, 'f) continuation
-  | KList_mapped :
-      ('a, 'c * 's, 'b, 'c * 's) kinstr
-      * 'a list
-      * 'b list
-      * int
-      * ('b Script_typed_ir.boxed_list, 'c * 's, 'r, 'f) continuation
-      -> ('b, 'c * 's, 'r, 'f) continuation
-  | KMap_mapping :
-      ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
-      * ('a * 'b) list
-      * ('a, 'c) Script_typed_ir.map
-      * (('a, 'c) Script_typed_ir.map, 'd * 's, 'r, 'f) continuation
-      -> ('d, 's, 'r, 'f) continuation
-  | KMap_mapped :
-      ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
-      * ('a * 'b) list
-      * ('a, 'c) Script_typed_ir.map
-      * 'a
-      * (('a, 'c) Script_typed_ir.map, 'd * 's, 'r, 'f) continuation
-      -> ('c, 'd * 's, 'r, 'f) continuation
-
 (** [run logger ctxt step_constants local_gas_counter i k ks accu stack]
     evaluates [k] (having [i] as predecessor) under the control flow
     stack [ks] and the A-stack represented by [accu] and [stack]. *)
@@ -215,6 +217,15 @@ val run :
   ('c, 'u, 'd, 'v) kinstr ->
   ('a, 's, 'b, 't) kinstr ->
   ('b, 't, 'r, 'f) continuation ->
+  'a ->
+  's ->
+  ('r * 'f * outdated_context * local_gas_counter) tzresult Lwt.t
+
+val next :
+  logger option ->
+  outdated_context * step_constants ->
+  local_gas_counter ->
+  ('a, 's, 'r, 'f) continuation ->
   'a ->
   's ->
   ('r * 'f * outdated_context * local_gas_counter) tzresult Lwt.t

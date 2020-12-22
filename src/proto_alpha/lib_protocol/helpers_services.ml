@@ -338,6 +338,8 @@ module Scripts = struct
 
       let log_entry _ _ctxt _loc _stack_ty _stack = ()
 
+      let log_control _ = ()
+
       let log_exit = save
 
       let get_log () =
