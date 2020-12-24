@@ -343,6 +343,57 @@ class TestManager:
         assert balance_bootstrap3 + amount_mutez_3 == new_balance_bootstrap3
 
 
+@pytest.mark.contract
+@pytest.mark.incremental
+class TestExecOrd:
+    @pytest.mark.parametrize(
+        "child_contract_name,parent_contract,expected",
+        [
+            ("ordering_concat_string1", "ordering_mix_dfs_bfs1", "BDAC"),
+            ("ordering_concat_string2", "ordering_mix_dfs_bfs2", "ABDC"),
+            ("ordering_concat_string3", "ordering_mix_dfs_bfs3", "DABC"),
+        ],
+    )
+    def test_bfs_dfs_mix(
+        self, client, session, child_contract_name, parent_contract, expected
+    ):
+        path = f'{CONTRACT_PATH}/opcodes/ordering_concat_string.tz'
+        originate(
+            client, session, path, '""', 0, contract_name=child_contract_name
+        )
+        session['ordering_concat_string'] = session['contract']
+        client.bake('bootstrap3', ["--minimal-timestamp"])
+
+        path = f'{CONTRACT_PATH}/opcodes/' + parent_contract + '.tz'
+        originate(client, session, path, 'Unit', 0)
+        session[parent_contract] = session['contract']
+        client.bake('bootstrap3', ["--minimal-timestamp"])
+
+        addr = session['ordering_concat_string']
+        client.transfer(
+            0,
+            'bootstrap2',
+            parent_contract,
+            [
+                "--burn-cap",
+                "5",
+                "--arg",
+                (
+                    "(Pair (Pair (Pair \"A\" \"{}\") "
+                    + "(Pair \"B\" \"{}\"))"
+                    + "(Pair (Pair \"C\" \"{}\") "
+                    + "(Pair \"D\" \"{}\")))"
+                ).format(addr, addr, addr, addr),
+            ],
+        )
+
+        client.bake('bootstrap3', ["--minimal-timestamp"])
+
+        assert client.get_storage(child_contract_name) == "\"{}\"".format(
+            expected
+        )
+
+
 @pytest.mark.slow
 @pytest.mark.contract
 class TestContracts:
