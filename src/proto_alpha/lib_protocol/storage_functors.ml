@@ -470,20 +470,12 @@ struct
     let key = C.absolute_key ctx (data_key i) in
     C.carbonated_cache_find_option ctx key
 
-  let cache_add ctx i v =
-    let key = C.absolute_key ctx (data_key i) in
-    let bytes = to_bytes v in
-    C.carbonated_cache_add ctx key bytes
-
-  let cache_add_raw ctx key bytes = C.carbonated_cache_add ctx key bytes
+  (* [TODO] free space checking *)
+  let cache_add ctx key bytes = C.carbonated_cache_add ctx key bytes
 
   let cache_remove ctx i =
     let key = C.absolute_key ctx (data_key i) in
     C.carbonated_cache_remove ctx key
-
-  let cache_remove_raw ctx key = C.carbonated_cache_remove ctx key
-
-  let cache_empty ctx = C.carbonated_cache_init ctx
 
   let mem s i =
     let key = data_key i in
@@ -502,7 +494,7 @@ struct
         >>=? fun s ->
         C.get s key
         >>=? fun b ->
-        let s = cache_add_raw s (C.absolute_key s key) b in
+        let s = cache_add s (C.absolute_key s key) b in
         Lwt.return (of_bytes ~key b >|? fun v -> (C.project s, v))
 
   let get_option s i =
@@ -520,7 +512,7 @@ struct
           >>=? fun s ->
           C.get s key
           >>=? fun b ->
-          let s = cache_add_raw s (C.absolute_key s key) b in
+          let s = cache_add s (C.absolute_key s key) b in
           Lwt.return (of_bytes ~key b >|? fun v -> (C.project s, Some v))
         else return (C.project s, None)
 
@@ -533,7 +525,7 @@ struct
     C.set s key bytes
     >|=? fun t ->
     let size_diff = Bytes.length bytes - prev_size in
-    let u = cache_add_raw t (C.absolute_key t key) bytes in
+    let u = cache_add t (C.absolute_key t key) bytes in
     (C.project u, size_diff)
 
   let init s i v =
@@ -543,7 +535,7 @@ struct
     C.init s key bytes
     >|=? fun t ->
     let size = Bytes.length bytes in
-    let u = cache_add_raw t (C.absolute_key t key) bytes in
+    let u = cache_add t (C.absolute_key t key) bytes in
     (C.project u, size)
 
   let init_set s i v =
@@ -556,7 +548,7 @@ struct
     init_set s key bytes
     >|=? fun t ->
     let size_diff = Bytes.length bytes - prev_size in
-    let u = cache_add_raw t (C.absolute_key t key) bytes in
+    let u = cache_add t (C.absolute_key t key) bytes in
     (C.project u, size_diff, existed)
 
   let remove s i =
@@ -1126,36 +1118,75 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
       Raw_context.consume_gas c (Storage_costs.write_access ~written_bytes:0)
       >>?= fun c -> del c len_name
 
+    let cache_mem pc key =
+      Raw_context.carbonated_cache_mem pc key
+
+    let cache_find_option pc key =
+      Raw_context.carbonated_cache_find_option pc key
+
+    (* [TODO] free space checking *)
+    let cache_add pc key bytes =
+      Raw_context.carbonated_cache_add pc key bytes
+
+    let cache_remove pc key =
+      Raw_context.carbonated_cache_remove pc key
+
     let mem s i =
-      consume_mem_gas (pack s i)
-      >>?= fun c ->
-      Raw_context.mem c data_name >|= fun res -> ok (Raw_context.project c, res)
+      let c = pack s i in
+      let b = cache_mem c data_name in
+      if b then return (Raw_context.project c, true)
+      else
+        consume_mem_gas c
+        >>?= fun c -> Raw_context.mem c data_name
+        >|= fun res -> ok (Raw_context.project c, res)
 
     let get s i =
-      consume_read_gas Raw_context.get (pack s i)
-      >>=? fun c ->
-      Raw_context.get c data_name
-      >>=? fun b ->
+      let c = pack s i in
       let key = Raw_context.absolute_key c data_name in
-      Lwt.return (of_bytes ~key b >|? fun v -> (Raw_context.project c, v))
+      match cache_find_option c data_name with
+      | Some b ->
+          Lwt.return (of_bytes ~key b >|? fun v -> (Raw_context.project c, v))
+      | None ->
+          consume_read_gas Raw_context.get c
+          >>=? fun c ->
+          Raw_context.get c data_name
+          >>=? fun b ->
+          let c = cache_add c data_name b in
+          Lwt.return (of_bytes ~key b >|? fun v -> (Raw_context.project c, v))
 
     let get_option s i =
-      consume_mem_gas (pack s i)
-      >>?= fun c ->
-      let (s, _) = unpack c in
-      Raw_context.mem (pack s i) data_name
-      >>= fun exists ->
-      if exists then get s i >|=? fun (s, v) -> (s, Some v)
-      else return (C.project s, None)
+      let c = pack s i in
+      let key = Raw_context.absolute_key c data_name in
+      match cache_find_option c data_name with
+      | Some b ->
+          Lwt.return
+            (of_bytes ~key b >|? fun v -> (Raw_context.project c, Some v))
+      | None ->
+          consume_mem_gas c
+          >>?= fun c ->
+          let (s, _) = unpack c in
+          Raw_context.mem (pack s i) data_name
+          >>= fun exists ->
+          if exists then
+            consume_read_gas Raw_context.get c
+            >>=? fun c ->
+            Raw_context.get c data_name
+            >>=? fun b ->
+            let c = cache_add c data_name b in
+            Lwt.return
+              (of_bytes ~key b >|? fun v -> (Raw_context.project c, Some v))
+          else return (Raw_context.project c, None)
 
     let set s i v =
-      existing_size (pack s i)
+      let c = pack s i in
+      existing_size c
       >>=? fun (prev_size, _) ->
-      consume_write_gas Raw_context.set (pack s i) v
+      consume_write_gas Raw_context.set c v
       >>=? fun (c, bytes) ->
       Raw_context.set c data_name bytes
       >|=? fun c ->
       let size_diff = Bytes.length bytes - prev_size in
+      let c = cache_add c data_name bytes in
       (Raw_context.project c, size_diff)
 
     let init s i v =
@@ -1164,35 +1195,44 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
       Raw_context.init c data_name bytes
       >|=? fun c ->
       let size = Bytes.length bytes in
+      let c = cache_add c data_name bytes in
       (Raw_context.project c, size)
 
     let init_set s i v =
+      let c = pack s i in
       let init_set c k v = Raw_context.init_set c k v >|= ok in
-      existing_size (pack s i)
+      existing_size c
       >>=? fun (prev_size, existed) ->
-      consume_write_gas init_set (pack s i) v
+      consume_write_gas init_set c v
       >>=? fun (c, bytes) ->
       init_set c data_name bytes
       >|=? fun c ->
       let size_diff = Bytes.length bytes - prev_size in
+      let c = cache_add c data_name bytes in
       (Raw_context.project c, size_diff, existed)
 
     let remove s i =
+      let c = pack s i in
       let remove c k = Raw_context.remove c k >|= ok in
-      existing_size (pack s i)
+      existing_size c
       >>=? fun (prev_size, existed) ->
-      consume_remove_gas remove (pack s i)
+      consume_remove_gas remove c
       >>=? fun c ->
       remove c data_name
-      >|=? fun c -> (Raw_context.project c, prev_size, existed)
+      >|=? fun c ->
+      let c = cache_remove c data_name in
+      (Raw_context.project c, prev_size, existed)
 
     let delete s i =
-      existing_size (pack s i)
+      let c = pack s i in
+      existing_size c
       >>=? fun (prev_size, _) ->
-      consume_remove_gas Raw_context.delete (pack s i)
+      consume_remove_gas Raw_context.delete c
       >>=? fun c ->
       Raw_context.delete c data_name
-      >|=? fun c -> (Raw_context.project c, prev_size)
+      >|=? fun c ->
+      let c = cache_remove c data_name in
+      (Raw_context.project c, prev_size)
 
     let set_option s i v =
       match v with None -> remove s i | Some v -> init_set s i v
