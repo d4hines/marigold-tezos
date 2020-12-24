@@ -343,6 +343,240 @@ class TestManager:
         assert balance_bootstrap3 + amount_mutez_3 == new_balance_bootstrap3
 
 
+@pytest.mark.contract
+@pytest.mark.incremental
+class TestExecOrd:
+    def child_input(self, contract_input, c_addr):
+        return ("Pair (Pair \"{}\" \"{}\") {}").format(
+            contract_input[0], c_addr, contract_input[1]
+        )
+
+    def parent_input(self, contract_input, p_addr, c_addr):
+        return (
+            "Pair ( Pair {{"
+            + ";".join(
+                map(
+                    self.child_input,
+                    contract_input[0],
+                    itertools.repeat(c_addr),
+                )
+            )
+            + "}}\"{}\") {}"
+        ).format(p_addr, contract_input[1])
+
+    ##
+    # This test case uses string concatenation to verify the execution flow
+    # of operations. There are 3 contracts, called Contract Grandparent,
+    # Contract Parent and Contract Child. The Contract Grandparent will
+    # call the Contract Parent several times and the Contract Parent will
+    # call the Contract Child several times. It looks like the following:
+    #
+    # Grandprent --> Parent --> Child
+    #            |          |-> Child
+    #            |          |-> Child
+    #            --> Parent --> Child
+    #                       |-> Child
+    #
+    # The `contract_input` is the input of contract grandparent which defines
+    # how parents call its children.
+    #
+    # (* Ture: run operation in BFS, False run operation in DFS *)
+    # flow = True | False
+    # (* The `flow` is the flow of child *)
+    # input_of_child = string * flow
+    # (* The `flow` is the flow of parent *)
+    # input_of_parent = input_of_child * flow
+    # input_of_grandparent = [ input_of_parent ]
+    #
+    # For example:
+    #  contract_input
+    #    = [([("A","True"), ("B","False"), ("C","False")], "True"),
+    #       ([], "True"),
+    #       ([("D", "True"), ("E", "False"), ("F","False")], "False")],
+    #
+    # Grandprent --> Parent in BFS --> Child with "A" in BFS
+    #            |                 |-> Child with "B" in DFS
+    #            |                 |-> Child with "C" in DFS
+    #            --> Parent in BFS --> Child with "D" in DFS
+    #            --> Parent in DFS --> Child with "E" in BFS
+    #                              |-> Child with "F" in BFS
+    ##
+    @pytest.mark.parametrize(
+        "child_contract, parent_contract, grandparent_contract,"
+        + "contract_input,expected",
+        [
+            (
+                "ordering_concat_string_child1",
+                "ordering_mix_dfs_bfs_parent1",
+                "ordering_mix_dfs_bfs_grandparent1",
+                [
+                    ([("A", "True"), ("B", "False"), ("C", "False")], "True"),
+                    ([], "True"),
+                    ([("D", "True"), ("E", "False"), ("F", "False")], "False"),
+                ],
+                "EFDBCA",
+            ),
+            # all in BFS
+            (
+                "ordering_concat_string_child2",
+                "ordering_mix_dfs_bfs_parent2",
+                "ordering_mix_dfs_bfs_grandparent2",
+                [
+                    ([("A", "True"), ("B", "True"), ("C", "True")], "True"),
+                    ([], "True"),
+                    ([("D", "True"), ("E", "True"), ("F", "True")], "True"),
+                ],
+                "ABCDEF",
+            ),
+            # all in DFS
+            (
+                "ordering_concat_string_child3",
+                "ordering_mix_dfs_bfs_parent3",
+                "ordering_mix_dfs_bfs_grandparent3",
+                [
+                    ([("A", "False"), ("B", "False"), ("C", "False")], "False"),
+                    ([], "False"),
+                    ([("D", "False"), ("E", "False"), ("F", "False")], "False"),
+                ],
+                "ABCDEF",
+            ),
+            (
+                "ordering_concat_string_child4",
+                "ordering_mix_dfs_bfs_parent4",
+                "ordering_mix_dfs_bfs_grandparent4",
+                [
+                    ([("A", "True"), ("B", "False"), ("C", "True")], "False"),
+                    ([("C", "True"), ("D", "False")], "True"),
+                    ([("E", "False"), ("F", "True"), ("G", "False")], "False"),
+                ],
+                "BACEGFDC",
+            ),
+        ],
+    )
+    def test_bfs_dfs_3layers(
+        self,
+        client,
+        session,
+        child_contract,
+        parent_contract,
+        grandparent_contract,
+        contract_input,
+        expected,
+    ):
+        path = f'{CONTRACT_PATH}/opcodes/ordering_concat_string_child.tz'
+        originate(client, session, path, '""', 0, contract_name=child_contract)
+        session[child_contract] = session['contract']
+        client.bake('bootstrap3', ["--minimal-timestamp"])
+
+        path = f'{CONTRACT_PATH}/opcodes/ordering_mix_dfs_bfs_parent.tz'
+        originate(
+            client, session, path, 'Unit', 0, contract_name=parent_contract
+        )
+        session[parent_contract] = session['contract']
+        client.bake('bootstrap3', ["--minimal-timestamp"])
+
+        path = f'{CONTRACT_PATH}/opcodes/ordering_mix_dfs_bfs_grandparent.tz'
+        originate(
+            client, session, path, 'Unit', 0, contract_name=grandparent_contract
+        )
+        session[grandparent_contract] = session['contract']
+        client.bake('bootstrap3', ["--minimal-timestamp"])
+
+        c_addr = session[child_contract]
+        p_addr = session[parent_contract]
+
+        m_input = (
+            "{"
+            + ";".join(
+                map(
+                    self.parent_input,
+                    contract_input,
+                    itertools.repeat(p_addr),
+                    itertools.repeat(c_addr),
+                )
+            )
+            + "}"
+        )
+
+        client.transfer(
+            0,
+            'bootstrap2',
+            grandparent_contract,
+            ["--burn-cap", "5", "--arg", m_input],
+        )
+
+        client.bake('bootstrap3', ["--minimal-timestamp"])
+
+        assert client.get_storage(child_contract) == "\"{}\"".format(expected)
+
+    ##
+    # This test case is like pervious one, but only 2 layers.
+    @pytest.mark.parametrize(
+        "child_contract, parent_contract, contract_input,expected",
+        [
+            (
+                "ordering2_concat_string_child1",
+                "ordering2_mix_dfs_bfs_parent1",
+                [("A", "True"), ("B", "False"), ("C", "True"), ("D", "False")],
+                "BDAC",
+            ),
+            (
+                "ordering2_concat_string_child2",
+                "ordering2_mix_dfs_bfs_parent2",
+                [("A", "False"), ("B", "False"), ("C", "True"), ("D", "False")],
+                "ABDC",
+            ),
+            (
+                "ordering2_concat_string_child3",
+                "ordering2_mix_dfs_bfs_parent3",
+                [("A", "True"), ("B", "True"), ("C", "True"), ("D", "False")],
+                "DABC",
+            ),
+        ],
+    )
+    def test_bfs_dfs_mix_2layer(
+        self,
+        client,
+        session,
+        child_contract,
+        parent_contract,
+        contract_input,
+        expected,
+    ):
+        path = f'{CONTRACT_PATH}/opcodes/ordering_concat_string_child.tz'
+        originate(client, session, path, '""', 0, contract_name=child_contract)
+        session[child_contract] = session['contract']
+        client.bake('bootstrap3', ["--minimal-timestamp"])
+
+        path = f'{CONTRACT_PATH}/opcodes/ordering_mix_dfs_bfs_parent.tz'
+        originate(
+            client, session, path, 'Unit', 0, contract_name=parent_contract
+        )
+        session[parent_contract] = session['contract']
+        client.bake('bootstrap3', ["--minimal-timestamp"])
+
+        c_addr = session[child_contract]
+
+        m_input = (
+            "{"
+            + ";".join(
+                map(self.child_input, contract_input, itertools.repeat(c_addr))
+            )
+            + "}"
+        )
+
+        client.transfer(
+            0,
+            'bootstrap2',
+            parent_contract,
+            ["--burn-cap", "5", "--arg", m_input],
+        )
+
+        client.bake('bootstrap3', ["--minimal-timestamp"])
+
+        assert client.get_storage(child_contract) == "\"{}\"".format(expected)
+
+
 @pytest.mark.slow
 @pytest.mark.contract
 class TestContracts:
