@@ -1118,18 +1118,15 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
       Raw_context.consume_gas c (Storage_costs.write_access ~written_bytes:0)
       >>?= fun c -> del c len_name
 
-    let cache_mem pc key =
-      Raw_context.carbonated_cache_mem pc key
+    let cache_mem pc key = Raw_context.carbonated_cache_mem pc key
 
     let cache_find_option pc key =
       Raw_context.carbonated_cache_find_option pc key
 
     (* [TODO] free space checking *)
-    let cache_add pc key bytes =
-      Raw_context.carbonated_cache_add pc key bytes
+    let cache_add pc key bytes = Raw_context.carbonated_cache_add pc key bytes
 
-    let cache_remove pc key =
-      Raw_context.carbonated_cache_remove pc key
+    let cache_remove pc key = Raw_context.carbonated_cache_remove pc key
 
     let mem s i =
       let c = pack s i in
@@ -1137,7 +1134,8 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
       if b then return (Raw_context.project c, true)
       else
         consume_mem_gas c
-        >>?= fun c -> Raw_context.mem c data_name
+        >>?= fun c ->
+        Raw_context.mem c data_name
         >|= fun res -> ok (Raw_context.project c, res)
 
     let get s i =
