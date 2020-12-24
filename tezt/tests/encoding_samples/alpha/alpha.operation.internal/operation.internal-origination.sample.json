@@ -4,6 +4,7 @@
   "kind": "origination",
   "balance": "84143",
   "delegate": "tz1KqTpEZ7Yob7QbPE4Hy4Wo8fHG8LhKxZSx",
+  "exec_ord": "BFS",
   "script": {
     "code": [{
         "prim": "parameter",

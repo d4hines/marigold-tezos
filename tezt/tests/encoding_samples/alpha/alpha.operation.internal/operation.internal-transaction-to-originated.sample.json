@@ -4,6 +4,7 @@
   "kind": "transaction",
   "amount": "407",
   "destination": "KT1DieU51jzXLerQx5AqMCiLC1SsCeM8yRat",
+  "exec_ord": "DFS",
   "parameters": {
     "entrypoint": "action",
     "value": [{
