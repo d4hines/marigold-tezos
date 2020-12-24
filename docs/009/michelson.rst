@@ -91,41 +91,67 @@ are of three kinds:
   - Delegations to assign the tokens of the source to the stake of
     another implicit account (without transferring any tokens).
 
-Smart contracts can also emit "internal operations". These are run
-in sequence after the external transaction completes, as in the
-following schema for a sequence of two external operations.
-
-::
-
-    +------+----------------+-------+----------------+
-    | op 1 | internal ops 1 |  op 2 | internal ops 2 |
-    +------+----------------+-------+----------------+
-
+Smart contracts can also emit "internal operations".
 Smart contracts called by internal transactions can in turn also emit
-internal operation. The interpretation of the internal operations
-of a given external operation use a queue, as in the following
-example, also with two external operations.
+internal operation. There is a structure, stack of queue of operation
+(op for short), to maintains the execution flow of operation.
+If an emitted operation is DFS, then this operation will be enqueued
+into a new queue which will be pushed into stack. If an emitted 
+operation is BFS, then this operation will be enqueued into a queue
+which is the top element of stack.
+
+Here is an example of the evaluation flow of operation, , `!` indicates the op is running in DFS:
+
+Example 1. All of the internal operations are in BFS.
 
 ::
 
-   +-----------+---------------+--------------------------+
-   | executing | emissions     | resulting queue          |
-   +-----------+---------------+--------------------------+
-   | op 1      | 1a, 1b, 1c    | 1a, 1b, 1c               |
-   | op 1a     | 1ai, 1aj      | 1b, 1c, 1ai, 1aj         |
-   | op 1b     | 1bi           | 1c, 1ai, 1aj, 1bi        |
-   | op 1c     |               | 1ai, 1aj, 1bi            |
-   | op 1ai    |               | 1aj, 1bi                 |
-   | op 1aj    |               | 1bi                      |
-   | op 1bi    |               |                          |
-   | op 2      | 2a, 2b        | 2a, 2b                   |
-   | op 2a     | 2ai           | 2b, 2ai                  |
-   | op 2b     |               | 2ai                      |
-   | op 2ai    | 2ai1          | 2ai1                     |
-   | op 2a1    | 2ai2          | 2ai2                     |
-   | op 2a2    | 2ai3          | 2ai3                     |
-   | op 2a3    |               |                          |
-   +-----------+---------------+--------------------------+
+    +-----------+----------------+-----------------------------------+
+    | executing | emissions      | resulting stack of queue of op    |
+    +-----------+----------------+-----------------------------------+
+    | op 1      | 1a, 1b, 1c, 1d | [[1a, 1b, 1c, 1d]]                |
+    | op 1a     | 1ai, 1aj       | [[1b, 1c, 1d, 1ai, 1aj]]          |
+    | op 1b     | 1bi            | [[1c, 1d, 1ai, 1aj, 1bi]]         |
+    | op 1c     |                | [[1d, 1ai, 1aj, 1bi]]             |
+    | op 1d     |                | [[1ai, 1aj, 1bi]]                 |
+    | op 1ai    |                | [[1aj, 1bi]]                      |
+    | op 1aj    |                | [[1bi]]                           |
+    | op 1bi    |                | [[]]                              |
+    +-----------+----------------+-----------------------------------+
+
+Example 2. All of the internal operations are in DFS.
+
+::
+
+    +------------+--------------------+---------------------------------------+
+    | executing  | emissions          | resulting stack of queue of op        |
+    +------------+--------------------+---------------------------------------+
+    | op !2      | !2a, !2b, !2c, !2d | [[!2a], [!2b], [!2c], [!2d]]          |
+    | op !2a     | !2ai, !2aj         | [[!2ai], [!2aj], [!2b], [!2c], [!2d]] |
+    | op !2ai    |                    | [[!2aj], [!2b], [!2c], [!2d]]         |
+    | op !2aj    |                    | [[!2b], [!2c], [!2d]]                 |
+    | op !2b     | !2bi               | [[!2bi], [!2c], [!2d]]                |
+    | op !2bi    |                    | [[!2c], [!2d]]                        |
+    | op !2c     |                    | [[!2d]]                               |
+    | op !2d     |                    | [[]]                                  |
+    +------------+--------------------+---------------------------------------+
+
+Example 3. The internal operations, !3b, !3d, are in DFS. The others are in BFS.
+
+::
+
+    +------------+------------------+-------------------------------------+
+    | executing  | emissions        | resulting stack of queue of op      |
+    +------------+------------------+-------------------------------------+
+    | op 3       | 3a, !3b, 3c, !3d | [[!3b], [!3d], [3a, 3c]]            |
+    | op !3b     | 3bi              | [[3bi], [!3d], [3a, 3c]]            |
+    | op 3bi     |                  | [[!3d], [3a, 3c]]                   |
+    | op !3d     |                  | [[3a, 3c]]                          |
+    | op 3a      | 3ai, 3aj         | [[3c, 3ai, 3aj]]                    |
+    | op 3c      |                  | [[3ai, 3aj]]                        |
+    | op 3ai     |                  | [[3aj]]                             |
+    | op 3aj     |                  | [[]]                                |
+    +------------+------------------+-------------------------------------+
 
 Failures
 ~~~~~~~~
@@ -1851,6 +1877,15 @@ contract, and the initial storage of the originated contract.
 The contract is returned as a first class value (to be dropped, passed
 as parameter or stored). The ``CONTRACT 'p`` instruction will fail
 until it is actually originated.
+
+-  ``MAKE_DFS``: The default of evaluation sequence is BFS. This instruction allows operation turning into DFS.
+
+::
+
+     :: operation : 'S -> operation : 'S
+
+     > MAKE_DFS / operation : S => operation : S
+
 
 -  ``TRANSFER_TOKENS``: Forge a transaction.
 
