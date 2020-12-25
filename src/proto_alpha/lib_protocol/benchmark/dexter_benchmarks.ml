@@ -1,180 +1,77 @@
-
-[@@@warning "-21"]
-
-[@@@warning "-20"]
-
-[@@@warning "-27"]
-
-[@@@warning "-26"]
-[@@@warning "-33"]
-
-open Tezos_raw_protocol_alpha
-open Alpha_context
-open Script
 open Printf
-open Show
+open Util
+open Pipeline
 
-(* 
-
-
-module Dexter = struct
-  let contract =
+let xtzToToken_benchmark : unit -> Pipeline.goal =
+ fun () ->
+  let (b, op) = Fa12_benchmarks.set_up_fa12 () in
+  let (b, x) =
+    ( b,
+      op
+      >>= fun (_, (token, alice, bob)) ->
+      (* Originate the Dexter Contract *)
+      let dexter_contract = read_file "./contracts/dexter.tz" in
+      let initial_storage =
+        sprintf
+          {|Pair {}
+            (Pair
+             (Pair (Pair False 0)
+                   (Pair "%s" False))
+             (Pair (Pair "%s" 0) 0))
+          |}
+          (contract_to_pkh alice)
+          (contract_to_pkh token)
+      in
+      Origination
+        {
+          originator = alice;
+          amount = 0;
+          contract = dexter_contract;
+          initial_storage;
+        }
+      (* Approve the spend *)
+      >>= fun (_, dexter) ->
+      Fa12_benchmarks.approve_fa12 token alice dexter 1_000_000
+      (* Add Liquidity *)
+      >>= fun (_, _) ->
+      let parameters =
+        sprintf
+          {|
+                Pair
+                  (Pair "%s" 1)
+                  (Pair 100000 "2030-01-01T12:00:00Z")
+            |}
+          (contract_to_pkh alice)
+      in
+      Transfer
+        {
+          sender = alice;
+          recipient = dexter;
+          entrypoint = "addLiquidity";
+          amount = 5_000_000;
+          parameters;
+        }
+      >>| fun (b, _) -> (b, bob, dexter) )
+  in
+  (b, x)
+  >>=! fun (_, (_, bob, dexter)) ->
+  (* Do xtzToToken, exchanging 1 of bob's tez for token,
+     sending the results to bob *)
+  let parameters =
     sprintf
-      "{%s}"
-      (read_file "/workspaces/repos/joseph/dexter/ligo/contracts/dexter.tz")
-    |> Expr.from_string |> lazy_expr
-
-  (* tezos-client transfer 1000 
-    from alice \
-    to tezosGoldExchange \
-    --entrypoint 'addLiquidity' \
-    --arg 'Pair (Pair "tz1MQehPikysuVYN5hTiKTnrsFidAww7rv3z" 1) (Pair 100 "2030-01-01T12:00:00Z")' \
-    --burn-cap 1 *)
-  let add_liquidity _b _liquidity_provider = assert false
-
-  let make_initial_storage ~owner ~token =
-    let owner_address =
-      Signature.Public_key_hash.to_b58check (get_pkh_from_contract owner)
-    in
-    let token_address =
-      Contract_hash.to_b58check (get_hash_from_contract token)
-    in
-    sprintf
-      {|Pair {} (Pair (Pair False (Pair False 0)) (Pair (Pair "%s" "%s") (Pair 0 0)))|}
-      owner_address
-      token_address
-    |> Expr.from_string |> lazy_expr
-
-  let setup_exchange ~owner ~token ~amount b =
-    let storage = make_initial_storage ~owner ~token in
-    let script = Script.{code = contract; storage} in
-    (* Originate the contract with 1000 tez in its account *)
-    make_contract ~script ~originator:owner ~amount b
-    (* this block has the contract ready to be called *)
-    >>=? fun (b, exchange) ->
-    get_next_context b >>=? fun context -> return (script, context, exchange)
-end
-
-(* (pair
-  (big_map %accounts address
-    (pair (nat :balance)
-          (map :approvals address
-                          nat)))
-  (nat %fields))
-
-Pair
-  {Elt "tz1KtBg8nLf3bizWRjaCGLtz46Ls5vyXwTFa" (Pair 100000000000000 {})}
-  100000000000000 *)
-
-(* tezos-client transfer 5 \
-             from simon \
-             to tezosGoldExchange \
-             --entrypoint 'xtzToToken' \
-             --arg 'Pair "tz1bqV1wz5mJmBRSDkYiRZxX7yBDLKV7HKo3" (Pair 1 "2030-01-29T18:00:00Z")' \
-             --burn-cap 1 *)
-
-let (script, context, token, alice, bob) =
-  Fa12.setup_token () |> force_global_lwt
-
-let (run_script, eval_script) =
-  Fa12.make_run_transfer script context token alice bob |> force_global_lwt
-
-let run_script_batch () = List.init 100 (fun _ -> run_script ()) |> Lwt.all
-
-let make_closure ~n_implicits ~commands = assert false
-
-type operation =
-  | Origination : {
-      originator : Contract.t;
-      amount : Int.t;
-      contract : String.t;
-      initial_storage : String.t;
-    }
-      -> operation
-  | Transfer : {
-      sender : Contract.t;
-      recipient : Contract.t;
-      entrypoint : String.t;
-      amount : Int.t;
-      parameters : String.t;
-    }
-      -> operation
-
-type result = Result
-
-(* let ( >| ) : (operation -> result) -> result ->  = assert false *)
-
-module Operation_monad = struct
-  type t = OpMonad : (Incremental.t * operation) -> t
-
-  let unit x = OpMonad x
-
-  let run : Incremental.t -> operation -> (Incremental.t
-
-  let bind : t -> ((Incremental.t * Contract.t option) -> t) -> t =
-   fun m f ->
-    let (OpMonad (b, op)) = m in
-    
-end
-
-let xtzToToken_benchmark () =
-  let closure =
-    make_closure ~n_implicits:2 ~commands:(fun implicits ->
-        let alice = List.nth implicits 0 in
-        let bob = List.nth implicits 1 in
-        assert false)
+      {|
+    Right
+      (Right
+        (Pair
+          "%s"
+          (Pair 1 "2050-01-29T18:00:00Z")))|}
+      (contract_to_pkh bob)
   in
-  assert false *)
-
-type operation =
-  | Origination : {
-      originator : Contract.t;
-      amount : Int.t;
-      contract : String.t;
-      initial_storage : String.t;
+  Transfer
+    {
+      sender = bob;
+      recipient = dexter;
+      entrypoint = "default";
+      amount = 1_000_000;
+      parameters;
     }
-      -> operation
-  | Transfer : {
-      sender : Contract.t;
-      recipient : Contract.t;
-      entrypoint : String.t;
-      amount : Int.t;
-      parameters : String.t;
-    }
-      -> operation
-
-type result = Result
-
-let ( >| ) = assert false
-let make_n_implicits n = assert false
-
-let xtzToToken_context = assert false
-let type_script = assert false
-let (>>=??) = assert false
-
-let xtzToToken = 
-  let (step_constants, context, script, parameters) = assert false in 
-  type_script context script
-  >>=?? fun ( Script_ir_translator.Ex_script
-                {code; arg_type; storage; storage_type; root_name = _},
-              context ) ->
-  let (Lam (code, _)) = code in
-  Script_ir_translator.parse_data
-    context
-    ~legacy:false
-    ~allow_forged:false
-    arg_type
-    (Micheline.root parameters)
-  >>=?? fun (arg, context) ->
-  let input = (arg, storage) in
-  let run_script () =
-    Script_interpreter.step None context step_constants code input ((), ())
-  in
-  let eval_script () =
-    run_script ()
-    >>=? fun ((ops, storage), _, ctx) ->
-    Script_ir_translator.unparse_data ctx Readable storage_type storage
-  in
-  let run_script () = run_script () |> Lwt.map (fun _ -> ()) in
-  return (run_script, eval_script)
-

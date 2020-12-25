@@ -66,6 +66,28 @@ let find_alternate pkh =
 
 let dummy_account = new_account ()
 
+let rec increment bits =
+  match bits with
+  | [] ->
+      []
+  | '0' :: x ->
+      ['1'] @ x
+  | ['1'] ->
+      ['0'; '1']
+  | '1' :: x ->
+      ['0'] @ increment x
+  | _ ->
+      assert false
+
+let counter = ref ['0']
+
+let get_next_seed () =
+  let next = increment !counter in
+  counter := next ;
+  let padding = List.repeat (32 - List.length next) '0' in
+  let seed = next @ padding |> List.to_seq |> Bytes.of_seq in
+  seed
+
 let generate_accounts ?(initial_balances = []) n : (t * Tez_repr.t) list =
   Signature.Public_key_hash.Table.clear known_accounts ;
   let default_amount = Tez_repr.of_mutez_exn 4_000_000_000_000L in
@@ -78,7 +100,7 @@ let generate_accounts ?(initial_balances = []) n : (t * Tez_repr.t) list =
   in
   List.map
     (fun i ->
-      let (pkh, pk, sk) = Signature.generate_key () in
+      let (pkh, pk, sk) = Signature.generate_key ~seed:(get_next_seed ()) () in
       let account = {pkh; pk; sk} in
       Signature.Public_key_hash.Table.add known_accounts pkh account ;
       (account, amount i))
