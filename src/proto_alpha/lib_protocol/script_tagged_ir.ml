@@ -29,6 +29,7 @@ open Script_typed_ir
 
 [@@@warning "-21"]
 
+
 let instr_to_string : type a b. (a, b) instr -> string = function
   | Drop ->
       "Drop"
@@ -356,6 +357,9 @@ let my_instr_to_str i =
   | My_add ->
       "My_add"
 
+type my_stack = my_item list
+
+type my_dip_stack = my_stack
 let ty_to_string : type a. a ty -> string = function
   | Unit_t _ ->
       "Unit_t"
@@ -488,3 +492,146 @@ let rec my_item_to_string = function
       "P(" ^ my_item_to_string a ^ " , " ^ my_item_to_string b ^ ")"
   | My_unit ->
       "unit"
+let myfy_item : type a. a ty * a -> my_item = function
+  | (Nat_t _, n) ->
+      My_nat n
+  | (Int_t _, n) ->
+      My_int n
+  | (Bool_t _, b) ->
+      My_bool b
+  | (Pair_t ((a_ty, _, _), (b_ty, _, _), _), (a, b)) ->
+      My_pair (myfy_item (a_ty, a), myfy_item (b_ty, b))
+  | (_ty, _) ->
+      raise (Failure "unimplemented")
+
+let rec myfy_stack : type a. a stack_ty * a -> my_stack = function
+  | (Empty_t, ()) ->
+      []
+  | (Item_t (item_ty, stack_ty, _), (item, stack)) ->
+      myfy_item (item_ty, item) :: myfy_stack (stack_ty, stack)
+
+let rec yfym_item : type a. a ty * my_item -> a = function
+  | (Nat_t _, My_nat n) ->
+      n
+  | (Int_t _, My_int n) ->
+      n
+  | (Bool_t _, My_bool b) ->
+      b
+  | (Pair_t ((a_ty, _, _), (b_ty, _, _), _), My_pair (a, b)) ->
+      (yfym_item (a_ty, a), yfym_item (b_ty, b))
+  | (Pair_t ((_a_ty, _, _), (_b_ty, _, _), _), x) ->
+      raise (Failure ("foo " ^ my_item_to_string x))
+  | (List_t (ele_ty, _), My_list lst) ->
+      {
+        elements = List.map (fun ele -> yfym_item (ele_ty, ele)) lst;
+        length = List.length lst;
+      }
+  | (ty, _) ->
+      raise (Failure ("yfym item: " ^ ty_to_string ty))
+
+let rec yfym_stack : type a. a stack_ty * my_stack -> a = function
+  | (Empty_t, []) ->
+      ()
+  | (Item_t (hd_ty, tl_ty, _), hd :: tl) ->
+      (yfym_item (hd_ty, hd), yfym_stack (tl_ty, tl))
+  | ((Item_t _ as _stack_ty), _stack) ->
+      raise (Failure "yfym stack ty. type: ")
+  | (_stack_ty, (_ :: _ as _stack)) ->
+      raise (Failure "yfym stack item. type: ")
+
+let ty_to_string : type a. a ty -> string = function
+  | Unit_t _ ->
+      "Unit_t"
+  | Int_t _ ->
+      "Int_t"
+  | Nat_t _ ->
+      "Nat_t"
+  | Signature_t _ ->
+      "Signature_t"
+  | String_t _ ->
+      "String_t"
+  | Bytes_t _ ->
+      "Bytes_t"
+  | Mutez_t _ ->
+      "Mutez_t"
+  | Key_hash_t _ ->
+      "Key_hash_t"
+  | Key_t _ ->
+      "Key_t"
+  | Timestamp_t _ ->
+      "Timestamp_t"
+  | Address_t _ ->
+      "Address_t"
+  | Bool_t _ ->
+      "Bool_t"
+  | Pair_t _ ->
+      "Pair_t"
+  | Union_t _ ->
+      "Union_t"
+  | Lambda_t _ ->
+      "Lambda_t"
+  | Option_t _ ->
+      "Option_t"
+  | List_t _ ->
+      "List_t"
+  | Set_t _ ->
+      "Set_t"
+  | Map_t _ ->
+      "Map_t"
+  | Big_map_t _ ->
+      "Big_map_t"
+  | Contract_t _ ->
+      "Contract_t"
+  | Operation_t _ ->
+      "Operation_t"
+  | Chain_id_t _ ->
+      "Chain_id_t"
+  | Never_t _ ->
+      "Never_t"
+  | _ ->
+      "Go fish..."
+
+(* | stack_ty , stack ->
+ *    raise (Failure ("yfym stack. type: " ^ (stack_ty_to_string stack_ty) ^ ". content: " ^ (my_stack_to_string stack))) *)
+let rec stack_ty_to_string : type a. a stack_ty -> string = function
+  | Item_t (hd, tl, _) ->
+      ty_to_string hd ^ " :: " ^ stack_ty_to_string tl
+  | Empty_t ->
+      "()"
+
+let rec my_stack_to_string = function
+  | [] ->
+      "()"
+  | hd :: tl ->
+      my_item_to_string hd ^ " :: " ^ my_stack_to_string tl
+
+let rec yfym_stack : type a. a stack_ty * my_stack -> a = function
+  | (Empty_t, []) ->
+      ()
+  | (Item_t (hd_ty, tl_ty, _), hd :: tl) ->
+      (yfym_item (hd_ty, hd), yfym_stack (tl_ty, tl))
+  | ((Item_t _ as stack_ty), stack) ->
+      raise
+        (Failure
+           ( "yfym stack ty. type: "
+           ^ stack_ty_to_string stack_ty
+           ^ ". content: " ^ my_stack_to_string stack ))
+  | (stack_ty, (_ :: _ as stack)) ->
+      raise
+        (Failure
+           ( "yfym stack item. type: "
+           ^ stack_ty_to_string stack_ty
+           ^ ". content: " ^ my_stack_to_string stack ))
+
+(* | stack_ty , stack ->
+ *    raise (Failure ("yfym stack. type: " ^ (stack_ty_to_string stack_ty) ^ ". content: " ^ (my_stack_to_string stack))) *)
+
+(* match x with
+  | (Empty_t, []) ->
+      ()
+  | (Item_t (hd_ty, tl_ty, _), hd :: tl) ->
+      (yfym_item (hd_ty, hd), yfym_stack (tl_ty, tl))
+  | ((Item_t _ as stack_ty), stack) ->
+    raise (Failure ("yfym stack ty. type: " ^ (stack_ty_to_string stack_ty) ^ ". content: " ^ (my_stack_to_string stack)))
+  | (stack_ty, (_ :: _ as stack)) ->
+    raise (Failure ("yfym stack item. type: " ^ (stack_ty_to_string stack_ty) ^ ". content: " ^ (my_stack_to_string stack))) *)

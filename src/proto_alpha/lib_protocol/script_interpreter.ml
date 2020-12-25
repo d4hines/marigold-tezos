@@ -37,7 +37,7 @@
 open Alpha_context
 open Script
 open Script_typed_ir
-open Script_typed_cps_ir
+open Script_tagged_ir
 open Script_ir_translator
 
 (* ---- Run-time errors -----------------------------------------------------*)
@@ -217,9 +217,6 @@ type step_constants = {
   chain_id : Chain_id.t;
 }
 
-type my_stack = my_item list
-
-type my_dip_stack = my_stack
 
 type logging_function =
   context -> Script.location -> my_instr -> my_stack -> unit
@@ -317,149 +314,6 @@ let[@inline] option_iter opt what =
 let[@inline] lwt_option_iter opt what =
   match opt with None -> Lwt.return (Ok None) | Some l -> what l
 
-let myfy_item : type a. a ty * a -> my_item = function
-  | (Nat_t _, n) ->
-      My_nat n
-  | (Int_t _, n) ->
-      My_int n
-  | (Bool_t _, b) ->
-      My_bool b
-  | (Pair_t ((a_ty, _, _), (b_ty, _, _), _), (a, b)) ->
-      My_pair (myfy_item (a_ty, a), myfy_item (b_ty, b))
-  | (_ty, _) ->
-      raise (Failure "unimplemented")
-
-let rec myfy_stack : type a. a stack_ty * a -> my_stack = function
-  | (Empty_t, ()) ->
-      []
-  | (Item_t (item_ty, stack_ty, _), (item, stack)) ->
-      myfy_item (item_ty, item) :: myfy_stack (stack_ty, stack)
-
-let rec yfym_item : type a. a ty * my_item -> a = function
-  | (Nat_t _, My_nat n) ->
-      n
-  | (Int_t _, My_int n) ->
-      n
-  | (Bool_t _, My_bool b) ->
-      b
-  | (Pair_t ((a_ty, _, _), (b_ty, _, _), _), My_pair (a, b)) ->
-      (yfym_item (a_ty, a), yfym_item (b_ty, b))
-  | (Pair_t ((a_ty, _, _), (b_ty, _, _), _), x) ->
-      raise (Failure ("foo " ^ my_item_to_string x))
-  | (List_t (ele_ty, _), My_list lst) ->
-      {
-        elements = List.map (fun ele -> yfym_item (ele_ty, ele)) lst;
-        length = List.length lst;
-      }
-  | (ty, _) ->
-      raise (Failure ("yfym item: " ^ ty_to_string ty))
-
-let rec yfym_stack : type a. a stack_ty * my_stack -> a = function
-  | (Empty_t, []) ->
-      ()
-  | (Item_t (hd_ty, tl_ty, _), hd :: tl) ->
-      (yfym_item (hd_ty, hd), yfym_stack (tl_ty, tl))
-  | ((Item_t _ as _stack_ty), _stack) ->
-      raise (Failure "yfym stack ty. type: ")
-  | (_stack_ty, (_ :: _ as _stack)) ->
-      raise (Failure "yfym stack item. type: ")
-
-let ty_to_string : type a. a ty -> string = function
-  | Unit_t _ ->
-      "Unit_t"
-  | Int_t _ ->
-      "Int_t"
-  | Nat_t _ ->
-      "Nat_t"
-  | Signature_t _ ->
-      "Signature_t"
-  | String_t _ ->
-      "String_t"
-  | Bytes_t _ ->
-      "Bytes_t"
-  | Mutez_t _ ->
-      "Mutez_t"
-  | Key_hash_t _ ->
-      "Key_hash_t"
-  | Key_t _ ->
-      "Key_t"
-  | Timestamp_t _ ->
-      "Timestamp_t"
-  | Address_t _ ->
-      "Address_t"
-  | Bool_t _ ->
-      "Bool_t"
-  | Pair_t _ ->
-      "Pair_t"
-  | Union_t _ ->
-      "Union_t"
-  | Lambda_t _ ->
-      "Lambda_t"
-  | Option_t _ ->
-      "Option_t"
-  | List_t _ ->
-      "List_t"
-  | Set_t _ ->
-      "Set_t"
-  | Map_t _ ->
-      "Map_t"
-  | Big_map_t _ ->
-      "Big_map_t"
-  | Contract_t _ ->
-      "Contract_t"
-  | Operation_t _ ->
-      "Operation_t"
-  | Chain_id_t _ ->
-      "Chain_id_t"
-  | Never_t _ ->
-      "Never_t"
-  | _ ->
-      "Go fish..."
-
-(* | stack_ty , stack ->
- *    raise (Failure ("yfym stack. type: " ^ (stack_ty_to_string stack_ty) ^ ". content: " ^ (my_stack_to_string stack))) *)
-let rec stack_ty_to_string : type a. a stack_ty -> string = function
-  | Item_t (hd, tl, _) ->
-      ty_to_string hd ^ " :: " ^ stack_ty_to_string tl
-  | Empty_t ->
-      "()"
-
-let rec my_stack_to_string = function
-  | [] ->
-      "()"
-  | hd :: tl ->
-      my_item_to_string hd ^ " :: " ^ my_stack_to_string tl
-
-let rec yfym_stack : type a. a stack_ty * my_stack -> a = function
-  | (Empty_t, []) ->
-      ()
-  | (Item_t (hd_ty, tl_ty, _), hd :: tl) ->
-      (yfym_item (hd_ty, hd), yfym_stack (tl_ty, tl))
-  | ((Item_t _ as stack_ty), stack) ->
-      raise
-        (Failure
-           ( "yfym stack ty. type: "
-           ^ stack_ty_to_string stack_ty
-           ^ ". content: " ^ my_stack_to_string stack ))
-  | (stack_ty, (_ :: _ as stack)) ->
-      raise
-        (Failure
-           ( "yfym stack item. type: "
-           ^ stack_ty_to_string stack_ty
-           ^ ". content: " ^ my_stack_to_string stack ))
-
-(* | stack_ty , stack ->
- *    raise (Failure ("yfym stack. type: " ^ (stack_ty_to_string stack_ty) ^ ". content: " ^ (my_stack_to_string stack))) *)
-
-(* match x with
-  | (Empty_t, []) ->
-      ()
-  | (Item_t (hd_ty, tl_ty, _), hd :: tl) ->
-      (yfym_item (hd_ty, hd), yfym_stack (tl_ty, tl))
-  | ((Item_t _ as stack_ty), stack) ->
-    raise (Failure ("yfym stack ty. type: " ^ (stack_ty_to_string stack_ty) ^ ". content: " ^ (my_stack_to_string stack)))
-  | (stack_ty, (_ :: _ as stack)) ->
-    raise (Failure ("yfym stack item. type: " ^ (stack_ty_to_string stack_ty) ^ ". content: " ^ (my_stack_to_string stack))) *)
 
 let rec step_bounded :
     type bef aft.
@@ -584,6 +438,116 @@ and step_descr :
  fun logger ctxt step_constants descr stack ->
   (* FIXME: That's ugly but this is only temporary. *)
   step_bounded logger ctxt step_constants descr stack
+
+let rec step_tagged :
+    logger option ->
+    context ->
+    step_constants ->
+    my_instr Array.t ->
+    my_stack ->
+    (my_stack * context) tzresult Lwt.t =
+ fun logger ctxt _step_constants descr stack ->
+  let[@inline] log_entry ctxt pc instr stack =
+    option_iter logger (fun logger ->
+        let module Log = (val logger) in
+        Log.log_entry ctxt pc instr stack)
+  in
+  let[@inline] log_exit ctxt pc instr stack =
+    option_iter logger (fun logger ->
+        let module Log = (val logger) in
+        Log.log_exit ctxt pc instr stack)
+  in
+  (* let[@inline] log_exit ctxt pc stack =
+    option_iter logger (fun logger ->
+        let module Log = (val logger) in
+        Log.log_exit ctxt pc stack)
+  in *)
+  (* let[@inline] get_log () =
+    lwt_option_iter logger (fun logger ->
+        let module Log = (val logger) in
+        Log.get_log ())
+  in *)
+  let rec step :
+      context ->
+      int ->
+      my_instr Array.t ->
+      my_stack ->
+      my_dip_stack ->
+      (my_stack * context) tzresult Lwt.t =
+   fun ctxt pc instr_array stack dip_stack ->
+    let instr = Array.unsafe_get instr_array pc in
+    let gas = cost_of_instr' instr stack in
+    let step_return ctx pc instr_array stack dip_stack =
+      log_exit ctxt (-1) instr stack;
+      step ctxt pc instr_array stack dip_stack in
+    Gas.consume ctxt gas
+    >>?= fun ctxt ->
+    (* ====== TODO: Fix logging function here ====== *)
+    log_entry ctxt pc instr stack ;
+    match (instr, stack) with
+    (* stack ops *)
+    | (My_dup, h :: t) ->
+      step_return ctxt (pc + 1) instr_array (h :: h :: t) dip_stack
+    (* | (My_swap, _) -> *)
+    | (My_swap, h :: h' :: t) ->
+        (* raise (Failure "swap case") *)
+        step_return ctxt (pc + 1) instr_array (h' :: h :: t) dip_stack
+    | (My_push x, s) ->
+      step_return ctxt (pc + 1) instr_array (x :: s) dip_stack
+    | (My_dip, h :: t) ->
+        step ctxt (pc + 1) instr_array t (h :: dip_stack)
+    | (My_undip, s) -> (
+      match dip_stack with
+      | h :: dip_stack' ->
+          step_return ctxt (pc + 1) instr_array (h :: s) dip_stack'
+      | [] ->
+          step_return ctxt (pc + 1) instr_array s dip_stack )
+    | (My_drop, _ :: t) ->
+        step_return ctxt (pc + 1) instr_array t dip_stack
+    | (My_loop_if_not n, My_bool b :: t) ->
+        if b then step_return ctxt (pc + 1) instr_array t dip_stack
+        else step_return ctxt (pc + n) instr_array t dip_stack
+    | (My_loop_jump n, s) ->
+        step_return ctxt (pc + n) instr_array s dip_stack
+    | (My_car, My_pair (l, _) :: s) ->
+        step_return ctxt (pc + 1) instr_array (l :: s) dip_stack
+    | (My_cons_pair, h :: h' :: t) ->
+        step_return ctxt (pc + 1) instr_array (My_pair (h, h') :: t) dip_stack
+    | (My_compare, My_int a :: My_int b :: t) ->
+        let cmp = My_int (Script_int.of_int @@ Script_int.compare a b) in
+        step_return ctxt (pc + 1) instr_array (cmp :: t) dip_stack
+    | (My_neq, My_int n :: t) ->
+        let neq = Compare.Int.( <> ) Script_int.(compare n zero) 0 in
+        step_return ctxt (pc + 1) instr_array (My_bool neq :: t) dip_stack
+    | (My_sub, My_int a :: My_int b :: t) ->
+        let sub = Script_int.sub a b in
+        step_return ctxt (pc + 1) instr_array (My_int sub :: t) dip_stack
+    | (My_mul_int, My_int a :: My_int b :: t) ->
+        let mul = Script_int.mul a b in
+        step_return ctxt (pc + 1) instr_array (My_int mul :: t) dip_stack
+    | (My_add, My_int a :: My_int b :: t) ->
+        let add = Script_int.add a b in
+        step_return ctxt (pc + 1) instr_array (My_int add :: t) dip_stack
+    | (My_halt, s) ->
+        Lwt.return (Ok (s, ctxt))
+    | (My_nil, s) ->
+      step_return ctxt (pc + 1) instr_array (My_list [] :: s) dip_stack
+    | (_, _) ->
+        assert false
+  in
+  step
+    ctxt
+    (* Initialise the program counter at 0 *)
+    0
+    (* Translate the old ir to the new ir. This will go away *)
+    descr
+    (* Translate the old stack format to the new stack format. This will also go away *)
+    stack
+    (* Intiailise with empty dip stack *)
+    []
+  >>=? fun (stack, ctxt) ->
+    log_exit ctxt (-1) My_nil stack;
+    return @@ (stack, ctxt)
 
 and interp :
     type p r.

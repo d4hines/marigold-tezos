@@ -58,10 +58,7 @@ type step_constants = {
   chain_id : Chain_id.t;
 }
 
-
-type my_stack
-val my_stack_to_string: my_stack -> string
-type logging_function = context -> Script.location -> Script_typed_cps_ir.my_instr -> my_stack -> unit
+type logging_function = context -> Script.location -> Script_tagged_ir.my_instr -> Script_tagged_ir.my_stack -> unit
 
 (** [STEP_LOGGER] is the module type of logging
     modules as passed to the Michelson interpreter.
@@ -97,6 +94,14 @@ val step :
   ('bef, 'aft) Script_typed_ir.descr ->
   'bef ->
   ('aft * context) tzresult Lwt.t
+
+val step_tagged :
+    logger option ->
+    context ->
+    step_constants ->
+    Script_tagged_ir.my_instr Array.t ->
+    Script_tagged_ir.my_stack ->
+    (Script_tagged_ir.my_stack * context) tzresult Lwt.t 
 
 val execute :
   ?logger:logger ->
