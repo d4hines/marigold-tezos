@@ -208,8 +208,7 @@ type (_, _, _, _) konts =
     stack [ks] and the A-stack represented by [accu] and [stack]. *)
 val run :
   logger option ->
-  outdated_context ->
-  step_constants ->
+  outdated_context * step_constants ->
   local_gas_counter ->
   ('c, 'u, 'd, 'v) kinstr ->
   ('a, 's, 'b, 't) kinstr ->
