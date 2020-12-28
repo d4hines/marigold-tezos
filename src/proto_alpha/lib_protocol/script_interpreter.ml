@@ -223,8 +223,8 @@ let cost_of_instr : type a s r f. (a, s, r, f) kinstr -> a -> s -> Gas.cost =
       let list = accu in
       Interp_costs.list_map list
   | KList_iter _ ->
-      let l = accu in
-      Interp_costs.list_iter l
+      let list = accu in
+      Interp_costs.list_iter list
   | KSet_iter _ ->
       let set = accu in
       Interp_costs.set_iter set
@@ -241,10 +241,10 @@ let cost_of_instr : type a s r f. (a, s, r, f) kinstr -> a -> s -> Gas.cost =
       let map = accu in
       Interp_costs.map_iter map
   | KMap_mem _ ->
-      let v = accu and (map, _rest) = stack in
+      let v = accu and (map, _) = stack in
       Interp_costs.map_mem v map
   | KMap_get _ ->
-      let v = accu and (map, _rest) = stack in
+      let v = accu and (map, _) = stack in
       Interp_costs.map_get v map
   | KMap_update _ ->
       let k = accu and (_, (map, _)) = stack in
