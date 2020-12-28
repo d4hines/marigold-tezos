@@ -217,7 +217,6 @@ type step_constants = {
   chain_id : Chain_id.t;
 }
 
-
 type logging_function =
   context -> Script.location -> my_instr -> my_stack -> unit
 
@@ -314,7 +313,6 @@ let[@inline] option_iter opt what =
 let[@inline] lwt_option_iter opt what =
   match opt with None -> Lwt.return (Ok None) | Some l -> what l
 
-
 let rec step_bounded :
     type bef aft.
     logger option ->
@@ -355,8 +353,9 @@ let rec step_bounded :
     let instr = Array.unsafe_get instr_array pc in
     let gas = cost_of_instr' instr stack in
     let step_return ctx pc instr_array stack dip_stack =
-      log_exit ctxt (-1) instr stack;
-      step ctxt pc instr_array stack dip_stack in
+      log_exit ctxt (-1) instr stack ;
+      step ctxt pc instr_array stack dip_stack
+    in
     Gas.consume ctxt gas
     >>?= fun ctxt ->
     (* ====== TODO: Fix logging function here ====== *)
@@ -364,13 +363,13 @@ let rec step_bounded :
     match (instr, stack) with
     (* stack ops *)
     | (My_dup, h :: t) ->
-      step_return ctxt (pc + 1) instr_array (h :: h :: t) dip_stack
+        step_return ctxt (pc + 1) instr_array (h :: h :: t) dip_stack
     (* | (My_swap, _) -> *)
     | (My_swap, h :: h' :: t) ->
         (* raise (Failure "swap case") *)
         step_return ctxt (pc + 1) instr_array (h' :: h :: t) dip_stack
     | (My_push x, s) ->
-      step_return ctxt (pc + 1) instr_array (x :: s) dip_stack
+        step_return ctxt (pc + 1) instr_array (x :: s) dip_stack
     | (My_dip, h :: t) ->
         step ctxt (pc + 1) instr_array t (h :: dip_stack)
     | (My_undip, s) -> (
@@ -402,13 +401,13 @@ let rec step_bounded :
     | (My_mul_int, My_int a :: My_int b :: t) ->
         let mul = Script_int.mul a b in
         step_return ctxt (pc + 1) instr_array (My_int mul :: t) dip_stack
-    | (My_add, My_int a :: My_int b :: t) ->
+    | (My_add_int_int, My_int a :: My_int b :: t) ->
         let add = Script_int.add a b in
         step_return ctxt (pc + 1) instr_array (My_int add :: t) dip_stack
     | (My_halt, s) ->
         Lwt.return (Ok (s, ctxt))
     | (My_nil, s) ->
-      step_return ctxt (pc + 1) instr_array (My_list [] :: s) dip_stack
+        step_return ctxt (pc + 1) instr_array (My_list [] :: s) dip_stack
     | (_, _) ->
         assert false
   in
@@ -423,8 +422,8 @@ let rec step_bounded :
     (* Intiailise with empty dip stack *)
     []
   >>=? fun (stack, ctxt) ->
-    log_exit ctxt (-1) My_nil stack;
-    return @@ (yfym_stack (descr.aft, stack), ctxt)
+  log_exit ctxt (-1) My_nil stack ;
+  return @@ (yfym_stack (descr.aft, stack), ctxt)
 
 (* FIXME: This function will disappear when elaboration is ready. *)
 and step_descr :
@@ -478,8 +477,9 @@ let rec step_tagged :
     let instr = Array.unsafe_get instr_array pc in
     let gas = cost_of_instr' instr stack in
     let step_return ctx pc instr_array stack dip_stack =
-      log_exit ctxt (-1) instr stack;
-      step ctxt pc instr_array stack dip_stack in
+      log_exit ctxt (-1) instr stack ;
+      step ctxt pc instr_array stack dip_stack
+    in
     Gas.consume ctxt gas
     >>?= fun ctxt ->
     (* ====== TODO: Fix logging function here ====== *)
@@ -487,13 +487,13 @@ let rec step_tagged :
     match (instr, stack) with
     (* stack ops *)
     | (My_dup, h :: t) ->
-      step_return ctxt (pc + 1) instr_array (h :: h :: t) dip_stack
+        step_return ctxt (pc + 1) instr_array (h :: h :: t) dip_stack
     (* | (My_swap, _) -> *)
     | (My_swap, h :: h' :: t) ->
         (* raise (Failure "swap case") *)
         step_return ctxt (pc + 1) instr_array (h' :: h :: t) dip_stack
     | (My_push x, s) ->
-      step_return ctxt (pc + 1) instr_array (x :: s) dip_stack
+        step_return ctxt (pc + 1) instr_array (x :: s) dip_stack
     | (My_dip, h :: t) ->
         step ctxt (pc + 1) instr_array t (h :: dip_stack)
     | (My_undip, s) -> (
@@ -525,13 +525,22 @@ let rec step_tagged :
     | (My_mul_int, My_int a :: My_int b :: t) ->
         let mul = Script_int.mul a b in
         step_return ctxt (pc + 1) instr_array (My_int mul :: t) dip_stack
-    | (My_add, My_int a :: My_int b :: t) ->
+    | (My_add_int_int, My_int a :: My_int b :: t) ->
         let add = Script_int.add a b in
         step_return ctxt (pc + 1) instr_array (My_int add :: t) dip_stack
+    | (My_big_map_get, key :: map :: t) -> (
+        let map = assert false in
+        my_big_map_get ctxt key map
+        >>=? fun (x, ctxt) ->
+        match x with
+        | None ->
+            step_return ctxt (pc + 1) instr_array (My_none :: t) dip_stack
+        | Some x ->
+            step_return ctxt (pc + 1) instr_array (My_some x :: t) dip_stack )
     | (My_halt, s) ->
         Lwt.return (Ok (s, ctxt))
     | (My_nil, s) ->
-      step_return ctxt (pc + 1) instr_array (My_list [] :: s) dip_stack
+        step_return ctxt (pc + 1) instr_array (My_list [] :: s) dip_stack
     | (_, _) ->
         assert false
   in
@@ -546,8 +555,8 @@ let rec step_tagged :
     (* Intiailise with empty dip stack *)
     []
   >>=? fun (stack, ctxt) ->
-    log_exit ctxt (-1) My_nil stack;
-    return @@ (stack, ctxt)
+  log_exit ctxt (-1) My_nil stack ;
+  return @@ (stack, ctxt)
 
 and interp :
     type p r.

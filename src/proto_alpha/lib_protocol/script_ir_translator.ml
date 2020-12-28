@@ -23,6 +23,7 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
+[@@@warning "-37"]
 
 open Alpha_context
 open Micheline
@@ -6860,6 +6861,14 @@ let hash_comparable_data ctxt typ data =
   pack_comparable_data ctxt typ data ~mode:Optimized_legacy
   >>=? fun (bytes, ctxt) -> Lwt.return @@ hash_bytes ctxt bytes
 
+type extern_flags = No_sharing | Closures | Compat_32
+
+external marshal_to_bytes : 'a -> extern_flags list -> bytes
+  = "caml_output_value_to_bytes"
+
+let hash_tagged_data ctxt (data : Script_tagged_ir.my_item) =
+  hash_bytes ctxt (marshal_to_bytes data [])
+
 let pack_data ctxt typ data = pack_data ctxt typ data ~mode:Optimized_legacy
 
 (* ---------------- Big map -------------------------------------------------*)
@@ -6902,6 +6911,73 @@ let big_map_get ctxt key {id; diff; key_type; value_type} =
             value_type
             (Micheline.root value)
           >|=? fun (x, ctxt) -> (Some x, ctxt) )
+
+let my_map_get :
+    Script_tagged_ir.my_item ->
+    (module Script_tagged_ir.My_boxed_map
+       with type key = Script_tagged_ir.my_item
+        and type value = Script_tagged_ir.my_item option) ->
+    Script_tagged_ir.my_item option option =
+ fun k (module Box) -> Box.OPS.find_opt k Box.value
+
+let my_big_map_get ctxt key Script_tagged_ir.{id; diff; value_type} =
+  match (my_map_get key diff, id) with
+  | (Some x, _) ->
+      return (x, ctxt)
+  | (None, None) ->
+      return (None, ctxt)
+  | (None, Some id) -> (
+      let (Ex_ty value_type) = value_type in
+      Lwt.return @@ hash_tagged_data ctxt key
+      >>=? fun (hash, ctxt) ->
+      Alpha_context.Big_map.get_opt ctxt id hash
+      >>=? function
+      | (ctxt, None) ->
+          return (None, ctxt)
+      | (ctxt, Some value) ->
+          parse_data
+            ~stack_depth:0
+            ctxt
+            ~legacy:true
+            ~allow_forged:true
+            value_type
+            (Micheline.root value)
+          >|=? fun (x, ctxt) ->
+          (Some (Script_tagged_ir.myfy_item (value_type, x)), ctxt) )
+
+let my_big_map_mem ctxt key Script_tagged_ir.{id; diff; _} =
+  match (my_map_get key diff, id) with
+  | (None, None) ->
+      return (false, ctxt)
+  | (None, Some id) ->
+      Lwt.return @@ hash_tagged_data ctxt key
+      >>=? fun (hash, ctxt) ->
+      Alpha_context.Big_map.mem ctxt id hash >|=? fun (ctxt, res) -> (res, ctxt)
+  | (Some None, _) ->
+      return (false, ctxt)
+  | (Some (Some _), _) ->
+      return (true, ctxt)
+
+let my_map_set :
+    Script_tagged_ir.my_item ->
+    Script_tagged_ir.my_item ->
+    (module Script_tagged_ir.My_boxed_map
+       with type key = Script_tagged_ir.my_item
+        and type value = Script_tagged_ir.my_item option) ->
+    (module Script_tagged_ir.My_boxed_map
+        with type key = Script_tagged_ir.my_item
+         and type value = Script_tagged_ir.my_item option) =
+ fun k v (module Box) ->
+  ( module struct
+    include Box
+
+    module OPS = Box.OPS
+
+    let value = (Box.OPS.add k (Some v) Box.value)
+  end )
+
+let my_big_map_update key value (Script_tagged_ir.{diff; _} as map) =
+  {map with diff = my_map_set key value diff}
 
 let big_map_update key value ({diff; _} as map) =
   {map with diff = map_set key value diff}

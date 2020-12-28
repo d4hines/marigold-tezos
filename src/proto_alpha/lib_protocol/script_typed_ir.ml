@@ -633,3 +633,5 @@ let unmap_ty : type k v. (k, v) map ty -> k ty * v ty = function
       (* because of the concrete implementations of the type
         constructors occurring in the definition of [ty]: *)
       assert false
+
+type ex_ty = Ex_ty : 'a ty -> ex_ty

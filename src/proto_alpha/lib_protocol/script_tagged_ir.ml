@@ -295,16 +295,58 @@ let instr_to_string : type a b. (a, b) instr -> string = function
   | _ ->
       "Go fish..."
 
+module type My_boxed_map = sig
+  type key
+
+  type value
+
+  module OPS : S.MAP with type key = key
+
+  val value : value OPS.t
+end
+
+type n_num = Script_int.n Script_int.num
+
+type z_num = Script_int.z Script_int.num
+
+let compare_n_num = Script_int.compare
+
+let compare_z_num = Script_int.compare
+
+module Big_map = struct
+  include Big_map
+
+  module Id = struct
+    include Id
+
+    let compare : t -> t -> int = Obj.magic Z.compare
+  end
+end
+
 type my_item =
   | My_bool of bool
-  | My_nat of Script_int.n Script_int.num
-  | My_int of Script_int.z Script_int.num
+  | My_nat of n_num
+  | My_int of z_num
   | My_pair of (my_item * my_item)
   | My_left of my_item
   | My_right of my_item
+  | My_some of my_item
+  | My_none
   | My_list of my_item list
   | My_unit
-  | My_big_map of (my_item, my_item) Script_typed_ir.big_map
+  | My_big_map of my_big_map
+  | My_string of string
+  | My_mutez of Tez.t
+
+and my_big_map = {
+  id : Big_map.Id.t option;
+  diff :
+    (module My_boxed_map
+       with type key = my_item
+        and type value = my_item option);
+      [@compare fun a b -> 0]
+  value_type : Script_typed_ir.ex_ty; [@compare fun a b -> 0]
+}
 
 and my_instr =
   (* Stack instructions *)
@@ -314,6 +356,9 @@ and my_instr =
   | My_dip
   | My_undip
   | My_drop
+  | My_dropn of int
+  | My_dig of int
+  | My_dug of int
   (* Loop *)
   | My_loop_if_not of int
   | My_loop_jump of int (* Pair instructions *)
@@ -326,7 +371,8 @@ and my_instr =
   | My_sub
   | My_mul_int
   | My_halt
-  | My_add
+  | My_add_int_int
+  | My_add_nat_nat
   | My_abs
   (* Union *)
   | My_if_left
@@ -341,7 +387,8 @@ and my_instr =
   | My_EXEC
   | My_FAILWITH
   | My_GE
-  | My_GET
+  | My_big_map_get
+  | My_map_get
   | My_GT
   | My_IF
   | My_IF_NONE
@@ -356,11 +403,20 @@ and my_instr =
   | My_SELF
   | My_SENDER
   | My_SET_DELEGATE
-  | My_SOME
+  | My_cons_some
   | My_TRANSFER_TOKENS
   | My_UNIT
-  | My_UPDATE
-[@@deriving show {with_path = false}]
+  | My_map_update
+  | My_cons_list
+[@@deriving ord]
+
+module My_big_map = Map.Make (struct
+  type t = my_item
+
+  let compare = compare_my_item
+end)
+
+let compare_my_item = Obj.magic ()
 
 let my_instr_to_str i = assert false
 
@@ -471,14 +527,69 @@ let rec myfy_item : type a. a ty * a -> my_item = function
       My_pair (myfy_item (a_ty, a), myfy_item (b_ty, b))
   | (Unit_t _, _) ->
       My_unit
-  | (Big_map_t _, m) ->
-      Obj.magic ()
+  | (Big_map_t (cty, ty, _), m) ->
+      (* id : Big_map.Id.t option;
+    diff : (my_item, my_item option) map; *)
+      let module Boxed_map = (val m.diff) in
+      let (x, _) = Boxed_map.boxed in
+      let value =
+        Boxed_map.OPS.bindings x
+        |> List.map (fun (key, v) ->
+               ( myfy_cty_item (cty, key),
+                 match v with
+                 | None ->
+                     None
+                 | Some v ->
+                     Some (myfy_item (ty, v)) ))
+        |> List.fold_left
+             (fun map (k, v) -> My_big_map.add k v map)
+             My_big_map.empty
+      in
+      let diff =
+        ( module struct
+          type key = my_item
+
+          type value = my_item option
+
+          let value = value
+
+          module OPS = My_big_map
+        end : My_boxed_map
+          with type key = my_item
+           and type value = my_item option )
+      in
+      My_big_map {id = m.id; diff; value_type = Ex_ty m.value_type}
   | (Union_t _, u) -> (
     match u with
-    | L x -> My_left (myfy_item (Obj.magic x))
-    | R x -> My_right (myfy_item (Obj.magic x)) )
+    | L x ->
+        My_left (myfy_item (Obj.magic x))
+    | R x ->
+        My_right (myfy_item (Obj.magic x)) )
+  | (String_t _, x) -> My_string x
+  | (Mutez_t _, x) -> My_mutez x
   | (ty, _) ->
       raise (Failure ("myfy item:" ^ ty_to_string ty))
+
+and myfy_cty_item : type a. a Script_typed_ir.comparable_ty * a -> my_item =
+  function
+  | (Nat_key _, n) ->
+      My_nat n
+  | (Int_key _, n) ->
+      My_int n
+  | (Bool_key _, b) ->
+      My_bool b
+  | (Pair_key ((a_cty, _), (b_cty, _), _), (a, b)) ->
+      My_pair (myfy_cty_item (a_cty, a), myfy_cty_item (b_cty, b))
+  | (Unit_key _, _) ->
+      My_unit
+  | (Union_key _, u) -> (
+    match u with
+    | L x ->
+        My_left (myfy_item (Obj.magic x))
+    | R x ->
+        My_right (myfy_item (Obj.magic x)) )
+  | (ty, _) ->
+      raise (Failure "mycfy item")
 
 let rec repeat x = function 0 -> [x] | n -> x :: repeat x (n - 1)
 
@@ -522,16 +633,49 @@ let rec translate : type bef aft. (bef, aft) descr -> my_instr list =
   | Cons_pair ->
       [My_cons_pair]
   | Add_intint ->
-      [My_add]
+      [My_add_int_int]
   | Abs_int ->
       [My_abs]
-  | (If_left (l, r)) -> 
-    let left = translate l in
-    let right = translate r in
-    
-    assert false
+  | If_left (l, r) ->
+      [My_if_left] @ translate l @ translate r
+  | Big_map_update ->
+      [My_big_map_get]
+  | Sender ->
+      [My_SENDER]
+  | Cons_some ->
+      [My_cons_some]
+  | Map_update ->
+      [My_map_update]
+  | Dig (n, _) ->
+      [My_dig n]
+  | Dug (n, _) ->
+      [My_dug n]
+  | If_none (l, r) ->
+      [My_IF_NONE] @ translate l @ translate r
+  | Cdr ->
+      [My_cdr]
+  | If (l, r) ->
+      [My_IF] @ translate l @ translate r
+  | Add_natnat ->
+      [My_add_nat_nat]
+  | Empty_map (_, _) ->
+      [My_EMPTY_MAP]
+  | Big_map_get ->
+      [My_big_map_get]
+  | Failwith x ->
+      [My_FAILWITH]
+  | Ge -> [My_GE]
+  | Gt -> [My_GT]
+  | Map_get -> [My_map_get]
+  | Exec -> [My_EXEC]
+  | Dropn (n, _) -> [My_dropn n]
+  | Eq -> [My_EQ]
+  | Cons_list -> [My_cons_list]
+  | Transfer_tokens -> [My_TRANSFER_TOKENS]
+  | Amount -> [My_amount]
+  | (Lambda (Lam (code, _))) -> 
   | x ->
-      raise @@ Failure ("Failed tranlsating " ^ instr_to_string x)
+      raise @@ Failure ("Failed translating " ^ instr_to_string x)
 
 let translate : type bef aft. (bef, aft) descr -> my_instr list =
  fun descr -> translate descr @ [My_halt]
@@ -557,8 +701,16 @@ let rec my_item_to_string = function
       "Left " ^ my_item_to_string x
   | My_right x ->
       "Right " ^ my_item_to_string x
+  | My_some x ->
+      "Some " ^ my_item_to_string x
+  | My_none ->
+      "My_none"
   | My_big_map _ ->
       "BigMap ..."
+  | My_mutez x -> 
+     "Mutez " ^ Tez.to_string x
+  | My_string x ->
+      "\"" ^ x ^ "\""
 
 let myfy_item : type a. a ty * a -> my_item = function
   | (Nat_t _, n) ->

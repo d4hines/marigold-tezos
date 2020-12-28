@@ -144,6 +144,26 @@ val big_map_update :
   ('key, 'value) Script_typed_ir.big_map ->
   ('key, 'value) Script_typed_ir.big_map
 
+val my_map_get :
+  Script_tagged_ir.my_item ->
+  (module Script_tagged_ir.My_boxed_map with type key = 
+   Script_tagged_ir.my_item and type value = Script_tagged_ir.my_item
+                                             option) ->
+  Script_tagged_ir.my_item option option
+
+val my_big_map_mem :
+  Alpha_context.t ->
+  Script_tagged_ir.my_item ->
+  Script_tagged_ir.my_big_map ->
+  (bool * Alpha_context.t, error list) result Lwt.t    
+    
+val my_big_map_get :
+           Alpha_context.t ->
+           Script_tagged_ir.my_item ->
+           Script_tagged_ir.my_big_map ->
+           (Script_tagged_ir.my_item option * Alpha_context.t, error list)
+           result Lwt.t
+
 val ty_eq :
   context ->
   Script.location ->
