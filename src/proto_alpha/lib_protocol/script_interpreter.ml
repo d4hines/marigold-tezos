@@ -758,7 +758,7 @@ let get_log (logger : logger option) =
   Since [kinstr] denotes a list  of instructions, the stack of control
   can be seen as a list  of instruction sequences, each representing a
   form of delimited continuation (i.e.  a control stack fragment). The
-  [konts] GADT  ensures that the input  and output stack types  of the
+  [continuation] GADT  ensures that the input  and output stack types  of the
   continuations are consistent.
 
   Loops have a special treatment because their control stack is reused
@@ -776,49 +776,60 @@ let get_log (logger : logger option) =
   allows the stack prefix to be restored after the execution of the
   [Dip]'s body.
 
+  Following the same style as in [kinstr], [continuation] has four
+  arguments, two for each stack types. More precisely, with
+
+            [('bef_top, 'bef, 'aft_top, 'aft) continuation]
+
+  we encode the fact that the stack before executing the continuation
+  has type [('bef_top * 'bef)] and that the stack after this execution
+  has type [('aft_top * 'aft)].
+
 *)
-type (_, _, _, _) konts =
-  | KNil : ('r, 'f, 'r, 'f) konts
+type (_, _, _, _) continuation =
+  | KNil : ('r, 'f, 'r, 'f) continuation
   | KCons :
-      ('a, 's, 'b, 't) kinstr * ('b, 't, 'r, 'f) konts
-      -> ('a, 's, 'r, 'f) konts
-  | KUndip : 'b * ('b, 'a * 's, 'r, 'f) konts -> ('a, 's, 'r, 'f) konts
+      ('a, 's, 'b, 't) kinstr * ('b, 't, 'r, 'f) continuation
+      -> ('a, 's, 'r, 'f) continuation
+  | KUndip :
+      'b * ('b, 'a * 's, 'r, 'f) continuation
+      -> ('a, 's, 'r, 'f) continuation
   | KLoop_in :
-      ('a, 's, bool, 'a * 's) kinstr * ('a, 's, 'r, 'f) konts
-      -> (bool, 'a * 's, 'r, 'f) konts
+      ('a, 's, bool, 'a * 's) kinstr * ('a, 's, 'r, 'f) continuation
+      -> (bool, 'a * 's, 'r, 'f) continuation
   | KLoop_in_left :
-      ('a, 's, ('a, 'b) union, 's) kinstr * ('b, 's, 'r, 'f) konts
-      -> (('a, 'b) union, 's, 'r, 'f) konts
+      ('a, 's, ('a, 'b) union, 's) kinstr * ('b, 's, 'r, 'f) continuation
+      -> (('a, 'b) union, 's, 'r, 'f) continuation
   | KIter :
-      ('a, 'b * 's, 'b, 's) kinstr * 'a list * ('b, 's, 'r, 'f) konts
-      -> ('b, 's, 'r, 'f) konts
+      ('a, 'b * 's, 'b, 's) kinstr * 'a list * ('b, 's, 'r, 'f) continuation
+      -> ('b, 's, 'r, 'f) continuation
   | KList_mapping :
       ('a, 'c * 's, 'b, 'c * 's) kinstr
       * 'a list
       * 'b list
       * int
-      * ('b boxed_list, 'c * 's, 'r, 'f) konts
-      -> ('c, 's, 'r, 'f) konts
+      * ('b boxed_list, 'c * 's, 'r, 'f) continuation
+      -> ('c, 's, 'r, 'f) continuation
   | KList_mapped :
       ('a, 'c * 's, 'b, 'c * 's) kinstr
       * 'a list
       * 'b list
       * int
-      * ('b boxed_list, 'c * 's, 'r, 'f) konts
-      -> ('b, 'c * 's, 'r, 'f) konts
+      * ('b boxed_list, 'c * 's, 'r, 'f) continuation
+      -> ('b, 'c * 's, 'r, 'f) continuation
   | KMap_mapping :
       ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
       * ('a * 'b) list
       * ('a, 'c) map
-      * (('a, 'c) map, 'd * 's, 'r, 'f) konts
-      -> ('d, 's, 'r, 'f) konts
+      * (('a, 'c) map, 'd * 's, 'r, 'f) continuation
+      -> ('d, 's, 'r, 'f) continuation
   | KMap_mapped :
       ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
       * ('a * 'b) list
       * ('a, 'c) map
       * 'a
-      * (('a, 'c) map, 'd * 's, 'r, 'f) konts
-      -> ('c, 'd * 's, 'r, 'f) konts
+      * (('a, 'c) map, 'd * 's, 'r, 'f) continuation
+      -> ('c, 'd * 's, 'r, 'f) continuation
 
 (*
 
@@ -898,7 +909,7 @@ and run :
     local_gas_counter ->
     (a', s', b', t') kinstr ->
     (a, s, b, t) kinstr ->
-    (b, t, r, f) konts ->
+    (b, t, r, f) continuation ->
     a ->
     s ->
     (r * f * outdated_context * local_gas_counter) tzresult Lwt.t =
@@ -917,7 +928,7 @@ and next :
     logger option ->
     outdated_context * step_constants ->
     local_gas_counter ->
-    (a, s, r, f) konts ->
+    (a, s, r, f) continuation ->
     a ->
     s ->
     (r * f * outdated_context * local_gas_counter) tzresult Lwt.t =
@@ -979,7 +990,7 @@ and step :
     outdated_context * step_constants ->
     local_gas_counter ->
     (a, s, b, t) kinstr ->
-    (b, t, r, f) konts ->
+    (b, t, r, f) continuation ->
     a ->
     s ->
     (r * f * outdated_context * local_gas_counter) tzresult Lwt.t =

@@ -159,49 +159,51 @@ type outdated_context = OutDatedContext of context [@@unboxed]
 
 (** The interpreter uses a control stack with specific cases for loops
     and DIP. See the details in the implementation file. *)
-type (_, _, _, _) konts =
-  | KNil : ('r, 'f, 'r, 'f) konts
+type (_, _, _, _) continuation =
+  | KNil : ('r, 'f, 'r, 'f) continuation
   | KCons :
-      ('a, 's, 'b, 't) kinstr * ('b, 't, 'r, 'f) konts
-      -> ('a, 's, 'r, 'f) konts
-  | KUndip : 'b * ('b, 'a * 's, 'r, 'f) konts -> ('a, 's, 'r, 'f) konts
+      ('a, 's, 'b, 't) kinstr * ('b, 't, 'r, 'f) continuation
+      -> ('a, 's, 'r, 'f) continuation
+  | KUndip :
+      'b * ('b, 'a * 's, 'r, 'f) continuation
+      -> ('a, 's, 'r, 'f) continuation
   | KLoop_in :
-      ('a, 's, bool, 'a * 's) kinstr * ('a, 's, 'r, 'f) konts
-      -> (bool, 'a * 's, 'r, 'f) konts
+      ('a, 's, bool, 'a * 's) kinstr * ('a, 's, 'r, 'f) continuation
+      -> (bool, 'a * 's, 'r, 'f) continuation
   | KLoop_in_left :
       ('a, 's, ('a, 'b) Script_typed_ir.union, 's) kinstr
-      * ('b, 's, 'r, 'f) konts
-      -> (('a, 'b) Script_typed_ir.union, 's, 'r, 'f) konts
+      * ('b, 's, 'r, 'f) continuation
+      -> (('a, 'b) Script_typed_ir.union, 's, 'r, 'f) continuation
   | KIter :
-      ('a, 'b * 's, 'b, 's) kinstr * 'a list * ('b, 's, 'r, 'f) konts
-      -> ('b, 's, 'r, 'f) konts
+      ('a, 'b * 's, 'b, 's) kinstr * 'a list * ('b, 's, 'r, 'f) continuation
+      -> ('b, 's, 'r, 'f) continuation
   | KList_mapping :
       ('a, 'c * 's, 'b, 'c * 's) kinstr
       * 'a list
       * 'b list
       * int
-      * ('b Script_typed_ir.boxed_list, 'c * 's, 'r, 'f) konts
-      -> ('c, 's, 'r, 'f) konts
+      * ('b Script_typed_ir.boxed_list, 'c * 's, 'r, 'f) continuation
+      -> ('c, 's, 'r, 'f) continuation
   | KList_mapped :
       ('a, 'c * 's, 'b, 'c * 's) kinstr
       * 'a list
       * 'b list
       * int
-      * ('b Script_typed_ir.boxed_list, 'c * 's, 'r, 'f) konts
-      -> ('b, 'c * 's, 'r, 'f) konts
+      * ('b Script_typed_ir.boxed_list, 'c * 's, 'r, 'f) continuation
+      -> ('b, 'c * 's, 'r, 'f) continuation
   | KMap_mapping :
       ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
       * ('a * 'b) list
       * ('a, 'c) Script_typed_ir.map
-      * (('a, 'c) Script_typed_ir.map, 'd * 's, 'r, 'f) konts
-      -> ('d, 's, 'r, 'f) konts
+      * (('a, 'c) Script_typed_ir.map, 'd * 's, 'r, 'f) continuation
+      -> ('d, 's, 'r, 'f) continuation
   | KMap_mapped :
       ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
       * ('a * 'b) list
       * ('a, 'c) Script_typed_ir.map
       * 'a
-      * (('a, 'c) Script_typed_ir.map, 'd * 's, 'r, 'f) konts
-      -> ('c, 'd * 's, 'r, 'f) konts
+      * (('a, 'c) Script_typed_ir.map, 'd * 's, 'r, 'f) continuation
+      -> ('c, 'd * 's, 'r, 'f) continuation
 
 (** [run logger ctxt step_constants local_gas_counter i k ks accu stack]
     evaluates [k] (having [i] as predecessor) under the control flow
@@ -212,7 +214,7 @@ val run :
   local_gas_counter ->
   ('c, 'u, 'd, 'v) kinstr ->
   ('a, 's, 'b, 't) kinstr ->
-  ('b, 't, 'r, 'f) konts ->
+  ('b, 't, 'r, 'f) continuation ->
   'a ->
   's ->
   ('r * 'f * outdated_context * local_gas_counter) tzresult Lwt.t
