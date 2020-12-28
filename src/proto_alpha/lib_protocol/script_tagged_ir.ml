@@ -29,6 +29,11 @@ open Script_typed_ir
 
 [@@@warning "-21"]
 
+[@@@warning "-27"]
+
+module Obj = struct
+  external magic : 'a -> 'b = "%identity"
+end
 
 let instr_to_string : type a b. (a, b) instr -> string = function
   | Drop ->
@@ -295,8 +300,11 @@ type my_item =
   | My_nat of Script_int.n Script_int.num
   | My_int of Script_int.z Script_int.num
   | My_pair of (my_item * my_item)
+  | My_left of my_item
+  | My_right of my_item
   | My_list of my_item list
   | My_unit
+  | My_big_map of (my_item, my_item) Script_typed_ir.big_map
 
 and my_instr =
   (* Stack instructions *)
@@ -319,9 +327,44 @@ and my_instr =
   | My_mul_int
   | My_halt
   | My_add
+  | My_abs
+  (* Union *)
+  | My_if_left
+  | My_address
+  | My_amount
+  | My_apply
+  | My_cdr
+  | My_contract
+  | My_ediv
+  | My_EMPTY_MAP
+  | My_EQ
+  | My_EXEC
+  | My_FAILWITH
+  | My_GE
+  | My_GET
+  | My_GT
+  | My_IF
+  | My_IF_NONE
+  | My_IMPLICIT_ACCOUNT
+  | My_LAMBDA
+  | My_LT
+  | My_NOT
+  | My_NOW
+  | My_OR
+  | My_PAIR
+  | My_PUSH
+  | My_SELF
+  | My_SENDER
+  | My_SET_DELEGATE
+  | My_SOME
+  | My_TRANSFER_TOKENS
+  | My_UNIT
+  | My_UPDATE
+[@@deriving show {with_path = false}]
 
-let my_instr_to_str i =
-  match i with
+let my_instr_to_str i = assert false
+
+(* match i with
   | My_dup ->
       "My_dup"
   | My_swap ->
@@ -356,10 +399,15 @@ let my_instr_to_str i =
       "My_nil"
   | My_add ->
       "My_add"
+  | My_if_left ->
+      "My_if_left"
+  | My_abs ->
+      "My_abs" *)
 
 type my_stack = my_item list
 
 type my_dip_stack = my_stack
+
 let ty_to_string : type a. a ty -> string = function
   | Unit_t _ ->
       "Unit_t"
@@ -423,6 +471,12 @@ let rec myfy_item : type a. a ty * a -> my_item = function
       My_pair (myfy_item (a_ty, a), myfy_item (b_ty, b))
   | (Unit_t _, _) ->
       My_unit
+  | (Big_map_t _, m) ->
+      Obj.magic ()
+  | (Union_t _, u) -> (
+    match u with
+    | L x -> My_left (myfy_item (Obj.magic x))
+    | R x -> My_right (myfy_item (Obj.magic x)) )
   | (ty, _) ->
       raise (Failure ("myfy item:" ^ ty_to_string ty))
 
@@ -469,6 +523,13 @@ let rec translate : type bef aft. (bef, aft) descr -> my_instr list =
       [My_cons_pair]
   | Add_intint ->
       [My_add]
+  | Abs_int ->
+      [My_abs]
+  | (If_left (l, r)) -> 
+    let left = translate l in
+    let right = translate r in
+    
+    assert false
   | x ->
       raise @@ Failure ("Failed tranlsating " ^ instr_to_string x)
 
@@ -492,6 +553,13 @@ let rec my_item_to_string = function
       "P(" ^ my_item_to_string a ^ " , " ^ my_item_to_string b ^ ")"
   | My_unit ->
       "unit"
+  | My_left x ->
+      "Left " ^ my_item_to_string x
+  | My_right x ->
+      "Right " ^ my_item_to_string x
+  | My_big_map _ ->
+      "BigMap ..."
+
 let myfy_item : type a. a ty * a -> my_item = function
   | (Nat_t _, n) ->
       My_nat n
