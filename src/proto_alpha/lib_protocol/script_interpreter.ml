@@ -2176,7 +2176,18 @@ and step :
         | Some logger ->
             log_entry logger ctxt gas knext accu stack ) ;
         (* TODO: @inlined *)
-        step_instr logger ctxt sc gas kinfo i knext next ks accu stack )
+        (step_instr [@ocaml.tailcall])
+          logger
+          ctxt
+          sc
+          gas
+          kinfo
+          i
+          knext
+          next
+          ks
+          accu
+          stack )
 
 (* TODO: @inlined *)
 and unpack :
