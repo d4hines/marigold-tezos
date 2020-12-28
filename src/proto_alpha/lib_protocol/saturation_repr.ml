@@ -115,7 +115,7 @@ let scale_fast x y =
 
 let add x y =
   let z = x + y in
-  if z >= 0 then z else saturated
+  if Compare.Int.(z >= 0) then z else saturated
 
 let sub x y = Compare.Int.max (x - y) 0
 
