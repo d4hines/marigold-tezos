@@ -763,8 +763,14 @@ let get_log (logger : logger option) =
 
   Loops have a special treatment because their control stack is reused
   as is during the next iteration. This avoids the reallocation of a
-  control stack cell at each iteration. A similar reasoning applies
-  to higher-order iterators (i.e. MAPs and ITERs).
+  control stack cell at each iteration.
+
+  Higher-order iterators (i.e. MAPs and ITERs) need internal instructions
+  to implement [step] as a tail-recursive function. Roughly speaking,
+  these instructions help in decomposing the execution of [I f c]
+  (where [I] is an higher-order iterator over a container [c]) into
+  three phases: to start the iteration, to execute [f] if there are
+  elements to be processed in [c], and to loop.
 
   Dip also has a dedicated constructor in the control stack.  This
   allows the stack prefix to be restored after the execution of the
