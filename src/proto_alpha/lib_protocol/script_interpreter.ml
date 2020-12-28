@@ -1517,35 +1517,35 @@ and step :
           (run [@ocaml.tailcall]) logger g gas i k ks r stack
       (* comparators *)
       | IEq (_, k) ->
-          let cmpres = accu in
-          let cmpres = Script_int.compare cmpres Script_int.zero in
-          let cmpres = Compare.Int.(cmpres = 0) in
-          (run [@ocaml.tailcall]) logger g gas i k ks cmpres stack
+          let a = accu in
+          let a = Script_int.compare a Script_int.zero in
+          let a = Compare.Int.(a = 0) in
+          (run [@ocaml.tailcall]) logger g gas i k ks a stack
       | INeq (_, k) ->
-          let cmpres = accu in
-          let cmpres = Script_int.compare cmpres Script_int.zero in
-          let cmpres = Compare.Int.(cmpres <> 0) in
-          (run [@ocaml.tailcall]) logger g gas i k ks cmpres stack
+          let a = accu in
+          let a = Script_int.compare a Script_int.zero in
+          let a = Compare.Int.(a <> 0) in
+          (run [@ocaml.tailcall]) logger g gas i k ks a stack
       | ILt (_, k) ->
-          let cmpres = accu in
-          let cmpres = Script_int.compare cmpres Script_int.zero in
-          let cmpres = Compare.Int.(cmpres < 0) in
-          (run [@ocaml.tailcall]) logger g gas i k ks cmpres stack
+          let a = accu in
+          let a = Script_int.compare a Script_int.zero in
+          let a = Compare.Int.(a < 0) in
+          (run [@ocaml.tailcall]) logger g gas i k ks a stack
       | ILe (_, k) ->
-          let cmpres = accu in
-          let cmpres = Script_int.compare cmpres Script_int.zero in
-          let cmpres = Compare.Int.(cmpres <= 0) in
-          (run [@ocaml.tailcall]) logger g gas i k ks cmpres stack
+          let a = accu in
+          let a = Script_int.compare a Script_int.zero in
+          let a = Compare.Int.(a <= 0) in
+          (run [@ocaml.tailcall]) logger g gas i k ks a stack
       | IGt (_, k) ->
-          let cmpres = accu in
-          let cmpres = Script_int.compare cmpres Script_int.zero in
-          let cmpres = Compare.Int.(cmpres > 0) in
-          (run [@ocaml.tailcall]) logger g gas i k ks cmpres stack
+          let a = accu in
+          let a = Script_int.compare a Script_int.zero in
+          let a = Compare.Int.(a > 0) in
+          (run [@ocaml.tailcall]) logger g gas i k ks a stack
       | IGe (_, k) ->
-          let cmpres = accu in
-          let cmpres = Script_int.compare cmpres Script_int.zero in
-          let cmpres = Compare.Int.(cmpres >= 0) in
-          (run [@ocaml.tailcall]) logger g gas i k ks cmpres stack
+          let a = accu in
+          let a = Script_int.compare a Script_int.zero in
+          let a = Compare.Int.(a >= 0) in
+          (run [@ocaml.tailcall]) logger g gas i k ks a stack
       (* packing *)
       | IPack (_, ty, k) ->
           let value = accu in
