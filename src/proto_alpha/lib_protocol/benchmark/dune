@@ -1,6 +1,6 @@
 (executable
  (name main)
- (modes byte native)
+ (modes native)
  (libraries tezos-base tezos-micheline tezos-protocol-environment
    alcotest-lwt tezos-alpha-test-helpers tezos-stdlib-unix tezos-client-base
    tezos-protocol-alpha-parameters tezos-test-services sapling core core_bench)

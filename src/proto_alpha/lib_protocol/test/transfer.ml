@@ -366,6 +366,7 @@ let transfer_from_implicit_to_originated_contract () =
   Op.origination (I b) contract ~script:Op.dummy_script
   >>=? fun (operation, new_contract) ->
   Incremental.add_operation b operation
+  
   >>=? fun b ->
   two_nth_of_balance b bootstrap_contract 4L
   >>=? fun amount2 ->
@@ -671,7 +672,7 @@ let random_transfer () =
 
 (** Transfer random transactions *)
 let random_multi_transactions () =
-  let n = random_range (1, 100) in
+  let n = random_range (1, 101) in
   multiple_transfer n (Tez.of_int 100)
 
 (*********************************************************************)

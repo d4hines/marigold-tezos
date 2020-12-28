@@ -8,19 +8,12 @@ license: "MIT"
 depends: [
   "tezos-tooling" { with-test }
   "dune" { >= "1.11" }
-  "tezos-base"
   "tezos-benchmark"
-  "tezos-benchmark-examples"
-  "tezos-shell-benchmarks"
-  "tezos-stdlib-unix"
-  "tezos-clic"
-  "pyml"
-  "pyml-plot"
-  "ocamlgraph"
-  "latex"
+  "tezos-protocol-environment"
+  "tezos-protocol-alpha"
 ]
 build: [
   ["dune" "build" "-p" name "-j" jobs]
   ["dune" "runtest" "-p" name "-j" jobs] {with-test}
 ]
-synopsis: "Tezos: `tezos-snoop` binary"
+synopsis: "Tezos/Protocol: library for writing benchmarks (protocol-specific part)"
