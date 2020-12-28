@@ -36,10 +36,7 @@ trace
     [ Unit  	 ]
   - location: 30 (remaining gas: 1039984.200 units remaining)
     [ Unit  	 ]
-  - location: 30 (remaining gas: 1039984.120 units remaining)
-    [ (Pair {} {})  	
-      Unit  	 ]
-  - location: -1 (remaining gas: 1039984.050 units remaining)
+  - location: -1 (remaining gas: 1039984.130 units remaining)
     [ (Pair {} {})  	
       Unit  	 ]
 

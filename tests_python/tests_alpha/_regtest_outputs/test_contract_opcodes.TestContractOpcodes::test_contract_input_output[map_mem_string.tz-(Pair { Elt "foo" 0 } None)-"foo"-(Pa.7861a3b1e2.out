@@ -27,34 +27,29 @@ trace
     [ { Elt "foo" 0 }  	
       { Elt "foo" 0 }  	
       Unit  	 ]
-  - location: 14 (remaining gas: 1039986.512 units remaining)
-    [ "foo"  	@parameter
-      { Elt "foo" 0 }  	
-      { Elt "foo" 0 }  	
-      Unit  	 ]
-  - location: 17 (remaining gas: 1039986.432 units remaining)
+  - location: 17 (remaining gas: 1039986.512 units remaining)
     [ True  	
       { Elt "foo" 0 }  	
       Unit  	 ]
-  - location: 18 (remaining gas: 1039986.352 units remaining)
+  - location: 18 (remaining gas: 1039986.432 units remaining)
     [ (Some True)  	
       { Elt "foo" 0 }  	
       Unit  	 ]
-  - location: 19 (remaining gas: 1039986.282 units remaining)
+  - location: 19 (remaining gas: 1039986.362 units remaining)
     [ { Elt "foo" 0 }  	
       (Some True)  	
       Unit  	 ]
-  - location: 20 (remaining gas: 1039986.202 units remaining)
+  - location: 20 (remaining gas: 1039986.282 units remaining)
     [ (Pair { Elt "foo" 0 } (Some True))  	
       Unit  	 ]
-  - location: 21 (remaining gas: 1039986.122 units remaining)
+  - location: 21 (remaining gas: 1039986.202 units remaining)
     [ {}  	
       (Pair { Elt "foo" 0 } (Some True))  	
       Unit  	 ]
-  - location: 23 (remaining gas: 1039986.042 units remaining)
+  - location: 23 (remaining gas: 1039986.122 units remaining)
     [ (Pair {} { Elt "foo" 0 } (Some True))  	
       Unit  	 ]
-  - location: -1 (remaining gas: 1039985.972 units remaining)
+  - location: -1 (remaining gas: 1039986.052 units remaining)
     [ (Pair {} { Elt "foo" 0 } (Some True))  	
       Unit  	 ]
 
