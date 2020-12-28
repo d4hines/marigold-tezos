@@ -1490,68 +1490,12 @@ and step :
           @@ fun ctxt -> interp logger (ctxt, sc) code arg )
           >>=? fun (res, ctxt, gas) ->
           (run [@ocaml.tailcall]) logger (ctxt, sc) gas i k ks res stack
-      | KApply (_, capture_ty, k) -> (
+      | KApply (_, capture_ty, k) ->
           let capture = accu in
           let (lam, stack) = stack in
-          let (Lam (descr, expr)) = lam in
-          let (Item_t (full_arg_ty, _, _)) = descr.bef in
-          let ctxt = update_context gas ctxt in
-          unparse_data ctxt Optimized capture_ty capture
-          >>=? fun (const_expr, ctxt) ->
-          unparse_ty ctxt capture_ty
-          >>?= fun (ty_expr, ctxt) ->
-          match full_arg_ty with
-          | Pair_t ((capture_ty, _, _), (arg_ty, _, _), _) ->
-              let arg_stack_ty = Item_t (arg_ty, Empty_t, None) in
-              let const_descr =
-                ( {
-                    loc = descr.loc;
-                    bef = arg_stack_ty;
-                    aft = Item_t (capture_ty, arg_stack_ty, None);
-                    instr = Const capture;
-                  }
-                  : (_, _) descr )
-              in
-              let pair_descr =
-                ( {
-                    loc = descr.loc;
-                    bef = Item_t (capture_ty, arg_stack_ty, None);
-                    aft = Item_t (full_arg_ty, Empty_t, None);
-                    instr = Cons_pair;
-                  }
-                  : (_, _) descr )
-              in
-              let seq_descr =
-                ( {
-                    loc = descr.loc;
-                    bef = arg_stack_ty;
-                    aft = Item_t (full_arg_ty, Empty_t, None);
-                    instr = Seq (const_descr, pair_descr);
-                  }
-                  : (_, _) descr )
-              in
-              let full_descr =
-                ( {
-                    loc = descr.loc;
-                    bef = arg_stack_ty;
-                    aft = descr.aft;
-                    instr = Seq (seq_descr, descr);
-                  }
-                  : (_, _) descr )
-              in
-              let full_expr =
-                Micheline.Seq
-                  ( 0,
-                    [ Prim (0, I_PUSH, [ty_expr; const_expr], []);
-                      Prim (0, I_PAIR, [], []);
-                      expr ] )
-              in
-              let lam' = Lam (full_descr, full_expr) in
-              let gas = update_local_gas_counter ctxt in
-              let ctxt = outdated ctxt in
-              (run [@ocaml.tailcall]) logger (ctxt, sc) gas i k ks lam' stack
-          | _ ->
-              assert false )
+          apply ctxt gas capture_ty capture lam
+          >>=? fun (lam', ctxt, gas) ->
+          (run [@ocaml.tailcall]) logger (ctxt, sc) gas i k ks lam' stack
       | KLambda (_, lam, k) ->
           (run [@ocaml.tailcall]) logger g gas i k ks lam (accu, stack)
       | KFailwith (_, kloc, tv, _) ->
@@ -1641,38 +1585,8 @@ and step :
       | KTransfer_tokens (_, k) ->
           let p = accu in
           let (amount, ((tp, (destination, entrypoint)), stack)) = stack in
-          let ctxt = update_context gas ctxt in
-          collect_lazy_storage ctxt tp p
-          >>?= fun (to_duplicate, ctxt) ->
-          let to_update = no_lazy_storage_id in
-          extract_lazy_storage_diff
-            ctxt
-            Optimized
-            tp
-            p
-            ~to_duplicate
-            ~to_update
-            ~temporary:true
-          >>=? fun (p, lazy_storage_diff, ctxt) ->
-          unparse_data ctxt Optimized tp p
-          >>=? fun (p, ctxt) ->
-          Gas.consume ctxt (Script.strip_locations_cost p)
-          >>?= fun ctxt ->
-          let operation =
-            Transaction
-              {
-                amount;
-                destination;
-                entrypoint;
-                parameters = Script.lazy_expr (Micheline.strip_locations p);
-              }
-          in
-          fresh_internal_nonce ctxt
-          >>?= fun (ctxt, nonce) ->
-          let iop = {source = sc.self; operation; nonce} in
-          let accu = (Internal_operation iop, lazy_storage_diff) in
-          let gas = update_local_gas_counter ctxt in
-          let ctxt = outdated ctxt in
+          transfer (ctxt, sc) gas amount tp p destination entrypoint
+          >>=? fun (accu, ctxt, gas) ->
           (run [@ocaml.tailcall]) logger (ctxt, sc) gas i k ks accu stack
       | KImplicit_account (_, k) ->
           let key = accu in
@@ -1684,65 +1598,17 @@ and step :
           (* Removed the instruction's arguments manager, spendable and delegatable *)
           let delegate = accu in
           let (credit, (init, stack)) = stack in
-          let ctxt = update_context gas ctxt in
-          unparse_ty ctxt param_type
-          >>?= fun (unparsed_param_type, ctxt) ->
-          let unparsed_param_type =
-            Script_ir_translator.add_field_annot
-              root_name
-              None
-              unparsed_param_type
-          in
-          unparse_ty ctxt storage_type
-          >>?= fun (unparsed_storage_type, ctxt) ->
-          let code =
-            Micheline.strip_locations
-              (Seq
-                 ( 0,
-                   [ Prim (0, K_parameter, [unparsed_param_type], []);
-                     Prim (0, K_storage, [unparsed_storage_type], []);
-                     Prim (0, K_code, [code], []) ] ))
-          in
-          collect_lazy_storage ctxt storage_type init
-          >>?= fun (to_duplicate, ctxt) ->
-          let to_update = no_lazy_storage_id in
-          extract_lazy_storage_diff
-            ctxt
-            Optimized
+          create_contract
+            g
+            gas
             storage_type
+            param_type
+            code
+            root_name
+            delegate
+            credit
             init
-            ~to_duplicate
-            ~to_update
-            ~temporary:true
-          >>=? fun (init, lazy_storage_diff, ctxt) ->
-          unparse_data ctxt Optimized storage_type init
-          >>=? fun (storage, ctxt) ->
-          Gas.consume ctxt (Script.strip_locations_cost storage)
-          >>?= fun ctxt ->
-          let storage = Micheline.strip_locations storage in
-          Contract.fresh_contract_from_current_nonce ctxt
-          >>?= fun (ctxt, contract) ->
-          let operation =
-            Origination
-              {
-                credit;
-                delegate;
-                preorigination = Some contract;
-                script =
-                  {
-                    code = Script.lazy_expr code;
-                    storage = Script.lazy_expr storage;
-                  };
-              }
-          in
-          fresh_internal_nonce ctxt
-          >>?= fun (ctxt, nonce) ->
-          let res =
-            ( Internal_operation {source = sc.self; operation; nonce},
-              lazy_storage_diff )
-          in
-          let gas = update_local_gas_counter ctxt in
-          let ctxt = outdated ctxt in
+          >>=? fun (res, contract, ctxt, gas) ->
           let stack = ((contract, "default"), stack) in
           (run [@ocaml.tailcall]) logger (ctxt, sc) gas i k ks res stack
       | KSet_delegate (_, k) ->
@@ -1828,34 +1694,11 @@ and step :
           let (accu, stack) = stack in
           (run [@ocaml.tailcall]) logger g gas i k ks accu stack
       | KDipn (_, _n, n', b, k) -> (
-          (*
-
-              The following function pops n elements from the stack
-              and push their reintroduction in the continuations stack.
-
-            *)
-          let rec ktransfer :
-              type w u v s.
-              (w, v, s, u) kstack_prefix_preservation_witness ->
-              s ->
-              (u, b, t) exkinstr ->
-              w * (v, b, t) exkinstr =
-           fun w stack k ->
-            match (w, stack) with
-            | (KPrefix (kinfo, _, IsLifted lu', w), (x, stack)) -> (
-              match k with
-              | ExKInstr k -> (
-                match inverse_lift lu' with
-                | ExLiftInverse Refl ->
-                    ktransfer w stack (ExKInstr (KConst (kinfo, x, k))) ) )
-            | (KRest (_, _), _) ->
-                (stack, k)
-          in
-          match ktransfer n' (accu, stack) (ExKInstr k) with
-          | (stack, ExKInstr restore_prefix) ->
-              let ks = KCons (restore_prefix, ks) in
-              let (accu, stack) = stack in
-              (run [@ocaml.tailcall]) logger g gas i b ks accu stack )
+        match kundip n' (accu, stack) (ExKInstr k) with
+        | (stack, ExKInstr restore_prefix) ->
+            let ks = KCons (restore_prefix, ks) in
+            let (accu, stack) = stack in
+            (run [@ocaml.tailcall]) logger g gas i b ks accu stack )
       | KDropn (_, _n, n', k) ->
           let (_, stack) =
             interp_stack_prefix_preserving_operation
@@ -2103,6 +1946,223 @@ and step :
             else None
           in
           (run [@ocaml.tailcall]) logger g gas i k ks result stack )
+
+(*
+
+  The following function pops n elements from the stack
+  and push their reintroduction in the continuations stack.
+
+ *)
+and kundip :
+    type w u v s b t.
+    (w, v, s, u) kstack_prefix_preservation_witness ->
+    s ->
+    (u, b, t) exkinstr ->
+    w * (v, b, t) exkinstr =
+ fun w stack k ->
+  match (w, stack) with
+  | (KPrefix (kinfo, _, IsLifted lu', w), (x, stack)) -> (
+    match k with
+    | ExKInstr k -> (
+      match inverse_lift lu' with
+      | ExLiftInverse Refl ->
+          kundip w stack (ExKInstr (KConst (kinfo, x, k))) ) )
+  | (KRest (_, _), _) ->
+      (stack, k)
+
+(** [apply ctxt gas ty v lam] specializes [lam] by fixing its first
+    formal argument to [v]. The type of [v] is represented by [ty]. *)
+and apply :
+    type a b c.
+    outdated_context ->
+    local_gas_counter ->
+    a ty ->
+    a ->
+    (a * b, c) lambda ->
+    ((b, c) lambda * outdated_context * local_gas_counter) tzresult Lwt.t =
+ fun ctxt gas capture_ty capture lam ->
+  let (Lam (descr, expr)) = lam in
+  let (Item_t (full_arg_ty, _, _)) = descr.bef in
+  let ctxt = update_context gas ctxt in
+  unparse_data ctxt Optimized capture_ty capture
+  >>=? fun (const_expr, ctxt) ->
+  unparse_ty ctxt capture_ty
+  >>?= fun (ty_expr, ctxt) ->
+  match full_arg_ty with
+  | Pair_t ((capture_ty, _, _), (arg_ty, _, _), _) ->
+      let arg_stack_ty = Item_t (arg_ty, Empty_t, None) in
+      let const_descr =
+        ( {
+            loc = descr.loc;
+            bef = arg_stack_ty;
+            aft = Item_t (capture_ty, arg_stack_ty, None);
+            instr = Const capture;
+          }
+          : (_, _) descr )
+      in
+      let pair_descr =
+        ( {
+            loc = descr.loc;
+            bef = Item_t (capture_ty, arg_stack_ty, None);
+            aft = Item_t (full_arg_ty, Empty_t, None);
+            instr = Cons_pair;
+          }
+          : (_, _) descr )
+      in
+      let seq_descr =
+        ( {
+            loc = descr.loc;
+            bef = arg_stack_ty;
+            aft = Item_t (full_arg_ty, Empty_t, None);
+            instr = Seq (const_descr, pair_descr);
+          }
+          : (_, _) descr )
+      in
+      let full_descr =
+        ( {
+            loc = descr.loc;
+            bef = arg_stack_ty;
+            aft = descr.aft;
+            instr = Seq (seq_descr, descr);
+          }
+          : (_, _) descr )
+      in
+      let full_expr =
+        Micheline.Seq
+          ( 0,
+            [ Prim (0, I_PUSH, [ty_expr; const_expr], []);
+              Prim (0, I_PAIR, [], []);
+              expr ] )
+      in
+      let lam' = Lam (full_descr, full_expr) in
+      let gas = update_local_gas_counter ctxt in
+      let ctxt = outdated ctxt in
+      return (lam', ctxt, gas)
+  | _ ->
+      assert false
+
+(** [transfer (ctxt, sc) gas tez tp p destination entrypoint]
+    creates an operation that transfers an amount of [tez] to
+    a contract determined by [(destination, entrypoint)]
+    instantiated with argument [p] of type [tp]. *)
+and transfer :
+    type a.
+    outdated_context * step_constants ->
+    local_gas_counter ->
+    Tez.t ->
+    a ty ->
+    a ->
+    Contract.t ->
+    string ->
+    (operation * outdated_context * local_gas_counter) tzresult Lwt.t =
+ fun (ctxt, sc) gas amount tp p destination entrypoint ->
+  let ctxt = update_context gas ctxt in
+  collect_lazy_storage ctxt tp p
+  >>?= fun (to_duplicate, ctxt) ->
+  let to_update = no_lazy_storage_id in
+  extract_lazy_storage_diff
+    ctxt
+    Optimized
+    tp
+    p
+    ~to_duplicate
+    ~to_update
+    ~temporary:true
+  >>=? fun (p, lazy_storage_diff, ctxt) ->
+  unparse_data ctxt Optimized tp p
+  >>=? fun (p, ctxt) ->
+  Gas.consume ctxt (Script.strip_locations_cost p)
+  >>?= fun ctxt ->
+  let operation =
+    Transaction
+      {
+        amount;
+        destination;
+        entrypoint;
+        parameters = Script.lazy_expr (Micheline.strip_locations p);
+      }
+  in
+  fresh_internal_nonce ctxt
+  >>?= fun (ctxt, nonce) ->
+  let iop = {source = sc.self; operation; nonce} in
+  let res = (Internal_operation iop, lazy_storage_diff) in
+  let gas = update_local_gas_counter ctxt in
+  let ctxt = outdated ctxt in
+  return (res, ctxt, gas)
+
+(** [create_contract (ctxt, sc) gas storage_ty param_ty code root_name
+   delegate credit init] creates an origination operation for a
+   contract represented by [code], with some [root_name], some initial
+   [credit] (taken to contract being executed), and an initial storage
+   [init] of type [storage_ty]. The type of the new contract argument
+   is [param_ty]. *)
+and create_contract :
+    type a b.
+    outdated_context * step_constants ->
+    local_gas_counter ->
+    a ty ->
+    b ty ->
+    node ->
+    field_annot option ->
+    public_key_hash option ->
+    Tez.t ->
+    a ->
+    (operation * Contract.t * outdated_context * local_gas_counter) tzresult
+    Lwt.t =
+ fun (ctxt, sc) gas storage_type param_type code root_name delegate credit init ->
+  let ctxt = update_context gas ctxt in
+  unparse_ty ctxt param_type
+  >>?= fun (unparsed_param_type, ctxt) ->
+  let unparsed_param_type =
+    Script_ir_translator.add_field_annot root_name None unparsed_param_type
+  in
+  unparse_ty ctxt storage_type
+  >>?= fun (unparsed_storage_type, ctxt) ->
+  let code =
+    Micheline.strip_locations
+      (Seq
+         ( 0,
+           [ Prim (0, K_parameter, [unparsed_param_type], []);
+             Prim (0, K_storage, [unparsed_storage_type], []);
+             Prim (0, K_code, [code], []) ] ))
+  in
+  collect_lazy_storage ctxt storage_type init
+  >>?= fun (to_duplicate, ctxt) ->
+  let to_update = no_lazy_storage_id in
+  extract_lazy_storage_diff
+    ctxt
+    Optimized
+    storage_type
+    init
+    ~to_duplicate
+    ~to_update
+    ~temporary:true
+  >>=? fun (init, lazy_storage_diff, ctxt) ->
+  unparse_data ctxt Optimized storage_type init
+  >>=? fun (storage, ctxt) ->
+  Gas.consume ctxt (Script.strip_locations_cost storage)
+  >>?= fun ctxt ->
+  let storage = Micheline.strip_locations storage in
+  Contract.fresh_contract_from_current_nonce ctxt
+  >>?= fun (ctxt, contract) ->
+  let operation =
+    Origination
+      {
+        credit;
+        delegate;
+        preorigination = Some contract;
+        script =
+          {code = Script.lazy_expr code; storage = Script.lazy_expr storage};
+      }
+  in
+  fresh_internal_nonce ctxt
+  >>?= fun (ctxt, nonce) ->
+  let res =
+    (Internal_operation {source = sc.self; operation; nonce}, lazy_storage_diff)
+  in
+  let gas = update_local_gas_counter ctxt in
+  let ctxt = outdated ctxt in
+  return (res, contract, ctxt, gas)
 
 and unpack :
     type a.
