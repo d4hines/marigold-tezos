@@ -197,659 +197,343 @@ type ('bef_top, 'bef, 'res_top, 'res) kinstr =
      Stack
      -----
   *)
-  | KDrop :
-      ('a, 'b * 's) kinfo * ('b, 's, 'r, 'f) kinstr
-      -> ('a, 'b * 's, 'r, 'f) kinstr
-  | KDup :
-      ('a, 's) kinfo * ('a, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | KSwap :
-      ('a, 'b * 's) kinfo * ('b, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 'b * 's, 'r, 'f) kinstr
-  | KConst :
-      ('a, 's) kinfo * 'ty * ('ty, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+  | KDrop : ('a, 'b * 's, 'b, 's) kinstr
+  | KDup : ('a, 's, 'a, 'a * 's) kinstr
+  | KSwap : ('a, 'b * 's, 'b, 'a * 's) kinstr
+  | KConst : 'ty -> ('a, 's, 'ty, 'a * 's) kinstr
   (*
      Pairs
      -----
   *)
-  | KCons_pair :
-      ('a, 'b * 's) kinfo * ('a * 'b, 's, 'r, 'f) kinstr
-      -> ('a, 'b * 's, 'r, 'f) kinstr
-  | KCar :
-      ('a * 'b, 's) kinfo * ('a, 's, 'r, 'f) kinstr
-      -> ('a * 'b, 's, 'r, 'f) kinstr
-  | KCdr :
-      ('a * 'b, 's) kinfo * ('b, 's, 'r, 'f) kinstr
-      -> ('a * 'b, 's, 'r, 'f) kinstr
-  | KUnpair :
-      ('a * 'b, 's) kinfo * ('a, 'b * 's, 'r, 'f) kinstr
-      -> ('a * 'b, 's, 'r, 'f) kinstr
+  | KCons_pair : ('a, 'b * 's, 'a * 'b, 's) kinstr
+  | KCar : ('a * 'b, 's, 'a, 's) kinstr
+  | KCdr : ('a * 'b, 's, 'b, 's) kinstr
+  | KUnpair : ('a * 'b, 's, 'a, 'b * 's) kinstr
   (*
      Options
      -------
    *)
-  | KCons_some :
-      ('v, 's) kinfo * ('v option, 's, 'r, 'f) kinstr
-      -> ('v, 's, 'r, 'f) kinstr
-  | KCons_none :
-      ('a, 's) kinfo * 'b ty * ('b option, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+  | KCons_some : ('v, 's, 'v option, 's) kinstr
+  | KCons_none : 'b ty -> ('a, 's, 'b option, 'a * 's) kinstr
   | KIf_none :
-      ('a option, 'b * 's) kinfo
       (* Notice that the continuations of the following two
          instructions should have a shared suffix to avoid code
          duplication. *)
-      * ('b, 's, 'r, 'f) kinstr
-      * ('a, 'b * 's, 'r, 'f) kinstr
+      ('b, 's, 'r, 'f) knext
+      * ('a, 'b * 's, 'r, 'f) knext
       -> ('a option, 'b * 's, 'r, 'f) kinstr
   (*
      Unions
      ------
    *)
-  | KCons_left :
-      ('a, 's) kinfo * (('a, 'b) union, 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | KCons_right :
-      ('b, 's) kinfo * (('a, 'b) union, 's, 'r, 'f) kinstr
-      -> ('b, 's, 'r, 'f) kinstr
+  | KCons_left : ('a, 's, ('a, 'b) union, 's) kinstr
+  | KCons_right : ('b, 's, ('a, 'b) union, 's) kinstr
   | KIf_left :
-      (('a, 'b) union, 's) kinfo
       (* Notice that the continuations of the following two
          instructions should have a shared suffix to avoid code
          duplication. *)
-      * ('a, 's, 'r, 'f) kinstr
-      * ('b, 's, 'r, 'f) kinstr
+      ('a, 's, 'r, 'f) knext
+      * ('b, 's, 'r, 'f) knext
       -> (('a, 'b) union, 's, 'r, 'f) kinstr
   (*
      Lists
      -----
   *)
-  | KCons_list :
-      ('a, 'a boxed_list * 's) kinfo * ('a boxed_list, 's, 'r, 'f) kinstr
-      -> ('a, 'a boxed_list * 's, 'r, 'f) kinstr
-  | KNil :
-      ('a, 's) kinfo * ('b boxed_list, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+  | KCons_list : ('a, 'a boxed_list * 's, 'a boxed_list, 's) kinstr
+  | KNil : ('a, 's, 'b boxed_list, 'a * 's) kinstr
   | KIf_cons :
-      ('a boxed_list, 'b * 's) kinfo
       (* Notice that the continuations of the following two
          instructions should have a shared suffix to avoid code
          duplication. *)
-      * ('a, 'a boxed_list * ('b * 's), 'r, 'f) kinstr
-      * ('b, 's, 'r, 'f) kinstr
+      ('a, 'a boxed_list * ('b * 's), 'r, 'f) knext
+      * ('b, 's, 'r, 'f) knext
       -> ('a boxed_list, 'b * 's, 'r, 'f) kinstr
   | KList_map :
-      ('a boxed_list, 'c * 's) kinfo
-      * ('a, 'c * 's, 'b, 'c * 's) kinstr
-      * ('b boxed_list, 'c * 's, 'r, 'f) kinstr
-      -> ('a boxed_list, 'c * 's, 'r, 'f) kinstr
+      ('a, 'c * 's, 'b, 'c * 's) knext
+      -> ('a boxed_list, 'c * 's, 'b boxed_list, 'c * 's) kinstr
   | KList_iter :
-      ('a boxed_list, 'b * 's) kinfo
-      * ('a, 'b * 's, 'b, 's) kinstr
-      * ('b, 's, 'r, 'f) kinstr
-      -> ('a boxed_list, 'b * 's, 'r, 'f) kinstr
-  | KList_size :
-      ('a boxed_list, 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> ('a boxed_list, 's, 'r, 'f) kinstr
+      ('a, 'b * 's, 'b, 's) knext
+      -> ('a boxed_list, 'b * 's, 'b, 's) kinstr
+  | KList_size : ('a boxed_list, 's, n num, 's) kinstr
   (*
     Sets
     ----
   *)
-  | KEmpty_set :
-      ('a, 's) kinfo * 'b comparable_ty * ('b set, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | KSet_iter :
-      ('a set, 'b * 's) kinfo
-      * ('a, 'b * 's, 'b, 's) kinstr
-      * ('b, 's, 'r, 'f) kinstr
-      -> ('a set, 'b * 's, 'r, 'f) kinstr
-  | KSet_mem :
-      ('a, 'a set * 's) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> ('a, 'a set * 's, 'r, 'f) kinstr
-  | KSet_update :
-      ('a, bool * ('a set * 's)) kinfo * ('a set, 's, 'r, 'f) kinstr
-      -> ('a, bool * ('a set * 's), 'r, 'f) kinstr
-  | KSet_size :
-      ('a set, 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> ('a set, 's, 'r, 'f) kinstr
+  | KEmpty_set : 'b comparable_ty -> ('a, 's, 'b set, 'a * 's) kinstr
+  | KSet_iter : ('a, 'b * 's, 'b, 's) knext -> ('a set, 'b * 's, 'b, 's) kinstr
+  | KSet_mem : ('a, 'a set * 's, bool, 's) kinstr
+  | KSet_update : ('a, bool * ('a set * 's), 'a set, 's) kinstr
+  | KSet_size : ('a set, 's, n num, 's) kinstr
   (*
      Maps
      ----
    *)
   | KEmpty_map :
-      ('a, 's) kinfo
-      * 'b comparable_ty
-      * 'c ty
-      * (('b, 'c) map, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      'b comparable_ty * 'c ty
+      -> ('a, 's, ('b, 'c) map, 'a * 's) kinstr
   | KMap_map :
-      (('a, 'b) map, 'd * 's) kinfo
-      * ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
-      * (('a, 'c) map, 'd * 's, 'r, 'f) kinstr
-      -> (('a, 'b) map, 'd * 's, 'r, 'f) kinstr
+      ('a * 'b, 'd * 's, 'c, 'd * 's) knext
+      -> (('a, 'b) map, 'd * 's, ('a, 'c) map, 'd * 's) kinstr
   | KMap_iter :
-      (('a, 'b) map, 'c * 's) kinfo
-      * ('a * 'b, 'c * 's, 'c, 's) kinstr
-      * ('c, 's, 'r, 'f) kinstr
-      -> (('a, 'b) map, 'c * 's, 'r, 'f) kinstr
-  | KMap_mem :
-      ('a, ('a, 'b) map * 's) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> ('a, ('a, 'b) map * 's, 'r, 'f) kinstr
-  | KMap_get :
-      ('a, ('a, 'b) map * 's) kinfo * ('b option, 's, 'r, 'f) kinstr
-      -> ('a, ('a, 'b) map * 's, 'r, 'f) kinstr
-  | KMap_update :
-      ('a, 'b option * (('a, 'b) map * 's)) kinfo
-      * (('a, 'b) map, 's, 'r, 'f) kinstr
-      -> ('a, 'b option * (('a, 'b) map * 's), 'r, 'f) kinstr
-  | KMap_get_and_update :
-      ('a, 'v option * (('a, 'v) map * 'rest)) kinfo
-      * ('v option, ('a, 'v) map * 'rest, 'r, 'f) kinstr
-      -> ('a, 'v option * (('a, 'v) map * 'rest), 'r, 'f) kinstr
-  | KMap_size :
-      (('a, 'b) map, 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> (('a, 'b) map, 's, 'r, 'f) kinstr
+      ('a * 'b, 'c * 's, 'c, 's) knext
+      -> (('a, 'b) map, 'c * 's, 'c, 's) kinstr
+  | KMap_mem : ('a, ('a, 'b) map * 's, bool, 's) kinstr
+  | KMap_get : ('a, ('a, 'b) map * 's, 'b option, 's) kinstr
+  | KMap_update
+      : ('a, 'b option * (('a, 'b) map * 's), ('a, 'b) map, 's) kinstr
+  | KMap_get_and_update
+      : ( 'a,
+          'v option * (('a, 'v) map * 'rest),
+          'v option,
+          ('a, 'v) map * 'rest )
+        kinstr
+  | KMap_size : (('a, 'b) map, 's, n num, 's) kinstr
   (*
      Big maps
      --------
   *)
   | KEmpty_big_map :
-      ('a, 's) kinfo
-      * 'b comparable_ty
-      * 'c ty
-      * (('b, 'c) big_map, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | KBig_map_mem :
-      ('a, ('a, 'b) big_map * 's) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> ('a, ('a, 'b) big_map * 's, 'r, 'f) kinstr
-  | KBig_map_get :
-      ('a, ('a, 'b) big_map * 's) kinfo * ('b option, 's, 'r, 'f) kinstr
-      -> ('a, ('a, 'b) big_map * 's, 'r, 'f) kinstr
-  | KBig_map_update :
-      ('a, 'b option * (('a, 'b) big_map * 's)) kinfo
-      * (('a, 'b) big_map, 's, 'r, 'f) kinstr
-      -> ('a, 'b option * (('a, 'b) big_map * 's), 'r, 'f) kinstr
-  | KBig_map_get_and_update :
-      ('a, 'v option * (('a, 'v) big_map * 'rest)) kinfo
-      * ('v option, ('a, 'v) big_map * 'rest, 'r, 'f) kinstr
-      -> ('a, 'v option * (('a, 'v) big_map * 'rest), 'r, 'f) kinstr
+      'b comparable_ty * 'c ty
+      -> ('a, 's, ('b, 'c) big_map, 'a * 's) kinstr
+  | KBig_map_mem : ('a, ('a, 'b) big_map * 's, bool, 's) kinstr
+  | KBig_map_get : ('a, ('a, 'b) big_map * 's, 'b option, 's) kinstr
+  | KBig_map_update
+      : ('a, 'b option * (('a, 'b) big_map * 's), ('a, 'b) big_map, 's) kinstr
+  | KBig_map_get_and_update
+      : ( 'a,
+          'v option * (('a, 'v) big_map * 'rest),
+          'v option,
+          ('a, 'v) big_map * 'rest )
+        kinstr
   (*
      Strings
      -------
   *)
-  | KConcat_string :
-      (string boxed_list, 's) kinfo * (string, 's, 'r, 'f) kinstr
-      -> (string boxed_list, 's, 'r, 'f) kinstr
-  | KConcat_string_pair :
-      (string, string * 's) kinfo * (string, 's, 'r, 'f) kinstr
-      -> (string, string * 's, 'r, 'f) kinstr
-  | KSlice_string :
-      (n num, n num * (string * 's)) kinfo * (string option, 's, 'r, 'f) kinstr
-      -> (n num, n num * (string * 's), 'r, 'f) kinstr
-  | KString_size :
-      (string, 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> (string, 's, 'r, 'f) kinstr
+  | KConcat_string : (string boxed_list, 's, string, 's) kinstr
+  | KConcat_string_pair : (string, string * 's, string, 's) kinstr
+  | KSlice_string : (n num, n num * (string * 's), string option, 's) kinstr
+  | KString_size : (string, 's, n num, 's) kinstr
   (*
      Bytes
      -----
   *)
-  | KConcat_bytes :
-      (bytes boxed_list, 's) kinfo * (bytes, 's, 'r, 'f) kinstr
-      -> (bytes boxed_list, 's, 'r, 'f) kinstr
-  | KConcat_bytes_pair :
-      (bytes, bytes * 's) kinfo * (bytes, 's, 'r, 'f) kinstr
-      -> (bytes, bytes * 's, 'r, 'f) kinstr
-  | KSlice_bytes :
-      (n num, n num * (bytes * 's)) kinfo * (bytes option, 's, 'r, 'f) kinstr
-      -> (n num, n num * (bytes * 's), 'r, 'f) kinstr
-  | KBytes_size :
-      (bytes, 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> (bytes, 's, 'r, 'f) kinstr
+  | KConcat_bytes : (bytes boxed_list, 's, bytes, 's) kinstr
+  | KConcat_bytes_pair : (bytes, bytes * 's, bytes, 's) kinstr
+  | KSlice_bytes : (n num, n num * (bytes * 's), bytes option, 's) kinstr
+  | KBytes_size : (bytes, 's, n num, 's) kinstr
   (*
      Timestamps
      ----------
    *)
-  | KAdd_seconds_to_timestamp :
-      (z num, Script_timestamp.t * 's) kinfo
-      * (Script_timestamp.t, 's, 'r, 'f) kinstr
-      -> (z num, Script_timestamp.t * 's, 'r, 'f) kinstr
-  | KAdd_timestamp_to_seconds :
-      (Script_timestamp.t, z num * 's) kinfo
-      * (Script_timestamp.t, 's, 'r, 'f) kinstr
-      -> (Script_timestamp.t, z num * 's, 'r, 'f) kinstr
-  | KSub_timestamp_seconds :
-      (Script_timestamp.t, z num * 's) kinfo
-      * (Script_timestamp.t, 's, 'r, 'f) kinstr
-      -> (Script_timestamp.t, z num * 's, 'r, 'f) kinstr
-  | KDiff_timestamps :
-      (Script_timestamp.t, Script_timestamp.t * 's) kinfo
-      * (z num, 's, 'r, 'f) kinstr
-      -> (Script_timestamp.t, Script_timestamp.t * 's, 'r, 'f) kinstr
+  | KAdd_seconds_to_timestamp
+      : (z num, Script_timestamp.t * 's, Script_timestamp.t, 's) kinstr
+  | KAdd_timestamp_to_seconds
+      : (Script_timestamp.t, z num * 's, Script_timestamp.t, 's) kinstr
+  | KSub_timestamp_seconds
+      : (Script_timestamp.t, z num * 's, Script_timestamp.t, 's) kinstr
+  | KDiff_timestamps
+      : (Script_timestamp.t, Script_timestamp.t * 's, z num, 's) kinstr
   (*
      Tez
      ---
     *)
-  | KAdd_tez :
-      (Tez.t, Tez.t * 's) kinfo * (Tez.t, 's, 'r, 'f) kinstr
-      -> (Tez.t, Tez.t * 's, 'r, 'f) kinstr
-  | KSub_tez :
-      (Tez.t, Tez.t * 's) kinfo * (Tez.t, 's, 'r, 'f) kinstr
-      -> (Tez.t, Tez.t * 's, 'r, 'f) kinstr
-  | KMul_teznat :
-      (Tez.t, n num * 's) kinfo * (Tez.t, 's, 'r, 'f) kinstr
-      -> (Tez.t, n num * 's, 'r, 'f) kinstr
-  | KMul_nattez :
-      (n num, Tez.t * 's) kinfo * (Tez.t, 's, 'r, 'f) kinstr
-      -> (n num, Tez.t * 's, 'r, 'f) kinstr
-  | KEdiv_teznat :
-      (Tez.t, n num * 's) kinfo
-      * ((Tez.t, Tez.t) pair option, 's, 'r, 'f) kinstr
-      -> (Tez.t, n num * 's, 'r, 'f) kinstr
-  | KEdiv_tez :
-      (Tez.t, Tez.t * 's) kinfo
-      * ((n num, Tez.t) pair option, 's, 'r, 'f) kinstr
-      -> (Tez.t, Tez.t * 's, 'r, 'f) kinstr
+  | KAdd_tez : (Tez.t, Tez.t * 's, Tez.t, 's) kinstr
+  | KSub_tez : (Tez.t, Tez.t * 's, Tez.t, 's) kinstr
+  | KMul_teznat : (Tez.t, n num * 's, Tez.t, 's) kinstr
+  | KMul_nattez : (n num, Tez.t * 's, Tez.t, 's) kinstr
+  | KEdiv_teznat : (Tez.t, n num * 's, (Tez.t, Tez.t) pair option, 's) kinstr
+  | KEdiv_tez : (Tez.t, Tez.t * 's, (n num, Tez.t) pair option, 's) kinstr
   (*
      Booleans
      --------
    *)
-  | KOr :
-      (bool, bool * 's) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> (bool, bool * 's, 'r, 'f) kinstr
-  | KAnd :
-      (bool, bool * 's) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> (bool, bool * 's, 'r, 'f) kinstr
-  | KXor :
-      (bool, bool * 's) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> (bool, bool * 's, 'r, 'f) kinstr
-  | KNot :
-      (bool, 's) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> (bool, 's, 'r, 'f) kinstr
+  | KOr : (bool, bool * 's, bool, 's) kinstr
+  | KAnd : (bool, bool * 's, bool, 's) kinstr
+  | KXor : (bool, bool * 's, bool, 's) kinstr
+  | KNot : (bool, 's, bool, 's) kinstr
   (*
      Integers
      --------
   *)
-  | KIs_nat :
-      (z num, 's) kinfo * (n num option, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
-  | KNeg_nat :
-      (n num, 's) kinfo * (z num, 's, 'r, 'f) kinstr
-      -> (n num, 's, 'r, 'f) kinstr
-  | KNeg_int :
-      (z num, 's) kinfo * (z num, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
-  | KAbs_int :
-      (z num, 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
-  | KInt_nat :
-      (n num, 's) kinfo * (z num, 's, 'r, 'f) kinstr
-      -> (n num, 's, 'r, 'f) kinstr
-  | KAdd_intint :
-      (z num, z num * 's) kinfo * (z num, 's, 'r, 'f) kinstr
-      -> (z num, z num * 's, 'r, 'f) kinstr
-  | KAdd_intnat :
-      (z num, n num * 's) kinfo * (z num, 's, 'r, 'f) kinstr
-      -> (z num, n num * 's, 'r, 'f) kinstr
-  | KAdd_natint :
-      (n num, z num * 's) kinfo * (z num, 's, 'r, 'f) kinstr
-      -> (n num, z num * 's, 'r, 'f) kinstr
-  | KAdd_natnat :
-      (n num, n num * 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> (n num, n num * 's, 'r, 'f) kinstr
-  | KSub_int :
-      ('a num, 'b num * 's) kinfo * (z num, 's, 'r, 'f) kinstr
-      -> ('a num, 'b num * 's, 'r, 'f) kinstr
-  | KMul_intint :
-      (z num, z num * 's) kinfo * (z num, 's, 'r, 'f) kinstr
-      -> (z num, z num * 's, 'r, 'f) kinstr
-  | KMul_intnat :
-      (z num, n num * 's) kinfo * (z num, 's, 'r, 'f) kinstr
-      -> (z num, n num * 's, 'r, 'f) kinstr
-  | KMul_natint :
-      (n num, z num * 's) kinfo * (z num, 's, 'r, 'f) kinstr
-      -> (n num, z num * 's, 'r, 'f) kinstr
-  | KMul_natnat :
-      (n num, n num * 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> (n num, n num * 's, 'r, 'f) kinstr
-  | KEdiv_intint :
-      (z num, z num * 's) kinfo
-      * ((z num, n num) pair option, 's, 'r, 'f) kinstr
-      -> (z num, z num * 's, 'r, 'f) kinstr
-  | KEdiv_intnat :
-      (z num, n num * 's) kinfo
-      * ((z num, n num) pair option, 's, 'r, 'f) kinstr
-      -> (z num, n num * 's, 'r, 'f) kinstr
-  | KEdiv_natint :
-      (n num, z num * 's) kinfo
-      * ((z num, n num) pair option, 's, 'r, 'f) kinstr
-      -> (n num, z num * 's, 'r, 'f) kinstr
-  | KEdiv_natnat :
-      (n num, n num * 's) kinfo
-      * ((n num, n num) pair option, 's, 'r, 'f) kinstr
-      -> (n num, n num * 's, 'r, 'f) kinstr
-  | KLsl_nat :
-      (n num, n num * 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> (n num, n num * 's, 'r, 'f) kinstr
-  | KLsr_nat :
-      (n num, n num * 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> (n num, n num * 's, 'r, 'f) kinstr
-  | KOr_nat :
-      (n num, n num * 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> (n num, n num * 's, 'r, 'f) kinstr
-  | KAnd_nat :
-      (n num, n num * 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> (n num, n num * 's, 'r, 'f) kinstr
-  | KAnd_int_nat :
-      (z num, n num * 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> (z num, n num * 's, 'r, 'f) kinstr
-  | KXor_nat :
-      (n num, n num * 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> (n num, n num * 's, 'r, 'f) kinstr
-  | KNot_nat :
-      (n num, 's) kinfo * (z num, 's, 'r, 'f) kinstr
-      -> (n num, 's, 'r, 'f) kinstr
-  | KNot_int :
-      (z num, 's) kinfo * (z num, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
+  | KIs_nat : (z num, 's, n num option, 's) kinstr
+  | KNeg_nat : (n num, 's, z num, 's) kinstr
+  | KNeg_int : (z num, 's, z num, 's) kinstr
+  | KAbs_int : (z num, 's, n num, 's) kinstr
+  | KInt_nat : (n num, 's, z num, 's) kinstr
+  | KAdd_intint : (z num, z num * 's, z num, 's) kinstr
+  | KAdd_intnat : (z num, n num * 's, z num, 's) kinstr
+  | KAdd_natint : (n num, z num * 's, z num, 's) kinstr
+  | KAdd_natnat : (n num, n num * 's, n num, 's) kinstr
+  | KSub_int : ('a num, 'b num * 's, z num, 's) kinstr
+  | KMul_intint : (z num, z num * 's, z num, 's) kinstr
+  | KMul_intnat : (z num, n num * 's, z num, 's) kinstr
+  | KMul_natint : (n num, z num * 's, z num, 's) kinstr
+  | KMul_natnat : (n num, n num * 's, n num, 's) kinstr
+  | KEdiv_intint : (z num, z num * 's, (z num, n num) pair option, 's) kinstr
+  | KEdiv_intnat : (z num, n num * 's, (z num, n num) pair option, 's) kinstr
+  | KEdiv_natint : (n num, z num * 's, (z num, n num) pair option, 's) kinstr
+  | KEdiv_natnat : (n num, n num * 's, (n num, n num) pair option, 's) kinstr
+  | KLsl_nat : (n num, n num * 's, n num, 's) kinstr
+  | KLsr_nat : (n num, n num * 's, n num, 's) kinstr
+  | KOr_nat : (n num, n num * 's, n num, 's) kinstr
+  | KAnd_nat : (n num, n num * 's, n num, 's) kinstr
+  | KAnd_int_nat : (z num, n num * 's, n num, 's) kinstr
+  | KXor_nat : (n num, n num * 's, n num, 's) kinstr
+  | KNot_nat : (n num, 's, z num, 's) kinstr
+  | KNot_int : (z num, 's, z num, 's) kinstr
   (*
      Control
      -------
   *)
   | KIf :
-      (bool, 'a * 's) kinfo
       (* Notice that the continuations of the following two
          instructions should have a shared suffix to avoid code
          duplication. *)
-      * ('a, 's, 'r, 'f) kinstr
-      * ('a, 's, 'r, 'f) kinstr
+      ('a, 's, 'r, 'f) knext
+      * ('a, 's, 'r, 'f) knext
       -> (bool, 'a * 's, 'r, 'f) kinstr
-  | KLoop :
-      (bool, 'a * 's) kinfo
-      * ('a, 's, bool, 'a * 's) kinstr
-      * ('a, 's, 'r, 'f) kinstr
-      -> (bool, 'a * 's, 'r, 'f) kinstr
+  | KLoop : ('a, 's, bool, 'a * 's) knext -> (bool, 'a * 's, 'a, 's) kinstr
   | KLoop_left :
-      (('a, 'b) union, 's) kinfo
-      * ('a, 's, ('a, 'b) union, 's) kinstr
-      * ('b, 's, 'r, 'f) kinstr
-      -> (('a, 'b) union, 's, 'r, 'f) kinstr
-  | KDip :
-      ('a, 'b * 's) kinfo
-      * ('c, 't) kinfo
-      * ('b, 's, 'c, 't) kinstr
-      * ('a, 'c * 't, 'r, 'f) kinstr
-      -> ('a, 'b * 's, 'r, 'f) kinstr
-  | KExec :
-      ('a, ('a, 'b) lambda * 's) kinfo * ('b, 's, 'r, 'f) kinstr
-      -> ('a, ('a, 'b) lambda * 's, 'r, 'f) kinstr
+      ('a, 's, ('a, 'b) union, 's) knext
+      -> (('a, 'b) union, 's, 'b, 's) kinstr
+  | KDip : ('b, 's, 'c, 't) knext -> ('a, 'b * 's, 'a, 'c * 't) kinstr
+  | KExec : ('a, ('a, 'b) lambda * 's, 'b, 's) kinstr
   | KApply :
-      ('a, ('a * 't, 'b) lambda * 's) kinfo
-      * 'a ty
-      * (('t, 'b) lambda, 's, 'r, 'f) kinstr
-      -> ('a, ('a * 't, 'b) lambda * 's, 'r, 'f) kinstr
-  | KLambda :
-      ('a, 's) kinfo
-      * ('b, 'c) lambda
-      * (('b, 'c) lambda, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | KFailwith :
-      ('a, 's) kinfo * Script.location * 'a ty * ('b, 't, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | KNop : ('a, 's) kinfo * ('a, 's, 'r, 'f) kinstr -> ('a, 's, 'r, 'f) kinstr
+      'a ty
+      -> ('a, ('a * 't, 'b) lambda * 's, ('t, 'b) lambda, 's) kinstr
+  | KLambda : ('b, 'c) lambda -> ('a, 's, ('b, 'c) lambda, 'a * 's) kinstr
+  | KFailwith : Script.location * 'a ty -> ('a, 's, 'b, 't) kinstr
+  | KNop : ('a, 's, 'a, 's) kinstr
   (*
      Comparison
      ----------
   *)
-  | KCompare :
-      ('a, 'a * 's) kinfo * 'a comparable_ty * (z num, 's, 'r, 'f) kinstr
-      -> ('a, 'a * 's, 'r, 'f) kinstr
+  | KCompare : 'a comparable_ty -> ('a, 'a * 's, z num, 's) kinstr
   (*
      Comparators
      -----------
   *)
-  | KEq :
-      (z num, 's) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
-  | KNeq :
-      (z num, 's) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
-  | KLt :
-      (z num, 's) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
-  | KGt :
-      (z num, 's) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
-  | KLe :
-      (z num, 's) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
-  | KGe :
-      (z num, 's) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> (z num, 's, 'r, 'f) kinstr
+  | KEq : (z num, 's, bool, 's) kinstr
+  | KNeq : (z num, 's, bool, 's) kinstr
+  | KLt : (z num, 's, bool, 's) kinstr
+  | KGt : (z num, 's, bool, 's) kinstr
+  | KLe : (z num, 's, bool, 's) kinstr
+  | KGe : (z num, 's, bool, 's) kinstr
   (*
      Protocol
      --------
   *)
-  | KAddress :
-      ('a typed_contract, 's) kinfo * (address, 's, 'r, 'f) kinstr
-      -> ('a typed_contract, 's, 'r, 'f) kinstr
+  | KAddress : ('a typed_contract, 's, address, 's) kinstr
   | KContract :
-      (address, 's) kinfo
-      * 'a ty
-      * string
-      * ('a typed_contract option, 's, 'r, 'f) kinstr
-      -> (address, 's, 'r, 'f) kinstr
-  | KTransfer_tokens :
-      ('a, Tez.t * ('a typed_contract * 's)) kinfo
-      * (operation, 's, 'r, 'f) kinstr
-      -> ('a, Tez.t * ('a typed_contract * 's), 'r, 'f) kinstr
-  | KImplicit_account :
-      (public_key_hash, 's) kinfo * (unit typed_contract, 's, 'r, 'f) kinstr
-      -> (public_key_hash, 's, 'r, 'f) kinstr
+      'a ty * string
+      -> (address, 's, 'a typed_contract option, 's) kinstr
+  | KTransfer_tokens
+      : ('a, Tez.t * ('a typed_contract * 's), operation, 's) kinstr
+  | KImplicit_account : (public_key_hash, 's, unit typed_contract, 's) kinstr
   | KCreate_contract :
-      (public_key_hash option, Tez.t * ('a * 's)) kinfo
-      * 'a ty
+      'a ty
       * 'b ty
       * ('b * 'a, operation boxed_list * 'a) lambda
       * field_annot option
-      * (operation, address * 's, 'r, 'f) kinstr
-      -> (public_key_hash option, Tez.t * ('a * 's), 'r, 'f) kinstr
-  | KSet_delegate :
-      (public_key_hash option, 's) kinfo * (operation, 's, 'r, 'f) kinstr
-      -> (public_key_hash option, 's, 'r, 'f) kinstr
-  | KNow :
-      ('a, 's) kinfo * (Script_timestamp.t, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | KBalance :
-      ('a, 's) kinfo * (Tez.t, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | KLevel :
-      ('a, 's) kinfo * (n num, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | KCheck_signature :
-      (public_key, signature * (bytes * 's)) kinfo * (bool, 's, 'r, 'f) kinstr
-      -> (public_key, signature * (bytes * 's), 'r, 'f) kinstr
-  | KHash_key :
-      (public_key, 's) kinfo * (public_key_hash, 's, 'r, 'f) kinstr
-      -> (public_key, 's, 'r, 'f) kinstr
-  | KPack :
-      ('a, 's) kinfo * 'a ty * (bytes, 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | KUnpack :
-      (bytes, 's) kinfo * 'a ty * ('a option, 's, 'r, 'f) kinstr
-      -> (bytes, 's, 'r, 'f) kinstr
-  | KBlake2b :
-      (bytes, 's) kinfo * (bytes, 's, 'r, 'f) kinstr
-      -> (bytes, 's, 'r, 'f) kinstr
-  | KSha256 :
-      (bytes, 's) kinfo * (bytes, 's, 'r, 'f) kinstr
-      -> (bytes, 's, 'r, 'f) kinstr
-  | KSha512 :
-      (bytes, 's) kinfo * (bytes, 's, 'r, 'f) kinstr
-      -> (bytes, 's, 'r, 'f) kinstr
-  | KSource :
-      ('a, 's) kinfo * (address, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | KSender :
-      ('a, 's) kinfo * (address, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | KSelf :
-      ('a, 's) kinfo
-      * 'b ty
-      * string
-      * ('b typed_contract, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | KSelf_address :
-      ('a, 's) kinfo * (address, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | KAmount :
-      ('a, 's) kinfo * (Tez.t, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      -> ( public_key_hash option,
+           Tez.t * ('a * 's),
+           operation,
+           address * 's )
+         kinstr
+  | KSet_delegate : (public_key_hash option, 's, operation, 's) kinstr
+  | KNow : ('a, 's, Script_timestamp.t, 'a * 's) kinstr
+  | KBalance : ('a, 's, Tez.t, 'a * 's) kinstr
+  | KLevel : ('a, 's, n num, 'a * 's) kinstr
+  | KCheck_signature : (public_key, signature * (bytes * 's), bool, 's) kinstr
+  | KHash_key : (public_key, 's, public_key_hash, 's) kinstr
+  | KPack : 'a ty -> ('a, 's, bytes, 's) kinstr
+  | KUnpack : 'a ty -> (bytes, 's, 'a option, 's) kinstr
+  | KBlake2b : (bytes, 's, bytes, 's) kinstr
+  | KSha256 : (bytes, 's, bytes, 's) kinstr
+  | KSha512 : (bytes, 's, bytes, 's) kinstr
+  | KSource : ('a, 's, address, 'a * 's) kinstr
+  | KSender : ('a, 's, address, 'a * 's) kinstr
+  | KSelf : 'b ty * string -> ('a, 's, 'b typed_contract, 'a * 's) kinstr
+  | KSelf_address : ('a, 's, address, 'a * 's) kinstr
+  | KAmount : ('a, 's, Tez.t, 'a * 's) kinstr
   | KSapling_empty_state :
-      ('a, 's) kinfo
-      * Sapling.Memo_size.t
-      * (Sapling.state, 'a * 's, 'b, 'f) kinstr
-      -> ('a, 's, 'b, 'f) kinstr
-  | KSapling_verify_update :
-      (Sapling.transaction, Sapling.state * 's) kinfo
-      * ((z num, Sapling.state) pair option, 's, 'r, 'f) kinstr
-      -> (Sapling.transaction, Sapling.state * 's, 'r, 'f) kinstr
+      Sapling.Memo_size.t
+      -> ('a, 's, Sapling.state, 'a * 's) kinstr
+  | KSapling_verify_update
+      : ( Sapling.transaction,
+          Sapling.state * 's,
+          (z num, Sapling.state) pair option,
+          's )
+        kinstr
   | KDig :
-      ('a, 's) kinfo
-      * int
+      int
       * ('b, 'c * 't, 'c, 't, 'a, 's, 'd, 'u) stack_prefix_preservation_witness
-      * ('b, 'd * 'u, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      -> ('a, 's, 'b, 'd * 'u) kinstr
   | KDug :
-      ('a, 'b * 's) kinfo
-      * int
+      int
       * ('c, 't, 'a, 'c * 't, 'b, 's, 'd, 'u) stack_prefix_preservation_witness
-      * ('d, 'u, 'r, 'f) kinstr
-      -> ('a, 'b * 's, 'r, 'f) kinstr
+      -> ('a, 'b * 's, 'd, 'u) kinstr
   | KDipn :
-      ('a, 's) kinfo
-      * int
+      int
       * ('c, 't, 'd, 'v, 'a, 's, 'b, 'u) stack_prefix_preservation_witness
-      * ('c, 't, 'd, 'v) kinstr
-      * ('b, 'u, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      * ('c, 't, 'd, 'v) knext
+      -> ('a, 's, 'b, 'u) kinstr
   | KDropn :
-      ('a, 's) kinfo
-      * int
-      * ('b, 'u, 'b, 'u, 'a, 's, 'a, 's) stack_prefix_preservation_witness
-      * ('b, 'u, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | KChainId :
-      ('a, 's) kinfo * (Chain_id.t, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | KNever :
-      (never, 's) kinfo * ('b, 'u, 'r, 'f) kinstr
-      -> (never, 's, 'r, 'f) kinstr
-  | KVoting_power :
-      (public_key_hash, 's) kinfo * (n num, 's, 'r, 'f) kinstr
-      -> (public_key_hash, 's, 'r, 'f) kinstr
-  | KTotal_voting_power :
-      ('a, 's) kinfo * (n num, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | KKeccak :
-      (bytes, 's) kinfo * (bytes, 's, 'r, 'f) kinstr
-      -> (bytes, 's, 'r, 'f) kinstr
-  | KSha3 :
-      (bytes, 's) kinfo * (bytes, 's, 'r, 'f) kinstr
-      -> (bytes, 's, 'r, 'f) kinstr
-  | KAdd_bls12_381_g1 :
-      (Bls12_381.G1.t, Bls12_381.G1.t * 's) kinfo
-      * (Bls12_381.G1.t, 's, 'r, 'f) kinstr
-      -> (Bls12_381.G1.t, Bls12_381.G1.t * 's, 'r, 'f) kinstr
-  | KAdd_bls12_381_g2 :
-      (Bls12_381.G2.t, Bls12_381.G2.t * 's) kinfo
-      * (Bls12_381.G2.t, 's, 'r, 'f) kinstr
-      -> (Bls12_381.G2.t, Bls12_381.G2.t * 's, 'r, 'f) kinstr
-  | KAdd_bls12_381_fr :
-      (Bls12_381.Fr.t, Bls12_381.Fr.t * 's) kinfo
-      * (Bls12_381.Fr.t, 's, 'r, 'f) kinstr
-      -> (Bls12_381.Fr.t, Bls12_381.Fr.t * 's, 'r, 'f) kinstr
-  | KMul_bls12_381_g1 :
-      (Bls12_381.G1.t, Bls12_381.Fr.t * 's) kinfo
-      * (Bls12_381.G1.t, 's, 'r, 'f) kinstr
-      -> (Bls12_381.G1.t, Bls12_381.Fr.t * 's, 'r, 'f) kinstr
-  | KMul_bls12_381_g2 :
-      (Bls12_381.G2.t, Bls12_381.Fr.t * 's) kinfo
-      * (Bls12_381.G2.t, 's, 'r, 'f) kinstr
-      -> (Bls12_381.G2.t, Bls12_381.Fr.t * 's, 'r, 'f) kinstr
-  | KMul_bls12_381_fr :
-      (Bls12_381.Fr.t, Bls12_381.Fr.t * 's) kinfo
-      * (Bls12_381.Fr.t, 's, 'r, 'f) kinstr
-      -> (Bls12_381.Fr.t, Bls12_381.Fr.t * 's, 'r, 'f) kinstr
-  | KMul_bls12_381_z_fr :
-      (Bls12_381.Fr.t, 'a num * 's) kinfo * (Bls12_381.Fr.t, 's, 'r, 'f) kinstr
-      -> (Bls12_381.Fr.t, 'a num * 's, 'r, 'f) kinstr
-  | KMul_bls12_381_fr_z :
-      ('a num, Bls12_381.Fr.t * 's) kinfo * (Bls12_381.Fr.t, 's, 'r, 'f) kinstr
-      -> ('a num, Bls12_381.Fr.t * 's, 'r, 'f) kinstr
-  | KInt_bls12_381_fr :
-      (Bls12_381.Fr.t, 's) kinfo * (z num, 's, 'r, 'f) kinstr
-      -> (Bls12_381.Fr.t, 's, 'r, 'f) kinstr
-  | KNeg_bls12_381_g1 :
-      (Bls12_381.G1.t, 's) kinfo * (Bls12_381.G1.t, 's, 'r, 'f) kinstr
-      -> (Bls12_381.G1.t, 's, 'r, 'f) kinstr
-  | KNeg_bls12_381_g2 :
-      (Bls12_381.G2.t, 's) kinfo * (Bls12_381.G2.t, 's, 'r, 'f) kinstr
-      -> (Bls12_381.G2.t, 's, 'r, 'f) kinstr
-  | KNeg_bls12_381_fr :
-      (Bls12_381.Fr.t, 's) kinfo * (Bls12_381.Fr.t, 's, 'r, 'f) kinstr
-      -> (Bls12_381.Fr.t, 's, 'r, 'f) kinstr
-  | KPairing_check_bls12_381 :
-      ((Bls12_381.G1.t, Bls12_381.G2.t) pair boxed_list, 's) kinfo
-      * (bool, 's, 'r, 'f) kinstr
-      -> ((Bls12_381.G1.t, Bls12_381.G2.t) pair boxed_list, 's, 'r, 'f) kinstr
+      int * ('b, 'u, 'b, 'u, 'a, 's, 'a, 's) stack_prefix_preservation_witness
+      -> ('a, 's, 'b, 'u) kinstr
+  | KChainId : ('a, 's, Chain_id.t, 'a * 's) kinstr
+  | KNever : (never, 's, 'b, 'u) kinstr
+  | KVoting_power : (public_key_hash, 's, n num, 's) kinstr
+  | KTotal_voting_power : ('a, 's, n num, 'a * 's) kinstr
+  | KKeccak : (bytes, 's, bytes, 's) kinstr
+  | KSha3 : (bytes, 's, bytes, 's) kinstr
+  | KAdd_bls12_381_g1
+      : (Bls12_381.G1.t, Bls12_381.G1.t * 's, Bls12_381.G1.t, 's) kinstr
+  | KAdd_bls12_381_g2
+      : (Bls12_381.G2.t, Bls12_381.G2.t * 's, Bls12_381.G2.t, 's) kinstr
+  | KAdd_bls12_381_fr
+      : (Bls12_381.Fr.t, Bls12_381.Fr.t * 's, Bls12_381.Fr.t, 's) kinstr
+  | KMul_bls12_381_g1
+      : (Bls12_381.G1.t, Bls12_381.Fr.t * 's, Bls12_381.G1.t, 's) kinstr
+  | KMul_bls12_381_g2
+      : (Bls12_381.G2.t, Bls12_381.Fr.t * 's, Bls12_381.G2.t, 's) kinstr
+  | KMul_bls12_381_fr
+      : (Bls12_381.Fr.t, Bls12_381.Fr.t * 's, Bls12_381.Fr.t, 's) kinstr
+  | KMul_bls12_381_z_fr
+      : (Bls12_381.Fr.t, 'a num * 's, Bls12_381.Fr.t, 's) kinstr
+  | KMul_bls12_381_fr_z
+      : ('a num, Bls12_381.Fr.t * 's, Bls12_381.Fr.t, 's) kinstr
+  | KInt_bls12_381_fr : (Bls12_381.Fr.t, 's, z num, 's) kinstr
+  | KNeg_bls12_381_g1 : (Bls12_381.G1.t, 's, Bls12_381.G1.t, 's) kinstr
+  | KNeg_bls12_381_g2 : (Bls12_381.G2.t, 's, Bls12_381.G2.t, 's) kinstr
+  | KNeg_bls12_381_fr : (Bls12_381.Fr.t, 's, Bls12_381.Fr.t, 's) kinstr
+  | KPairing_check_bls12_381
+      : ((Bls12_381.G1.t, Bls12_381.G2.t) pair boxed_list, 's, bool, 's) kinstr
   | KComb :
-      ('a, 's) kinfo
-      * int
-      * ('a * 's, 'b * 'u) comb_gadt_witness
-      * ('b, 'u, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
+      int * ('a * 's, 'b * 'u) comb_gadt_witness
+      -> ('a, 's, 'b, 'u) kinstr
   | KUncomb :
-      ('a, 's) kinfo
-      * int
-      * ('a * 's, 'b * 'u) uncomb_gadt_witness
-      * ('b, 'u, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | KComb_get :
-      ('t, 's) kinfo
-      * int
-      * ('t, 'v) comb_get_gadt_witness
-      * ('v, 's, 'r, 'f) kinstr
-      -> ('t, 's, 'r, 'f) kinstr
+      int * ('a * 's, 'b * 'u) uncomb_gadt_witness
+      -> ('a, 's, 'b, 'u) kinstr
+  | KComb_get : int * ('t, 'v) comb_get_gadt_witness -> ('t, 's, 'v, 's) kinstr
   | KComb_set :
-      ('a, 'b * 's) kinfo
-      * int
-      * ('a, 'b, 'c) comb_set_gadt_witness
-      * ('c, 's, 'r, 'f) kinstr
-      -> ('a, 'b * 's, 'r, 'f) kinstr
+      int * ('a, 'b, 'c) comb_set_gadt_witness
+      -> ('a, 'b * 's, 'c, 's) kinstr
   | KDup_n :
-      ('a, 's) kinfo
-      * int
-      * ('a * 's, 't) dup_n_gadt_witness
-      * ('t, 'a * 's, 'r, 'f) kinstr
-      -> ('a, 's, 'r, 'f) kinstr
-  | KTicket :
-      ('a, n num * 's) kinfo * ('a ticket, 's, 'r, 'f) kinstr
-      -> ('a, n num * 's, 'r, 'f) kinstr
-  | KRead_ticket :
-      ('a ticket, 's) kinfo
-      * (address * ('a * n num), 'a ticket * 's, 'r, 'f) kinstr
-      -> ('a ticket, 's, 'r, 'f) kinstr
-  | KSplit_ticket :
-      ('a ticket, (n num * n num) * 's) kinfo
-      * (('a ticket * 'a ticket) option, 's, 'r, 'f) kinstr
-      -> ('a ticket, (n num * n num) * 's, 'r, 'f) kinstr
+      int * ('a * 's, 't) dup_n_gadt_witness
+      -> ('a, 's, 't, 'a * 's) kinstr
+  | KTicket : ('a, n num * 's, 'a ticket, 's) kinstr
+  | KRead_ticket
+      : ('a ticket, 's, address * ('a * n num), 'a ticket * 's) kinstr
+  | KSplit_ticket
+      : ( 'a ticket,
+          (n num * n num) * 's,
+          ('a ticket * 'a ticket) option,
+          's )
+        kinstr
   | KJoin_tickets :
-      ('a ticket * 'a ticket, 's) kinfo
-      * 'a comparable_ty
-      * ('a ticket option, 's, 'r, 'f) kinstr
-      -> ('a ticket * 'a ticket, 's, 'r, 'f) kinstr
-  | KHalt : ('a, 's) kinfo -> ('a, 's, 'a, 's) kinstr
+      'a comparable_ty
+      -> ('a ticket * 'a ticket, 's, 'a ticket option, 's) kinstr
 
 and ('arg, 'ret) lambda =
   | Lam :
@@ -932,7 +616,7 @@ and ('a, 's, 'r, 'f) kdescr = {
   kloc : Script.location;
   kbef : ('a * 's) stack_ty;
   kaft : ('r * 'f) stack_ty;
-  kinstr : ('a, 's, 'r, 'f) kinstr;
+  kinstr : ('a, 's, 'r, 'f) knext;
 }
 
 and ('a, 's, 'b, 'u) descr = {
@@ -945,7 +629,7 @@ and ('a, 's, 'b, 'u) descr = {
 and ('a, 's, 'b, 'u) cinstr = {
   size : int;
   apply :
-    'r 'f. ('a, 's) kinfo -> ('b, 'u, 'r, 'f) kinstr -> ('a, 's, 'r, 'f) kinstr;
+    'r 'f. ('a, 's) kinfo -> ('b, 'u, 'r, 'f) knext -> ('a, 's, 'r, 'f) knext;
 }
 
 and ('a, 's) kinfo = {iloc : Script.location; kstack_ty : ('a * 's) stack_ty}
@@ -1009,323 +693,26 @@ and (_, _, _) exkinstr =
   | ExKInstr : ('x, 'z, 'b, 'u) kinstr -> ('x * 'z, 'b, 'u) exkinstr
 [@@unboxed]
 
-let kinfo_of_kinstr : type a s b f. (a, s, b, f) kinstr -> (a, s) kinfo =
- fun i ->
-  match i with
-  | KDrop (kinfo, _) ->
-      kinfo
-  | KDup (kinfo, _) ->
-      kinfo
-  | KSwap (kinfo, _) ->
-      kinfo
-  | KConst (kinfo, _, _) ->
-      kinfo
-  | KCons_pair (kinfo, _) ->
-      kinfo
-  | KCar (kinfo, _) ->
-      kinfo
-  | KCdr (kinfo, _) ->
-      kinfo
-  | KUnpair (kinfo, _) ->
-      kinfo
-  | KCons_some (kinfo, _) ->
-      kinfo
-  | KCons_none (kinfo, _, _) ->
-      kinfo
-  | KIf_none (kinfo, _, _) ->
-      kinfo
-  | KCons_left (kinfo, _) ->
-      kinfo
-  | KCons_right (kinfo, _) ->
-      kinfo
-  | KIf_left (kinfo, _, _) ->
-      kinfo
-  | KCons_list (kinfo, _) ->
-      kinfo
-  | KNil (kinfo, _) ->
-      kinfo
-  | KIf_cons (kinfo, _, _) ->
-      kinfo
-  | KList_map (kinfo, _, _) ->
-      kinfo
-  | KList_iter (kinfo, _, _) ->
-      kinfo
-  | KList_size (kinfo, _) ->
-      kinfo
-  | KEmpty_set (kinfo, _, _) ->
-      kinfo
-  | KSet_iter (kinfo, _, _) ->
-      kinfo
-  | KSet_mem (kinfo, _) ->
-      kinfo
-  | KSet_update (kinfo, _) ->
-      kinfo
-  | KSet_size (kinfo, _) ->
-      kinfo
-  | KEmpty_map (kinfo, _, _, _) ->
-      kinfo
-  | KMap_map (kinfo, _, _) ->
-      kinfo
-  | KMap_iter (kinfo, _, _) ->
-      kinfo
-  | KMap_mem (kinfo, _) ->
-      kinfo
-  | KMap_get (kinfo, _) ->
-      kinfo
-  | KMap_update (kinfo, _) ->
-      kinfo
-  | KMap_get_and_update (kinfo, _) ->
-      kinfo
-  | KMap_size (kinfo, _) ->
-      kinfo
-  | KEmpty_big_map (kinfo, _, _, _) ->
-      kinfo
-  | KBig_map_mem (kinfo, _) ->
-      kinfo
-  | KBig_map_get (kinfo, _) ->
-      kinfo
-  | KBig_map_update (kinfo, _) ->
-      kinfo
-  | KBig_map_get_and_update (kinfo, _) ->
-      kinfo
-  | KConcat_string (kinfo, _) ->
-      kinfo
-  | KConcat_string_pair (kinfo, _) ->
-      kinfo
-  | KSlice_string (kinfo, _) ->
-      kinfo
-  | KString_size (kinfo, _) ->
-      kinfo
-  | KConcat_bytes (kinfo, _) ->
-      kinfo
-  | KConcat_bytes_pair (kinfo, _) ->
-      kinfo
-  | KSlice_bytes (kinfo, _) ->
-      kinfo
-  | KBytes_size (kinfo, _) ->
-      kinfo
-  | KAdd_seconds_to_timestamp (kinfo, _) ->
-      kinfo
-  | KAdd_timestamp_to_seconds (kinfo, _) ->
-      kinfo
-  | KSub_timestamp_seconds (kinfo, _) ->
-      kinfo
-  | KDiff_timestamps (kinfo, _) ->
-      kinfo
-  | KAdd_tez (kinfo, _) ->
-      kinfo
-  | KSub_tez (kinfo, _) ->
-      kinfo
-  | KMul_teznat (kinfo, _) ->
-      kinfo
-  | KMul_nattez (kinfo, _) ->
-      kinfo
-  | KEdiv_teznat (kinfo, _) ->
-      kinfo
-  | KEdiv_tez (kinfo, _) ->
-      kinfo
-  | KOr (kinfo, _) ->
-      kinfo
-  | KAnd (kinfo, _) ->
-      kinfo
-  | KXor (kinfo, _) ->
-      kinfo
-  | KNot (kinfo, _) ->
-      kinfo
-  | KIs_nat (kinfo, _) ->
-      kinfo
-  | KNeg_nat (kinfo, _) ->
-      kinfo
-  | KNeg_int (kinfo, _) ->
-      kinfo
-  | KAbs_int (kinfo, _) ->
-      kinfo
-  | KInt_nat (kinfo, _) ->
-      kinfo
-  | KAdd_intint (kinfo, _) ->
-      kinfo
-  | KAdd_intnat (kinfo, _) ->
-      kinfo
-  | KAdd_natint (kinfo, _) ->
-      kinfo
-  | KAdd_natnat (kinfo, _) ->
-      kinfo
-  | KSub_int (kinfo, _) ->
-      kinfo
-  | KMul_intint (kinfo, _) ->
-      kinfo
-  | KMul_intnat (kinfo, _) ->
-      kinfo
-  | KMul_natint (kinfo, _) ->
-      kinfo
-  | KMul_natnat (kinfo, _) ->
-      kinfo
-  | KEdiv_intint (kinfo, _) ->
-      kinfo
-  | KEdiv_intnat (kinfo, _) ->
-      kinfo
-  | KEdiv_natint (kinfo, _) ->
-      kinfo
-  | KEdiv_natnat (kinfo, _) ->
-      kinfo
-  | KLsl_nat (kinfo, _) ->
-      kinfo
-  | KLsr_nat (kinfo, _) ->
-      kinfo
-  | KOr_nat (kinfo, _) ->
-      kinfo
-  | KAnd_nat (kinfo, _) ->
-      kinfo
-  | KAnd_int_nat (kinfo, _) ->
-      kinfo
-  | KXor_nat (kinfo, _) ->
-      kinfo
-  | KNot_nat (kinfo, _) ->
-      kinfo
-  | KNot_int (kinfo, _) ->
-      kinfo
-  | KIf (kinfo, _, _) ->
-      kinfo
-  | KLoop (kinfo, _, _) ->
-      kinfo
-  | KLoop_left (kinfo, _, _) ->
-      kinfo
-  | KDip (kinfo, _, _, _) ->
-      kinfo
-  | KExec (kinfo, _) ->
-      kinfo
-  | KApply (kinfo, _, _) ->
-      kinfo
-  | KLambda (kinfo, _, _) ->
-      kinfo
-  | KFailwith (kinfo, _, _, _) ->
-      kinfo
-  | KNop (kinfo, _) ->
-      kinfo
-  | KCompare (kinfo, _, _) ->
-      kinfo
-  | KEq (kinfo, _) ->
-      kinfo
-  | KNeq (kinfo, _) ->
-      kinfo
-  | KLt (kinfo, _) ->
-      kinfo
-  | KGt (kinfo, _) ->
-      kinfo
-  | KLe (kinfo, _) ->
-      kinfo
-  | KGe (kinfo, _) ->
-      kinfo
-  | KAddress (kinfo, _) ->
-      kinfo
-  | KContract (kinfo, _, _, _) ->
-      kinfo
-  | KTransfer_tokens (kinfo, _) ->
-      kinfo
-  | KImplicit_account (kinfo, _) ->
-      kinfo
-  | KCreate_contract (kinfo, _, _, _, _, _) ->
-      kinfo
-  | KSet_delegate (kinfo, _) ->
-      kinfo
-  | KNow (kinfo, _) ->
-      kinfo
-  | KBalance (kinfo, _) ->
-      kinfo
-  | KLevel (kinfo, _) ->
-      kinfo
-  | KCheck_signature (kinfo, _) ->
-      kinfo
-  | KHash_key (kinfo, _) ->
-      kinfo
-  | KPack (kinfo, _, _) ->
-      kinfo
-  | KUnpack (kinfo, _, _) ->
-      kinfo
-  | KBlake2b (kinfo, _) ->
-      kinfo
-  | KSha256 (kinfo, _) ->
-      kinfo
-  | KSha512 (kinfo, _) ->
-      kinfo
-  | KSource (kinfo, _) ->
-      kinfo
-  | KSender (kinfo, _) ->
-      kinfo
-  | KSelf (kinfo, _, _, _) ->
-      kinfo
-  | KSelf_address (kinfo, _) ->
-      kinfo
-  | KAmount (kinfo, _) ->
-      kinfo
-  | KSapling_empty_state (kinfo, _, _) ->
-      kinfo
-  | KSapling_verify_update (kinfo, _) ->
-      kinfo
-  | KDig (kinfo, _, _, _) ->
-      kinfo
-  | KDug (kinfo, _, _, _) ->
-      kinfo
-  | KDipn (kinfo, _, _, _, _) ->
-      kinfo
-  | KDropn (kinfo, _, _, _) ->
-      kinfo
-  | KChainId (kinfo, _) ->
-      kinfo
-  | KNever (kinfo, _) ->
-      kinfo
-  | KVoting_power (kinfo, _) ->
-      kinfo
-  | KTotal_voting_power (kinfo, _) ->
-      kinfo
-  | KKeccak (kinfo, _) ->
-      kinfo
-  | KSha3 (kinfo, _) ->
-      kinfo
-  | KAdd_bls12_381_g1 (kinfo, _) ->
-      kinfo
-  | KAdd_bls12_381_g2 (kinfo, _) ->
-      kinfo
-  | KAdd_bls12_381_fr (kinfo, _) ->
-      kinfo
-  | KMul_bls12_381_g1 (kinfo, _) ->
-      kinfo
-  | KMul_bls12_381_g2 (kinfo, _) ->
-      kinfo
-  | KMul_bls12_381_fr (kinfo, _) ->
-      kinfo
-  | KMul_bls12_381_z_fr (kinfo, _) ->
-      kinfo
-  | KMul_bls12_381_fr_z (kinfo, _) ->
-      kinfo
-  | KInt_bls12_381_fr (kinfo, _) ->
-      kinfo
-  | KNeg_bls12_381_g1 (kinfo, _) ->
-      kinfo
-  | KNeg_bls12_381_g2 (kinfo, _) ->
-      kinfo
-  | KNeg_bls12_381_fr (kinfo, _) ->
-      kinfo
-  | KPairing_check_bls12_381 (kinfo, _) ->
-      kinfo
-  | KComb (kinfo, _, _, _) ->
-      kinfo
-  | KUncomb (kinfo, _, _, _) ->
-      kinfo
-  | KComb_get (kinfo, _, _, _) ->
-      kinfo
-  | KComb_set (kinfo, _, _, _) ->
-      kinfo
-  | KDup_n (kinfo, _, _, _) ->
-      kinfo
-  | KTicket (kinfo, _) ->
-      kinfo
-  | KRead_ticket (kinfo, _) ->
-      kinfo
-  | KSplit_ticket (kinfo, _) ->
-      kinfo
-  | KJoin_tickets (kinfo, _, _) ->
-      kinfo
+and ('bef_top, 'bef, 'res_top, 'res) knext =
+  | KNext :
+      ('bef_top, 'bef) kinfo
+      * ('bef_top, 'bef, 'res_top_t, 'res_t) kinstr
+      * ('res_top_t, 'res_t, 'res_top, 'res) knext
+      -> ('bef_top, 'bef, 'res_top, 'res) knext
+  | KHalt : ('bef_top, 'bef) kinfo -> ('bef_top, 'bef, 'bef_top, 'bef) knext
+
+let kinfo_of_knext : type a s b f. (a, s, b, f) knext -> (a, s) kinfo =
+  function
+  | KNext (kinfo, _, _) ->
+      kinfo
+  | KHalt kinfo ->
+      kinfo
+
+(* TODO: This is dumb and shouldn't be needed *)
+let rec kinfo_of_khalt : type a s b f. (a, s, b, f) knext -> (b, f) kinfo =
+  function
+  | KNext (_, _, next) ->
+      kinfo_of_khalt next
   | KHalt kinfo ->
       kinfo
 

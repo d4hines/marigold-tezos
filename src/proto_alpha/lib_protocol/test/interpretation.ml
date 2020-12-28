@@ -93,7 +93,7 @@ let test_stack_overflow () =
   let kinfo = {iloc = -1; kstack_ty = stack} in
   let enorme_et_seq n =
     let rec aux n acc =
-      if n = 0 then acc else aux (n - 1) (KNop (kinfo, acc))
+      if n = 0 then acc else aux (n - 1) (KNext (kinfo, KNop, acc))
     in
     aux n (KHalt kinfo)
   in

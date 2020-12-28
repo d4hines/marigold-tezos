@@ -69,7 +69,7 @@ type step_constants = {
 }
 
 type ('a, 's, 'b, 'f, 'u) logging_function =
-  ('a, 's, 'b, 'f) Script_typed_cps_ir.kinstr ->
+  ('a, 's, 'b, 'f) Script_typed_cps_ir.knext ->
   context ->
   Script.location ->
   'u Script_typed_cps_ir.stack_ty ->
@@ -134,7 +134,7 @@ val kstep :
   logger option ->
   context ->
   step_constants ->
-  ('a, 's, 'r, 'f) Script_typed_cps_ir.kinstr ->
+  ('a, 's, 'r, 'f) Script_typed_cps_ir.knext ->
   'a ->
   's ->
   ('r * 'f * context) tzresult Lwt.t
@@ -163,41 +163,41 @@ type outdated_context = OutDatedContext of context [@@unboxed]
 type (_, _, _, _) konts =
   | KNil : ('r, 'f, 'r, 'f) konts
   | KCons :
-      ('a, 's, 'b, 't) kinstr * ('b, 't, 'r, 'f) konts
+      ('a, 's, 'b, 't) knext * ('b, 't, 'r, 'f) konts
       -> ('a, 's, 'r, 'f) konts
   | KReturn : 's * ('a, 's, 'r, 'f) konts -> ('a, end_of_stack, 'r, 'f) konts
   | KUndip : 'b * ('b, 'a * 's, 'r, 'f) konts -> ('a, 's, 'r, 'f) konts
   | KLoop_in :
-      ('a, 's, bool, 'a * 's) kinstr * ('a, 's, 'r, 'f) konts
+      ('a, 's, bool, 'a * 's) knext * ('a, 's, 'r, 'f) konts
       -> (bool, 'a * 's, 'r, 'f) konts
   | KLoop_in_left :
-      ('a, 's, ('a, 'b) union, 's) kinstr * ('b, 's, 'r, 'f) konts
+      ('a, 's, ('a, 'b) union, 's) knext * ('b, 's, 'r, 'f) konts
       -> (('a, 'b) union, 's, 'r, 'f) konts
   | KIter :
-      ('a, 'b * 's, 'b, 's) kinstr * 'a list * ('b, 's, 'r, 'f) konts
+      ('a, 'b * 's, 'b, 's) knext * 'a list * ('b, 's, 'r, 'f) konts
       -> ('b, 's, 'r, 'f) konts
   | KList_mapping :
-      ('a, 'c * 's, 'b, 'c * 's) kinstr
+      ('a, 'c * 's, 'b, 'c * 's) knext
       * 'a list
       * 'b list
       * int
       * ('b boxed_list, 'c * 's, 'r, 'f) konts
       -> ('c, 's, 'r, 'f) konts
   | KList_mapped :
-      ('a, 'c * 's, 'b, 'c * 's) kinstr
+      ('a, 'c * 's, 'b, 'c * 's) knext
       * 'a list
       * 'b list
       * int
       * ('b boxed_list, 'c * 's, 'r, 'f) konts
       -> ('b, 'c * 's, 'r, 'f) konts
   | KMap_mapping :
-      ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
+      ('a * 'b, 'd * 's, 'c, 'd * 's) knext
       * ('a * 'b) list
       * ('a, 'c) map
       * (('a, 'c) map, 'd * 's, 'r, 'f) konts
       -> ('d, 's, 'r, 'f) konts
   | KMap_mapped :
-      ('a * 'b, 'd * 's, 'c, 'd * 's) kinstr
+      ('a * 'b, 'd * 's, 'c, 'd * 's) knext
       * ('a * 'b) list
       * ('a, 'c) map
       * 'a
@@ -212,8 +212,8 @@ val run :
   outdated_context ->
   step_constants ->
   local_gas_counter ->
-  ('c, 'u, 'd, 'v) kinstr ->
-  ('a, 's, 'b, 't) kinstr ->
+  ('c, 'u, 'd, 'v) knext ->
+  ('a, 's, 'b, 't) knext ->
   ('b, 't, 'r, 'f) konts ->
   'a ->
   's ->
