@@ -311,17 +311,33 @@ let[@inline] option_iter opt what =
   match opt with None -> () | Some l -> what l
 
 let[@inline] lwt_option_iter opt what =
-  match opt with None -> Lwt.return (Ok None) | Some l -> what l
+  match opt with None -> Lwt.return (Ok None) | Some l -> what l Int64.equal
+
+let lengths_equal l l' = Compare.Int.( = ) (List.length l) (List.length l')
+
+let rec split_at n l (acc, acc') =
+  (* print_endline @@ "l:" ^ show_my_item_list l ;
+  print_endline @@ "acc:" ^ show_my_item_list acc ;
+  print_endline @@ "acc':" ^ show_my_item_list acc' ;
+  print_endline "--------------------"; *)
+  match l with
+  | [] ->
+      (acc, acc')
+  | _ ->
+      if Compare.Int.( = ) n (List.length acc) then
+        split_at n (List.tl l) (acc, acc' @ [List.hd l])
+      else split_at n (List.tl l) (acc @ [List.hd l], acc')
+
+let split_at n l = split_at n l ([], [])
 
 let rec step_bounded :
-    type bef aft.
     logger option ->
     context ->
     step_constants ->
-    (bef, aft) descr ->
-    bef ->
-    (aft * context) tzresult Lwt.t =
- fun logger ctxt _step_constants descr stack ->
+    my_instr array ->
+    my_stack ->
+    (my_stack * context) tzresult Lwt.t =
+ fun logger ctxt _step_constants instrs stack ->
   let[@inline] log_entry ctxt pc instr stack =
     option_iter logger (fun logger ->
         let module Log = (val logger) in
@@ -332,16 +348,6 @@ let rec step_bounded :
         let module Log = (val logger) in
         Log.log_exit ctxt pc instr stack)
   in
-  (* let[@inline] log_exit ctxt pc stack =
-    option_iter logger (fun logger ->
-        let module Log = (val logger) in
-        Log.log_exit ctxt pc stack)
-  in *)
-  (* let[@inline] get_log () =
-    lwt_option_iter logger (fun logger ->
-        let module Log = (val logger) in
-        Log.get_log ())
-  in *)
   let rec step :
       context ->
       int ->
@@ -360,18 +366,25 @@ let rec step_bounded :
     >>?= fun ctxt ->
     (* ====== TODO: Fix logging function here ====== *)
     log_entry ctxt pc instr stack ;
+    print_endline @@ "~" ^ my_stack_to_string stack ;
+    print_endline @@ ">" ^ show_my_instr instr ;
     match (instr, stack) with
     (* stack ops *)
     | (My_dup, h :: t) ->
         step_return ctxt (pc + 1) instr_array (h :: h :: t) dip_stack
     (* | (My_swap, _) -> *)
     | (My_swap, h :: h' :: t) ->
+        (* print_endline "================";
+        print_endline @@ "h: " ^ my_item_to_string h;
+        print_endline @@ "h': " ^ my_item_to_string h';
+        print_endline "================"; *)
+
         (* raise (Failure "swap case") *)
         step_return ctxt (pc + 1) instr_array (h' :: h :: t) dip_stack
     | (My_push x, s) ->
         step_return ctxt (pc + 1) instr_array (x :: s) dip_stack
     | (My_dip, h :: t) ->
-        step ctxt (pc + 1) instr_array t (h :: dip_stack)
+        step_return ctxt (pc + 1) instr_array t (h :: dip_stack)
     | (My_undip, s) -> (
       match dip_stack with
       | h :: dip_stack' ->
@@ -408,22 +421,58 @@ let rec step_bounded :
         Lwt.return (Ok (s, ctxt))
     | (My_nil, s) ->
         step_return ctxt (pc + 1) instr_array (My_list [] :: s) dip_stack
-    | (_, _) ->
+    | (My_lambda_instr n, s) ->
+        step_return
+          ctxt
+          (pc + n + 1)
+          instr_array
+          (My_lambda_item (n, []) :: s)
+          dip_stack
+    | (My_dig n, x :: s) ->
         assert false
+        (* let (s, s') = split_at s n in
+        step_return ctxt (pc + 1) instr_array (s @ (x :: s')) dip_stack *)
+    | (My_dug n, x :: s) ->
+        print_endline "========= x =========" ;
+        print_endline @@ show_my_item x ;
+        print_endline "========== full s ===========" ;
+        print_endline @@ show_my_item_list s ;
+        print_endline "========= s length =========" ;
+        print_endline (List.length s |> Int64.of_int |> Int64.to_string) ;
+        let (s, s') = split_at n s in
+        print_endline "========== s ===========" ;
+        print_endline @@ show_my_item_list s ;
+        print_endline "========== s '===========" ;
+        print_endline @@ show_my_item_list s' ;
+        print_endline "======== s @ ( x :: s') =============" ;
+        print_endline @@ show_my_item_list (s @ [x] @ s') ;
+        print_endline "==========================" ;
+        step_return ctxt (pc + 1) instr_array (s @ x :: s') dip_stack   
+    | (My_cdr, My_pair (a, b) :: s) ->
+        step_return ctxt (pc + 1) instr_array (b :: s) dip_stack
+    | (x, _s) ->
+        let () = log_exit ctxt pc x _s in
+        let instrs =
+          instr_array |> Array.to_list |> List.map show_my_instr
+          |> String.concat ",\n"
+        in
+        (* raise @@ Failure (Format.sprintf "%s\n\n%s" instrs (my_stack_to_string _s)) *)
+        (* print_endline @@ my_stack_to_string _s; *)
+        raise @@ Failure ("Failed interpreting " ^ show_my_instr x)
   in
   step
     ctxt
     (* Initialise the program counter at 0 *)
     0
     (* Translate the old ir to the new ir. This will go away *)
-    (Array.of_list (translate descr))
+    instrs
     (* Translate the old stack format to the new stack format. This will also go away *)
-    (myfy_stack (descr.bef, stack))
+    stack
     (* Intiailise with empty dip stack *)
     []
   >>=? fun (stack, ctxt) ->
   log_exit ctxt (-1) My_nil stack ;
-  return @@ (yfym_stack (descr.aft, stack), ctxt)
+  Error_monad.return (stack, ctxt)
 
 (* FIXME: This function will disappear when elaboration is ready. *)
 and step_descr :
@@ -436,7 +485,13 @@ and step_descr :
     (a * context) tzresult Lwt.t =
  fun logger ctxt step_constants descr stack ->
   (* FIXME: That's ugly but this is only temporary. *)
-  step_bounded logger ctxt step_constants descr stack
+  step_bounded
+    logger
+    ctxt
+    step_constants
+    (Array.of_list (translate descr))
+    (myfy_stack (descr.bef, stack))
+  >>=? fun (stack, ctxt) -> return @@ (yfym_stack (descr.aft, stack), ctxt)
 
 let rec step_tagged :
     logger option ->
@@ -445,118 +500,10 @@ let rec step_tagged :
     my_instr Array.t ->
     my_stack ->
     (my_stack * context) tzresult Lwt.t =
- fun logger ctxt _step_constants descr stack ->
-  let[@inline] log_entry ctxt pc instr stack =
-    option_iter logger (fun logger ->
-        let module Log = (val logger) in
-        Log.log_entry ctxt pc instr stack)
-  in
-  let[@inline] log_exit ctxt pc instr stack =
-    option_iter logger (fun logger ->
-        let module Log = (val logger) in
-        Log.log_exit ctxt pc instr stack)
-  in
-  (* let[@inline] log_exit ctxt pc stack =
-    option_iter logger (fun logger ->
-        let module Log = (val logger) in
-        Log.log_exit ctxt pc stack)
-  in *)
-  (* let[@inline] get_log () =
-    lwt_option_iter logger (fun logger ->
-        let module Log = (val logger) in
-        Log.get_log ())
-  in *)
-  let rec step :
-      context ->
-      int ->
-      my_instr Array.t ->
-      my_stack ->
-      my_dip_stack ->
-      (my_stack * context) tzresult Lwt.t =
-   fun ctxt pc instr_array stack dip_stack ->
-    let instr = Array.unsafe_get instr_array pc in
-    let gas = cost_of_instr' instr stack in
-    let step_return ctx pc instr_array stack dip_stack =
-      log_exit ctxt (-1) instr stack ;
-      step ctxt pc instr_array stack dip_stack
-    in
-    Gas.consume ctxt gas
-    >>?= fun ctxt ->
-    (* ====== TODO: Fix logging function here ====== *)
-    log_entry ctxt pc instr stack ;
-    match (instr, stack) with
-    (* stack ops *)
-    | (My_dup, h :: t) ->
-        step_return ctxt (pc + 1) instr_array (h :: h :: t) dip_stack
-    (* | (My_swap, _) -> *)
-    | (My_swap, h :: h' :: t) ->
-        (* raise (Failure "swap case") *)
-        step_return ctxt (pc + 1) instr_array (h' :: h :: t) dip_stack
-    | (My_push x, s) ->
-        step_return ctxt (pc + 1) instr_array (x :: s) dip_stack
-    | (My_dip, h :: t) ->
-        step ctxt (pc + 1) instr_array t (h :: dip_stack)
-    | (My_undip, s) -> (
-      match dip_stack with
-      | h :: dip_stack' ->
-          step_return ctxt (pc + 1) instr_array (h :: s) dip_stack'
-      | [] ->
-          step_return ctxt (pc + 1) instr_array s dip_stack )
-    | (My_drop, _ :: t) ->
-        step_return ctxt (pc + 1) instr_array t dip_stack
-    | (My_loop_if_not n, My_bool b :: t) ->
-        if b then step_return ctxt (pc + 1) instr_array t dip_stack
-        else step_return ctxt (pc + n) instr_array t dip_stack
-    | (My_loop_jump n, s) ->
-        step_return ctxt (pc + n) instr_array s dip_stack
-    | (My_car, My_pair (l, _) :: s) ->
-        step_return ctxt (pc + 1) instr_array (l :: s) dip_stack
-    | (My_cons_pair, h :: h' :: t) ->
-        step_return ctxt (pc + 1) instr_array (My_pair (h, h') :: t) dip_stack
-    | (My_compare, My_int a :: My_int b :: t) ->
-        let cmp = My_int (Script_int.of_int @@ Script_int.compare a b) in
-        step_return ctxt (pc + 1) instr_array (cmp :: t) dip_stack
-    | (My_neq, My_int n :: t) ->
-        let neq = Compare.Int.( <> ) Script_int.(compare n zero) 0 in
-        step_return ctxt (pc + 1) instr_array (My_bool neq :: t) dip_stack
-    | (My_sub, My_int a :: My_int b :: t) ->
-        let sub = Script_int.sub a b in
-        step_return ctxt (pc + 1) instr_array (My_int sub :: t) dip_stack
-    | (My_mul_int, My_int a :: My_int b :: t) ->
-        let mul = Script_int.mul a b in
-        step_return ctxt (pc + 1) instr_array (My_int mul :: t) dip_stack
-    | (My_add_int_int, My_int a :: My_int b :: t) ->
-        let add = Script_int.add a b in
-        step_return ctxt (pc + 1) instr_array (My_int add :: t) dip_stack
-    | (My_big_map_get, key :: map :: t) -> (
-        let map = assert false in
-        my_big_map_get ctxt key map
-        >>=? fun (x, ctxt) ->
-        match x with
-        | None ->
-            step_return ctxt (pc + 1) instr_array (My_none :: t) dip_stack
-        | Some x ->
-            step_return ctxt (pc + 1) instr_array (My_some x :: t) dip_stack )
-    | (My_halt, s) ->
-        Lwt.return (Ok (s, ctxt))
-    | (My_nil, s) ->
-        step_return ctxt (pc + 1) instr_array (My_list [] :: s) dip_stack
-    | (_, _) ->
-        assert false
-  in
-  step
-    ctxt
-    (* Initialise the program counter at 0 *)
-    0
-    (* Translate the old ir to the new ir. This will go away *)
-    descr
-    (* Translate the old stack format to the new stack format. This will also go away *)
-    stack
-    (* Intiailise with empty dip stack *)
-    []
-  >>=? fun (stack, ctxt) ->
-  log_exit ctxt (-1) My_nil stack ;
-  return @@ (stack, ctxt)
+ fun logger ctxt step_constants descr stack ->
+  (* FIXME: That's ugly but this is only temporary. *)
+  step_bounded logger ctxt step_constants descr stack
+  >>=? fun (stack, ctxt) -> return (stack, ctxt)
 
 and interp :
     type p r.

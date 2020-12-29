@@ -222,6 +222,7 @@ val pp_print_char : formatter -> char -> unit
 (** Print a character in the current pretty-printing box. *)
 
 val pp_print_bool : formatter -> bool -> unit
+val std_formatter : formatter
 (** Print a boolean in the current pretty-printing box. *)
 
 (** {1:breaks Break hints} *)

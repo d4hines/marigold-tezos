@@ -7,7 +7,7 @@
   storage
     (pair (big_map %accounts address (pair (map %allowances address nat) (nat %balance)))
           (nat %s)) ;
-  code { LAMBDA
+  code { LAMBDA # (param, storage) : []
            (pair address (big_map address (pair (map address nat) nat)))
            (pair (map address nat) nat)
            { DUP ;
@@ -15,11 +15,11 @@
              SWAP ;
              CAR ;
              GET ;
-             IF_NONE { PUSH string "Owner does not have a balance" ; FAILWITH } {} } ;
-         SWAP ;
-         DUP ;
-         DUG 2 ;
-         CDR ;
+             IF_NONE { PUSH string "Owner does not have a balance" ; FAILWITH } {} } ; # \x : (param, storage) : []
+         SWAP ; # (param, storage) : \x : []
+         DUP ; # (param, storage) : (param, storage) : \x : []
+         DUG 2 ; #  (param, storage) : \x  : (param, storage) : []
+         CDR ; # storage : \x : (param, storage) : []
          PUSH mutez 0 ;
          AMOUNT ;
          COMPARE ;

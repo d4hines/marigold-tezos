@@ -194,7 +194,7 @@ let finally :
     let output =
       eval_script ()
       >>=? fun (x, _) ->
-      List.map Script_tagged_ir.my_item_to_string x
+      List.map Script_tagged_ir.show_my_item x
       |> String.concat " :: " |> Error_monad.return
     in
     output |> Lwt.map (fun v -> force v)

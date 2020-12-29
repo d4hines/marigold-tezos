@@ -35,6 +35,12 @@ module Obj = struct
   external magic : 'a -> 'b = "%identity"
 end
 
+let print_endline x = Format.pp_print_string Format.std_formatter (x ^ "\n")
+
+module Format = struct
+  include Format
+end
+
 let instr_to_string : type a b. (a, b) instr -> string = function
   | Drop ->
       "Drop"
@@ -305,6 +311,21 @@ module type My_boxed_map = sig
   val value : value OPS.t
 end
 
+module Format_ = Format
+module List_ = List
+
+module Ppx_deriving_runtime = struct
+  include Ppx_deriving_runtime
+  module Format = Format_
+  module List = List_
+end
+
+let show_to_pp show fmt v = Format.fprintf fmt "%s" (show v)
+
+let pp_z_num = show_to_pp Script_int.to_string
+
+let pp_n_num = show_to_pp Script_int.to_string
+
 type n_num = Script_int.n Script_int.num
 
 type z_num = Script_int.z Script_int.num
@@ -320,6 +341,8 @@ module Big_map = struct
     include Id
 
     let compare : t -> t -> int = Obj.magic Z.compare
+
+    let pp : Format.formatter -> t -> unit = Obj.magic Z.pp_print
   end
 end
 
@@ -337,15 +360,19 @@ type my_item =
   | My_big_map of my_big_map
   | My_string of string
   | My_mutez of Tez.t
+  | My_lambda_item of int * my_item list
 
+(* [@@deriving show {with_path = false}] *)
 and my_big_map = {
   id : Big_map.Id.t option;
   diff :
     (module My_boxed_map
        with type key = my_item
         and type value = my_item option);
+      [@compare fun a b -> 0] [@printer fun fmt _ -> Format.fprintf fmt "map"]
+  value_type : Script_typed_ir.ex_ty;
       [@compare fun a b -> 0]
-  value_type : Script_typed_ir.ex_ty; [@compare fun a b -> 0]
+      [@printer fun fmt _ -> Format.fprintf fmt "ex_ty"]
 }
 
 and my_instr =
@@ -393,7 +420,7 @@ and my_instr =
   | My_IF
   | My_IF_NONE
   | My_IMPLICIT_ACCOUNT
-  | My_LAMBDA
+  | My_lambda_instr of int
   | My_LT
   | My_NOT
   | My_NOW
@@ -408,7 +435,7 @@ and my_instr =
   | My_UNIT
   | My_map_update
   | My_cons_list
-[@@deriving ord]
+[@@deriving ord, show {with_path = false}]
 
 module My_big_map = Map.Make (struct
   type t = my_item
@@ -417,48 +444,6 @@ module My_big_map = Map.Make (struct
 end)
 
 let compare_my_item = Obj.magic ()
-
-let my_instr_to_str i = assert false
-
-(* match i with
-  | My_dup ->
-      "My_dup"
-  | My_swap ->
-      "My_swap"
-  | My_push _ ->
-      "My_push"
-  | My_dip ->
-      "My_dip"
-  | My_undip ->
-      "My_undip"
-  | My_drop ->
-      "My_drop"
-  | My_loop_if_not n ->
-      "My_loop_if_not " ^ Int32.to_string @@ Int32.of_int n
-  | My_loop_jump n ->
-      "My_loop_jump " ^ Int32.to_string @@ Int32.of_int n
-  | My_car ->
-      "My_car"
-  | My_compare ->
-      "My_compare"
-  | My_neq ->
-      "My_neq"
-  | My_sub ->
-      "My_sub"
-  | My_mul_int ->
-      "My_mul_int"
-  | My_halt ->
-      "My_halt"
-  | My_cons_pair ->
-      "My_cons_pair"
-  | My_nil ->
-      "My_nil"
-  | My_add ->
-      "My_add"
-  | My_if_left ->
-      "My_if_left"
-  | My_abs ->
-      "My_abs" *)
 
 type my_stack = my_item list
 
@@ -565,8 +550,10 @@ let rec myfy_item : type a. a ty * a -> my_item = function
         My_left (myfy_item (Obj.magic x))
     | R x ->
         My_right (myfy_item (Obj.magic x)) )
-  | (String_t _, x) -> My_string x
-  | (Mutez_t _, x) -> My_mutez x
+  | (String_t _, x) ->
+      My_string x
+  | (Mutez_t _, x) ->
+      My_mutez x
   | (ty, _) ->
       raise (Failure ("myfy item:" ^ ty_to_string ty))
 
@@ -664,53 +651,32 @@ let rec translate : type bef aft. (bef, aft) descr -> my_instr list =
       [My_big_map_get]
   | Failwith x ->
       [My_FAILWITH]
-  | Ge -> [My_GE]
-  | Gt -> [My_GT]
-  | Map_get -> [My_map_get]
-  | Exec -> [My_EXEC]
-  | Dropn (n, _) -> [My_dropn n]
-  | Eq -> [My_EQ]
-  | Cons_list -> [My_cons_list]
-  | Transfer_tokens -> [My_TRANSFER_TOKENS]
-  | Amount -> [My_amount]
-  | (Lambda (Lam (code, _))) -> 
+  | Ge ->
+      [My_GE]
+  | Gt ->
+      [My_GT]
+  | Map_get ->
+      [My_map_get]
+  | Exec ->
+      [My_EXEC]
+  | Dropn (n, _) ->
+      [My_dropn n]
+  | Eq ->
+      [My_EQ]
+  | Cons_list ->
+      [My_cons_list]
+  | Transfer_tokens ->
+      [My_TRANSFER_TOKENS]
+  | Amount ->
+      [My_amount]
+  | Lambda (Lam (code, _)) ->
+      let body = translate code in
+      [My_lambda_instr (List.length body)] @ body
   | x ->
       raise @@ Failure ("Failed translating " ^ instr_to_string x)
 
 let translate : type bef aft. (bef, aft) descr -> my_instr list =
  fun descr -> translate descr @ [My_halt]
-
-let rec my_item_to_string = function
-  | My_bool true ->
-      "true"
-  | My_bool false ->
-      "false"
-  | My_nat n ->
-      "N" ^ Script_int.to_string n
-  | My_int n ->
-      "Z" ^ Script_int.to_string n
-  | My_list lst ->
-      "["
-      ^ List.fold_right (fun x y -> my_item_to_string x ^ ":" ^ y) lst "()"
-      ^ "]"
-  | My_pair (a, b) ->
-      "P(" ^ my_item_to_string a ^ " , " ^ my_item_to_string b ^ ")"
-  | My_unit ->
-      "unit"
-  | My_left x ->
-      "Left " ^ my_item_to_string x
-  | My_right x ->
-      "Right " ^ my_item_to_string x
-  | My_some x ->
-      "Some " ^ my_item_to_string x
-  | My_none ->
-      "My_none"
-  | My_big_map _ ->
-      "BigMap ..."
-  | My_mutez x -> 
-     "Mutez " ^ Tez.to_string x
-  | My_string x ->
-      "\"" ^ x ^ "\""
 
 let myfy_item : type a. a ty * a -> my_item = function
   | (Nat_t _, n) ->
@@ -740,7 +706,7 @@ let rec yfym_item : type a. a ty * my_item -> a = function
   | (Pair_t ((a_ty, _, _), (b_ty, _, _), _), My_pair (a, b)) ->
       (yfym_item (a_ty, a), yfym_item (b_ty, b))
   | (Pair_t ((_a_ty, _, _), (_b_ty, _, _), _), x) ->
-      raise (Failure ("foo " ^ my_item_to_string x))
+      raise (Failure ("foo " ^ show_my_item x))
   | (List_t (ele_ty, _), My_list lst) ->
       {
         elements = List.map (fun ele -> yfym_item (ele_ty, ele)) lst;
@@ -823,7 +789,7 @@ let rec my_stack_to_string = function
   | [] ->
       "()"
   | hd :: tl ->
-      my_item_to_string hd ^ " :: " ^ my_stack_to_string tl
+      show_my_item hd ^ " :: " ^ my_stack_to_string tl
 
 let rec yfym_stack : type a. a stack_ty * my_stack -> a = function
   | (Empty_t, []) ->
@@ -842,6 +808,13 @@ let rec yfym_stack : type a. a stack_ty * my_stack -> a = function
            ( "yfym stack item. type: "
            ^ stack_ty_to_string stack_ty
            ^ ". content: " ^ my_stack_to_string stack ))
+
+let show_my_item_list x =
+  match x with
+  | [] ->
+      "[]"
+  | _ ->
+      List.map show_my_item x |> String.concat "\n\t::"
 
 (* | stack_ty , stack ->
  *    raise (Failure ("yfym stack. type: " ^ (stack_ty_to_string stack_ty) ^ ". content: " ^ (my_stack_to_string stack))) *)
