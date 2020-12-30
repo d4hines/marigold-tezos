@@ -271,7 +271,18 @@ module Big_map = struct
   end
 end
 
-let compare_comparable_ty x y = 0
+let compare_ty x y = 0
+
+let poly_a x = assert false
+
+type contract_type =
+  | Contract_type : 'a ty * string -> contract_type
+  
+
+let pp_contract_type : Format.formatter -> contract_type -> unit =
+  show_to_pp @@ fun (Contract_type (t, s)) -> ty_to_string t ^ ":" ^ s
+
+let compare_contract_type x y = 0
 
 type my_item =
   | My_bool of bool
@@ -290,7 +301,7 @@ type my_item =
   | My_mutez of Tez.t
   | My_lambda_item of int * my_item list
   | My_address_item of Contract.t * string
-  | My_contract_item of Contract.t * string
+  | My_contract_item of Contract.t * contract_type 
   | My_timestamp of Script_timestamp.t
 [@@deriving ord, show { with_path = false }]
 
@@ -343,20 +354,20 @@ and my_big_map_diff =
       in
       Format.fprintf fmt "my_big_map { %s }" x])
 
-and my_instr =
+type my_instr =
   (* Stack instructions *)
   | My_dup
   | My_swap
-  | My_push of my_item
+  | My_push : my_item -> my_instr
   | My_dip
   | My_undip
   | My_drop
-  | My_dropn of int
-  | My_dig of int
-  | My_dug of int
+  | My_dropn : int -> my_instr
+  | My_dig : int -> my_instr
+  | My_dug : int -> my_instr
   (* Loop *)
-  | My_loop_if_not of int
-  | My_jump of int (* Pair instructions *)
+  | My_loop_if_not : int -> my_instr
+  | My_jump : int -> my_instr (* Pair instructions *)
   | My_car
   | My_cons_pair
   | My_nil
@@ -370,12 +381,12 @@ and my_instr =
   | My_add_nat_nat
   | My_abs
   (* Union *)
-  | My_if_left of int
+  | My_if_left : int -> my_instr
   | My_address_instr
   | My_amount
   | My_apply
   | My_cdr
-  | My_contract_instr of string
+  | My_contract_instr : contract_type -> my_instr
   | My_ediv
   | My_EMPTY_MAP
   | My_EQ
@@ -385,17 +396,17 @@ and my_instr =
   | My_big_map_get
   | My_map_get
   | My_GT
-  | My_IF of int
-  | My_IF_NONE of int
+  | My_IF : int -> my_instr
+  | My_IF_NONE : int -> my_instr
   | My_IMPLICIT_ACCOUNT
-  | My_lambda_instr of int
+  | My_lambda_instr : int -> my_instr
   | My_LT
   | My_NOT
   | My_NOW
   | My_OR
   | My_PAIR
   | My_PUSH
-  | My_SELF of string
+  | My_SELF : string -> my_instr
   | My_SENDER
   | My_SET_DELEGATE
   | My_cons_some
@@ -403,7 +414,8 @@ and my_instr =
   | My_UNIT
   | My_map_update
   | My_cons_list
-[@@deriving ord, show { with_path = false }]
+[@@deriving show { with_path = false }]
+
 module My_big_map = Map.Make (struct
   type t = my_item
 
@@ -498,7 +510,8 @@ let rec myfy_item : type a. a ty * a -> my_item = function
       | R x -> My_right (myfy_item (rty, x)) )
   | (String_t _, x) -> My_string x
   | (Mutez_t _, x) -> My_mutez x
-  | (Address_t _, (contract, entrypoint)) -> My_address_item (contract, entrypoint)
+  | (Address_t _, (contract, entrypoint)) ->
+      My_address_item (contract, entrypoint)
   | (Map_t _, x) -> assert false
   | (ty, _) -> raise (Failure ("myfy item:" ^ ty_to_string ty))
 
@@ -581,8 +594,8 @@ let rec translate : type bef aft. (bef, aft) descr -> my_instr list =
   | Cons_list -> [ My_cons_list ]
   | Transfer_tokens -> [ My_TRANSFER_TOKENS ]
   | Amount -> [ My_amount ]
-  | Self (x, entrypoint) -> [My_SELF entrypoint]
-  | Contract (ty, entrypoint) -> [My_contract_instr entrypoint]
+  | Self (x, entrypoint) -> [ My_SELF entrypoint ]
+  | Contract (ty, entrypoint) -> [My_contract_instr (Contract_type (ty, entrypoint))]
   | Lambda (Lam (code, _)) ->
       let body = translate code in
       [ My_lambda_instr (List.length body) ] @ body

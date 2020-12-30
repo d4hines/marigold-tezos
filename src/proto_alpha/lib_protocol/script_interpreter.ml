@@ -572,13 +572,12 @@ let rec step_bounded :
     | (My_NOW, s) ->
         let now = Script_timestamp.now ctxt in
         step_return ctxt (pc + 1) instr_array (My_timestamp now :: s) dip_stack
-    | ( My_contract_instr target_entrypoint,
+    | ( My_contract_instr (Contract_type (t, target_entrypoint)),
         My_address_item (contract, entrypoint) :: s ) -> (
         match ((contract, entrypoint), target_entrypoint) with
         | ((contract, "default"), entrypoint)
         | ((contract, entrypoint), "default") -> (
-            let loc = assert false in
-            let t = assert false in
+            let loc = (-1) in
             Script_ir_translator.parse_contract_for_script
               ~legacy:false
               ctxt

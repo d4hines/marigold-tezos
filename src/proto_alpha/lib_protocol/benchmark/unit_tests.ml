@@ -150,12 +150,14 @@ let () =
   (*| My_cdr*)
   (* make_test [ My_car ] [ My_pair (i 1, i 2) ] [ i 2 ] ; *)
   (*| My_contract*)
-  (* make_test
-    [ My_contract_instr ]
+  make_test
+    [
+      My_contract_instr
+        (Contract_type (Script_typed_ir.Unit_t None, "default"));
+    ]
     [ My_address_item (recipient, "default") ]
-    [ My_contract_item (recipient, "default") ] ; *)
-  (* FIXME: *)
-  (* make_test [ My_address_instr ] [ My_contract_item sender] [My_address_item sender] ; *)
+    [ My_contract_item (recipient, "default") ] ;
+  make_test [ My_address_instr ] [ My_contract_item sender] [My_address_item sender] ;
   (*| My_ediv*)
   make_test [ My_ediv ] [ i 13; i 3 ] [ My_some (My_pair (i 4, n 1)) ] ;
   make_test [ My_ediv ] [ i 13; i 0 ] [ My_none ] ;
