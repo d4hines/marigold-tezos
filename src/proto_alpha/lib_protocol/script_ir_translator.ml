@@ -132,6 +132,8 @@ let rec type_size : type t. t ty -> int =
       1
   | Address_t _ ->
       1
+  | Operation_hash_t _ ->
+      1
   | Bool_t _ ->
       1
   | Operation_t _ ->
@@ -920,6 +922,8 @@ let rec unparse_ty :
       return ctxt (T_timestamp, [], unparse_type_annot tname)
   | Address_t tname ->
       return ctxt (T_address, [], unparse_type_annot tname)
+  | Operation_hash_t tname ->
+      return ctxt (T_operation_hash, [], unparse_type_annot tname)
   | Operation_t tname ->
       return ctxt (T_operation, [], unparse_type_annot tname)
   | Chain_id_t tname ->
@@ -1072,6 +1076,8 @@ let rec comparable_ty_of_ty :
       comparable_ty_of_ty ctxt loc tt
       >|? fun (ty, ctxt) -> (Option_key (ty, tname), ctxt)
   | Lambda_t _
+  | Operation_hash_t _
+  (* TODO(prometheansacrifice) is Operation_hash_t really incomparable *)
   | List_t _
   | Ticket_t _
   | Set_t _
@@ -1127,6 +1133,8 @@ let name_of_ty : type a. a ty -> type_annot option = function
   | Timestamp_t tname ->
       tname
   | Address_t tname ->
+      tname
+  | Operation_hash_t tname ->
       tname
   | Signature_t tname ->
       tname
@@ -1220,6 +1228,8 @@ let rec check_dupable_ty :
   | Timestamp_t _ ->
       ok ctxt
   | Address_t _ ->
+      ok ctxt
+  | Operation_hash_t _ ->
       ok ctxt
   | Bool_t _ ->
       ok ctxt
@@ -1925,6 +1935,9 @@ and parse_ty :
   | Prim (loc, T_address, [], annot) ->
       parse_type_annot loc annot
       >>? fun ty_name -> ok (Ex_ty (Address_t ty_name), ctxt)
+  | Prim (loc, T_operation_hash, [], annot) ->
+      parse_type_annot loc annot
+      >>? fun ty_name -> ok (Ex_ty (Operation_hash_t ty_name), ctxt)
   | Prim (loc, T_signature, [], annot) ->
       parse_type_annot loc annot
       >>? fun ty_name -> ok (Ex_ty (Signature_t ty_name), ctxt)
@@ -2254,6 +2267,8 @@ let check_packable ~legacy loc root =
     | Timestamp_t _ ->
         ok_unit
     | Address_t _ ->
+        ok_unit
+    | Operation_hash_t _ ->
         ok_unit
     | Bool_t _ ->
         ok_unit
@@ -2742,6 +2757,33 @@ let parse_chain_id ctxt = function
       error
       @@ Invalid_kind (location expr, [String_kind; Bytes_kind], kind expr)
 
+(* TODO(prometheansacrifice) Should errors be signalled as Invalid_syntactic_constant *)
+(* TODO(prometheansacrifice) gas cost computation? *)
+let parse_operation_hash ctxt = function
+  | String (loc, s) as expr -> (
+      Gas.consume ctxt Typecheck_costs.contract
+      >>? fun ctxt ->
+      match Operation_hash.of_b58check_opt s with
+      | Some operation_hash ->
+          ok (operation_hash, ctxt)
+      | None ->
+          error
+          @@ Invalid_syntactic_constant
+               (loc, strip_locations expr, "a valid operation hash") )
+  | Bytes (loc, bytes) as expr -> (
+      Gas.consume ctxt Typecheck_costs.contract
+      >>? fun ctxt ->
+      match Data_encoding.Binary.of_bytes Operation_hash.encoding bytes with
+      | Some operation_hash ->
+          ok (operation_hash, ctxt)
+      | None ->
+          error
+          @@ Invalid_syntactic_constant
+               (loc, strip_locations expr, "a valid operation hash") )
+  | expr ->
+      error
+      @@ Invalid_kind (location expr, [String_kind; Bytes_kind], kind expr)
+
 let parse_address ctxt = function
   | Bytes (loc, bytes) as expr (* As unparsed with [Optimized]. *) -> (
       Gas.consume ctxt Typecheck_costs.contract
@@ -3072,6 +3114,8 @@ let rec parse_data :
       Lwt.return @@ traced_no_lwt @@ parse_chain_id ctxt expr
   | (Address_t _, expr) ->
       Lwt.return @@ traced_no_lwt @@ parse_address ctxt expr
+  | (Operation_hash_t _, expr) ->
+      Lwt.return @@ traced_no_lwt @@ parse_operation_hash ctxt expr
   | (Contract_t (ty, _), expr) ->
       traced
         ( parse_address ctxt expr
@@ -6326,6 +6370,20 @@ let unparse_timestamp ctxt mode t =
       | Some s ->
           ok (String (-1, s), ctxt) )
 
+let unparse_operation_hash ctxt mode operation_hash =
+  Gas.consume ctxt Unparse_costs.contract
+  >|? fun ctxt ->
+  match mode with
+  | Optimized | Optimized_legacy ->
+      let bytes =
+        Data_encoding.Binary.to_bytes_exn
+          Operation_hash.encoding
+          operation_hash
+      in
+      (Bytes (-1, bytes), ctxt)
+  | Readable ->
+      (String (-1, Operation_hash.to_b58check operation_hash), ctxt)
+
 let unparse_address ctxt mode (c, entrypoint) =
   Gas.consume ctxt Unparse_costs.contract
   >|? fun ctxt ->
@@ -6598,6 +6656,8 @@ let rec unparse_data :
       Lwt.return @@ unparse_timestamp ctxt mode t
   | (Address_t _, address) ->
       Lwt.return @@ unparse_address ctxt mode address
+  | (Operation_hash_t _, operation_hash) ->
+      Lwt.return @@ unparse_operation_hash ctxt mode operation_hash
   | (Contract_t _, contract) ->
       Lwt.return @@ unparse_contract ctxt mode contract
   | (Signature_t _, s) ->
@@ -7061,6 +7121,8 @@ let rec has_lazy_storage : type t. t ty -> t has_lazy_storage =
   | Timestamp_t _ ->
       False_f
   | Address_t _ ->
+      False_f
+  | Operation_hash_t _ ->
       False_f
   | Bool_t _ ->
       False_f

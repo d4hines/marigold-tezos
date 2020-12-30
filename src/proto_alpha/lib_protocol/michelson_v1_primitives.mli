@@ -167,6 +167,7 @@ type prim =
   | T_unit
   | T_operation
   | T_address
+  | T_operation_hash
   | T_sapling_transaction
   | T_sapling_state
   | T_chain_id

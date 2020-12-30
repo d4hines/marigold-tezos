@@ -916,6 +916,13 @@ class TestContractOpcodes:
                 '"tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5"',
                 '(Some "tz1cxcwwnzENRdhe2Kb8ZdTrdNy4bFNyScx5")',
             ),
+            # Test `operation_hash`
+            (
+                'operation_hash.tz',
+                'Unit',
+                '"oomTc6iifGUafAGriqHwsqcKre8fty6Y9hRbseCzWk74syy9rPd"',
+                'Unit',
+            ),
             # Test (CONTRACT unit)
             (
                 'contract.tz',

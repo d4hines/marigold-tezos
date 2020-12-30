@@ -37,6 +37,8 @@ type field_annot = Field_annot of string
 
 type address = Contract.t * string
 
+type operation_hash = Operation_hash.t
+
 type ('a, 'b) pair = 'a * 'b
 
 type ('a, 'b) union = L of 'a | R of 'b
@@ -134,6 +136,7 @@ and 'ty ty =
   | Key_t : type_annot option -> public_key ty
   | Timestamp_t : type_annot option -> Script_timestamp.t ty
   | Address_t : type_annot option -> address ty
+  | Operation_hash_t : type_annot option -> operation_hash ty
   | Bool_t : type_annot option -> bool ty
   | Pair_t :
       ('a ty * field_annot option * var_annot option)

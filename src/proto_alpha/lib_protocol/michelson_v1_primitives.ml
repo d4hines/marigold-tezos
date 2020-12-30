@@ -168,6 +168,7 @@ type prim =
   | T_unit
   | T_operation
   | T_address
+  | T_operation_hash
   | T_sapling_transaction
   | T_sapling_state
   | T_chain_id
@@ -299,6 +300,7 @@ let namespace = function
   | I_XOR ->
       Instr_namespace
   | T_address
+  | T_operation_hash
   | T_big_map
   | T_bool
   | T_bytes
@@ -611,6 +613,8 @@ let string_of_prim = function
       "operation"
   | T_address ->
       "address"
+  | T_operation_hash ->
+      "operation_hash"
   | T_sapling_state ->
       "sapling_state"
   | T_sapling_transaction ->
@@ -895,6 +899,8 @@ let prim_of_string = function
       ok T_operation
   | "address" ->
       ok T_address
+  | "operation_hash" ->
+      ok T_operation_hash
   | "sapling_state" ->
       ok T_sapling_state
   | "sapling_transaction" ->
@@ -1111,7 +1117,8 @@ let prim_encoding =
          ("READ_TICKET", I_READ_TICKET);
          ("SPLIT_TICKET", I_SPLIT_TICKET);
          ("JOIN_TICKETS", I_JOIN_TICKETS);
-         ("GET_AND_UPDATE", I_GET_AND_UPDATE)
+         ("GET_AND_UPDATE", I_GET_AND_UPDATE);
+         ("operation_hash", T_operation_hash)
          (* New instructions must be added here, for backward compatibility of the encoding. *)
          (* Keep the comment above at the end of the list *)
         ]
