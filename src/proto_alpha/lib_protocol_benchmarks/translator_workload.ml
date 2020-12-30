@@ -149,8 +149,9 @@ let data_typechecker_workload ctxt t_kind micheline_node ex_ty =
             Format.eprintf "@." ;
             Lwt.return None )
 
-let code_typechecker_workload ctxt t_kind code bef =
-  let open Protocol in
+let code_typechecker_workload _ctxt _t_kind _code _bef = assert false
+
+(* let open Protocol in
   match bef with
   | Script_ir_translator.Ex_stack_ty bef ->
       let ctxt = Gas_helpers.set_limit ctxt in
@@ -189,4 +190,4 @@ let code_typechecker_workload ctxt t_kind code bef =
               Format.err_formatter
               errors ;
             Format.eprintf "@." ;
-            Lwt.return None )
+            Lwt.return None ) *)

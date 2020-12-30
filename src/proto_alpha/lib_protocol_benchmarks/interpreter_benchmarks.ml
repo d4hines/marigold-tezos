@@ -2374,6 +2374,7 @@ module Bench100 = struct
           Michelson_types.int_stack_ty
           (Alpha_context.Script_int.of_int 100, ()))
 end
+
 module Bench10 = struct
   let name = "bench10"
 
@@ -2480,6 +2481,7 @@ module Bench10 = struct
           Michelson_types.int_stack_ty
           (Alpha_context.Script_int.of_int 10, ()))
 end
+
 module Bench1000 = struct
   let name = "bench1000"
 
