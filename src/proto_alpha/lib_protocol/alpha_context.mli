@@ -175,7 +175,7 @@ module Gas : sig
 
   val pp : Format.formatter -> t -> unit
 
-  type cost = private Saturation_repr.t
+  type cost = Saturation_repr.t
 
   val cost_encoding : cost Data_encoding.encoding
 
