@@ -48,12 +48,12 @@
                      SENDER ; #42
                      GET ; 
                      IF_NONE { PUSH nat 0 ; EMPTY_MAP address nat ; PAIR } {} ;
-                     DUP ;
+                     DUP ; #50
                      CAR ;
                      DIG 4 ;
                      DUP ;
                      DUG 5 ;
-                     GET ;
+                     GET ; #55
                      IF_NONE
                        { PUSH unit Unit }
                        { PUSH nat 0 ;
@@ -68,29 +68,29 @@
                               NEQ ;
                               IF { PUSH string "UnsafeAllowanceChange" ; FAILWITH } { PUSH unit Unit } }
                             { PUSH unit Unit } } ;
-                     DROP ; #76
-                     SWAP ; #77
-                     DUP ; #78
-                     DUG 2 ; #79
-                     CDR ; #80
-                     DIG 2 ; #81
-                     CAR ; #82
-                     DIG 2 ; #83
-                     DUP ; #84
-                     DUG 3 ; #85
-                     CDR ; #86
-                     DIG 3 ; #87
-                     CAR ; #88
-                     DIG 4 ; #89
-                     DIG 5 ; #90
-                     SWAP ; #91
-                     SOME ; #92
-                     SWAP ; #93
-                     UPDATE ; #94
-                     PAIR ;
+                     DROP ; #77
+                     SWAP ; #78
+                     DUP ; #79
+                     DUG 2 ; #80
+                     CDR ; #81
+                     DIG 2 ; 
+                     CAR ; 
+                     DIG 2 ; #84
+                     DUP ; #
+                     DUG 3 ; 
+                     CDR ; 
+                     DIG 3 ;
+                     CAR ; #89
+                     DIG 4 ; 
+                     DIG 5 ; 
+                     SWAP ;
                      SOME ;
-                     SENDER ;
-                     UPDATE ;
+                     SWAP ;
+                     UPDATE ; #95
+                     PAIR ; #96
+                     SOME ; #97
+                     SENDER ; #98
+                     UPDATE ; #99
                      PAIR ;
                      NIL operation ;
                      PAIR }

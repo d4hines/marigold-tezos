@@ -663,6 +663,7 @@ let rec compare_comparable : type a. a comparable_ty -> a -> a -> int =
         | (Some x, Some y) ->
             compare_comparable t x y )
 
+
 let empty_set : type a. a comparable_ty -> a set =
  fun ty ->
   let module OPS = Set.Make (struct

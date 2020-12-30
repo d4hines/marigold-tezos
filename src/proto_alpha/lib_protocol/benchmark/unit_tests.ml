@@ -12,6 +12,8 @@ open Pipeline
 open Util
 open Script_tagged_ir
 
+let () = Printexc.record_backtrace true
+
 let int_to_my_int n = My_int (Script_int.of_int n)
 
 let i = int_to_my_int
@@ -24,22 +26,27 @@ let t = My_bool true
 
 let f = My_bool false
 
+let contract x =
+  My_contract_item (x, Contract_type (Script_typed_ir.Unit_t None, "default"))
+
+let address x = My_address_item (x, "default")
+
 let (b, contracts) = Context.init 2 |> force_global_lwt
 
 let (sender, recipient) =
   match contracts with a :: b :: _ -> (a, b) | _ -> assert false
 
+let step_constants : Script_interpreter.step_constants =
+  {
+    source = sender;
+    payer = sender;
+    self = recipient;
+    amount = Tez.zero;
+    chain_id = Chain_id.zero;
+  }
+
 let make_test instrs stack expected =
   let _ =
-    let step_constants : Script_interpreter.step_constants =
-      {
-        source = sender;
-        payer = sender;
-        self = recipient;
-        amount = Tez.zero;
-        chain_id = Chain_id.zero;
-      }
-    in
     let ctxt = get_next_context b in
     let instr_arr : my_instr array = Array.of_list (instrs @ [ My_halt ]) in
     Lwt.bind
@@ -137,13 +144,7 @@ let () =
     [ My_right (i 0) ]
     [ s "bar"; i 0 ] ;
   (* | My_address_instr *)
-  make_test
-    [ My_address_instr ]
-    [
-      My_contract_item
-        (sender, Contract_type (Script_typed_ir.Unit_t None, "default"));
-    ]
-    [ My_address_item (sender, "default") ] ;
+  make_test [ My_address_instr ] [ contract sender ] [ address sender ] ;
   (*| My_amount*)
   make_test [ My_amount ] [] [ My_mutez Tez.zero ] ;
   make_test [ My_cdr ] [ My_pair (i 1, i 2) ] [ i 2 ] ;
@@ -152,18 +153,9 @@ let () =
     [
       My_contract_instr (Contract_type (Script_typed_ir.Unit_t None, "default"));
     ]
-    [ My_address_item (recipient, "default") ]
-    [
-      My_contract_item
-        (recipient, Contract_type (Script_typed_ir.Unit_t None, "default"));
-    ] ;
-  make_test
-    [ My_address_instr ]
-    [
-      My_contract_item
-        (sender, Contract_type (Script_typed_ir.Unit_t None, "default"));
-    ]
-    [ My_address_item (sender, "default") ] ;
+    [ address recipient ]
+    [ contract recipient ] ;
+  make_test [ My_address_instr ] [ contract sender ] [ address sender ] ;
   (*| My_ediv*)
   make_test [ My_ediv ] [ i 13; i 3 ] [ My_some (My_pair (i 4, n 1)) ] ;
   make_test [ My_ediv ] [ i 13; i 0 ] [ My_none ] ;
@@ -215,7 +207,11 @@ let () =
     [ My_map_update; My_push (s "updated key"); My_map_get ]
     [ s "updated key"; My_some (s "updated value"); My_map my_empty_map ]
     [ My_some (s "updated value") ] ;
-
+  (*| My_big_map_update *)
+  make_test
+    [ My_big_map_update; My_push (s "updated key"); My_big_map_get ]
+    [ s "updated key"; My_some (s "updated value"); My_big_map big_map ]
+    [ My_some (s "updated value") ] ;
   (*| My_GT*)
   make_test [ My_GT ] [ i 3 ] [ t ] ;
   make_test [ My_GT ] [ i 0 ] [ f ] ;
@@ -246,25 +242,29 @@ let () =
   make_test
     [ My_SELF (Contract_type (Script_typed_ir.Unit_t None, "default")) ]
     []
-    [
-      My_contract_item
-        (recipient, Contract_type (Script_typed_ir.Unit_t None, "default"));
-    ] ;
+    [ contract recipient ] ;
   (*| My_SENDER*)
-  make_test [ My_SENDER ] [] [ My_address_item (sender, "default") ] ;
+  make_test [ My_SENDER ] [] [ address sender ] ;
   (*| My_SET_DELEGATE can probably skip*)
   (*| My_cons_some*)
   make_test [ My_cons_some ] [ i 0 ] [ My_some (i 0) ] ;
-  (* | My_TRANSFER_TOKENS FIXME: *)
-  make_test
-    [ My_TRANSFER_TOKENS ]
-    [
-      My_unit;
-      My_mutez (Tez.of_mutez 1_000L |> Option.get);
-      My_contract_item
-        (sender, Contract_type (Script_typed_ir.Unit_t None, "default"));
-    ]
-    [] ;
+  (* | My_TRANSFER_TOKENS *)
+  (* let nonce = 0 in
+     let operation = assert false in
+     let
+     make_test
+       [ My_TRANSFER_TOKENS ]
+       [
+         My_unit;
+         My_mutez (Tez.of_mutez 1_000L |> Option.get);
+         My_contract_item
+           (sender, Contract_type (Script_typed_ir.Unit_t None, "default"));
+       ]
+       [
+         My_operation
+           ( Internal_operation { source = step_constants.self; operation; nonce },
+             lazy_storage_diff );
+       ] ; *)
   (*| My_UNIT *)
   make_test [ My_UNIT ] [] [ My_unit ] ;
   (*| My_cons_list*)
@@ -300,5 +300,24 @@ let () =
     [ i 1; My_lambda_item (1, []) ]
     [ i 3 ] ;
   ()
+
+(* let stack =
+  My_pair
+    ( My_left (My_left (My_left (My_pair (contract sender, n 100)))),
+      My_pair
+        ( My_big_map
+            {
+              id = Some (Obj.magic 0);
+              diff = my_empty_big_map;
+              value_type =
+                Script_typed_ir.Ex_ty
+                  (Script_typed_ir.Pair_t
+                     ((Script_typed_ir.Map_t, None, None), (), None));
+            },
+          n 100000000000000 ) ) *)
+
+(* let () =
+  make_test [] [] [] ;
+  () *)
 
 let () = print_endline "All tests pass :thumbs up:"

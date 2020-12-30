@@ -33,7 +33,17 @@ type var_annot = Var_annot of string
 
 type type_annot = Type_annot of string
 
+module Format__ = Tezos_protocol_environment_alpha.Environment.Format
+module List__ = List
+
+module Ppx_deriving_runtime = struct
+  include Ppx_deriving_runtime
+  module Format = Format__
+  module List = List__
+end
+
 type field_annot = Field_annot of string
+[@@deriving show]
 
 type address = Contract.t * string
 
@@ -96,15 +106,6 @@ module type Boxed_map = sig
   val boxed : value OPS.t * int
 end
 
-module Format_ = Format
-module List_ = List
-
-module Ppx_deriving_runtime = struct
-  include Ppx_deriving_runtime
-  module Format = Format_
-  module List = List_
-end
-
 type ('key, 'value) map =
   ((module Boxed_map with type key = 'key and type value = 'value)
   [@printer fun fmt _ -> Format.fprintf fmt "ex_ty"]
@@ -114,6 +115,10 @@ type ('key, 'value) map =
 type operation = packed_internal_operation * Lazy_storage.diffs option
 
 type 'a ticket = { ticketer : address; contents : 'a; amount : n num }
+
+let pp_pair fmt _ = Format.fprintf fmt "<some pair>" 
+
+let pp_operation fmt _ = Format.fprintf fmt "<operaiont>"
 
 type ('arg, 'storage) script = {
   code : (('arg, 'storage) pair, (operation boxed_list, 'storage) pair) lambda;

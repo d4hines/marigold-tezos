@@ -348,10 +348,11 @@ let rec step_bounded :
     in
     Gas.consume ctxt gas >>?= fun ctxt ->
     log_entry ctxt pc instr stack ;
-    (* print_endline @@ "~" ^ my_stack_to_string stack ;
+    print_endline @@ "~" ^ my_stack_to_string stack ;
        print_endline @@ "> "
        ^ Int64.to_string (Int64.of_int pc)
-       ^ ": " ^ show_my_instr instr ; *)
+       ^ ": " ^ show_my_instr instr ;
+    (* let () = (match pc with | 22 -> assert false |  _ -> ()) in *)
     (* let n = 94 in
        let s = take 5 stack in
        let () =
@@ -392,9 +393,9 @@ let rec step_bounded :
         step_return ctxt (pc + 1) instr_array (l :: s) dip_stack
     | (My_cons_pair, h :: h' :: t) ->
         step_return ctxt (pc + 1) instr_array (My_pair (h, h') :: t) dip_stack
-    | (My_compare, My_int a :: My_int b :: t) ->
+    (* | (My_compare, My_int a :: My_int b :: t) ->
         let cmp = My_int (Script_int.of_int @@ Script_int.compare a b) in
-        step_return ctxt (pc + 1) instr_array (cmp :: t) dip_stack
+        step_return ctxt (pc + 1) instr_array (cmp :: t) dip_stack *)
     | (My_neq, My_int n :: t) ->
         let ns = Script_int.(compare n zero) in
         let neq = Compare.Int.( <> ) Script_int.(compare n zero) 0 in
@@ -489,11 +490,7 @@ let rec step_bounded :
           (My_mutez step_constants.amount :: s)
           dip_stack
     | (My_compare, a :: b :: s) ->
-        let cmp =
-          match (a, b) with
-          | (My_mutez a, My_mutez b) -> Tez.compare a b
-          | _ -> assert false
-        in
+        let cmp = my_compare_comparable a b in 
         step_return
           ctxt
           (pc + 1)
@@ -570,6 +567,13 @@ let rec step_bounded :
             step_return ctxt (pc + 1) instr_array (My_map m :: s) dip_stack
         | My_none -> assert false
         | _ -> raise @@ Failure "Map update called on non-option value." )
+     | (My_big_map_update, k :: v :: My_big_map m :: s) -> (
+        match v with
+        | My_some v ->
+            let m = my_big_map_update k v m in
+            step_return ctxt (pc + 1) instr_array (My_big_map m :: s) dip_stack
+        | My_none -> assert false
+        | _ -> raise @@ Failure "Map update called on non-option value." )   
     | ( My_address_instr,
         My_contract_item (contract, Contract_type (_, entrypoint)) :: s ) ->
         step_return
@@ -620,7 +624,11 @@ let rec step_bounded :
                   dip_stack )
         | _ -> step_return ctxt (pc + 1) instr_array (My_none :: s) dip_stack )
     | ( My_TRANSFER_TOKENS,
-        x :: My_mutez tez :: My_contract_item (tareget, _) :: s ) ->
+        x
+        :: My_mutez amount
+           :: My_contract_item (destination, Contract_type (tp, entrypoint))
+              :: s ) ->
+        let p = yfym_item (tp, x) in
         collect_lazy_storage ctxt tp p >>?= fun (to_duplicate, ctxt) ->
         let to_update = no_lazy_storage_id in
         extract_lazy_storage_diff
@@ -644,12 +652,13 @@ let rec step_bounded :
             }
         in
         fresh_internal_nonce ctxt >>?= fun (ctxt, nonce) ->
-        logged_return
-          ( ( ( Internal_operation
-                  { source = step_constants.self; operation; nonce },
-                lazy_storage_diff ),
-              rest ),
-            ctxt )
+        let op =
+          My_operation
+            ( Internal_operation
+                { source = step_constants.self; operation; nonce },
+              lazy_storage_diff )
+        in
+        step_return ctxt (pc + 1) instr_array (op :: s) dip_stack
     | (x, _s) ->
         let () = log_exit ctxt pc x _s in
         let instrs =

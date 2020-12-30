@@ -39,8 +39,8 @@ module Script_typed_ir = struct
   let equal_ex_ty = ( = )
 end
 
-let ty_to_string : type a. a ty -> string = function
-  | Unit_t _ -> "Unit_t"
+let rec ty_to_string : type a. a ty -> string = function
+  | Unit_t None -> "Unit_t None"
   | Int_t _ -> "Int_t"
   | Nat_t _ -> "Nat_t"
   | Signature_t _ -> "Signature_t"
@@ -52,7 +52,8 @@ let ty_to_string : type a. a ty -> string = function
   | Timestamp_t _ -> "Timestamp_t"
   | Address_t _ -> "Address_t"
   | Bool_t _ -> "Bool_t"
-  | Pair_t _ -> "Pair_t"
+  | Pair_t ((x, _, _), (y, _, _), None) ->
+      "Pair_t (" ^ ty_to_string x ^ " , " ^ ty_to_string y ^ ")"
   | Union_t _ -> "Union_t"
   | Lambda_t _ -> "Lambda_t"
   | Option_t _ -> "Option_t"
@@ -64,7 +65,7 @@ let ty_to_string : type a. a ty -> string = function
   | Operation_t _ -> "Operation_t"
   | Chain_id_t _ -> "Chain_id_t"
   | Never_t _ -> "Never_t"
-  | _ -> "Go fish..."
+  | _ -> raise @@ Failure "ty_to_string fail"
 
 (* | stack_ty , stack ->
  *    raise (Failure ("yfym stack. type: " ^ (stack_ty_to_string stack_ty) ^ ". content: " ^ (my_stack_to_string stack))) *)
@@ -226,12 +227,6 @@ end
 module Format_ = Format
 module List_ = List
 
-module Ppx_deriving_runtime = struct
-  include Ppx_deriving_runtime
-  module Format = Format_
-  module List = List_
-end
-
 let show_to_pp show fmt v = Format.fprintf fmt "%s" (show v)
 
 let pp_z_num = show_to_pp Script_int.to_string
@@ -259,6 +254,14 @@ let compare_n_num = Script_int.compare
 
 let compare_z_num = Script_int.compare
 
+module Lazy_storage = struct
+  include Lazy_storage
+
+  let compare_diffs x y = 0
+
+  let pp_diffs fmt x = Format.fprintf fmt "<lazy_storage>"
+end
+
 module Big_map = struct
   include Big_map
 
@@ -275,8 +278,7 @@ let compare_ty x y = 0
 
 let poly_a x = assert false
 
-type contract_type =
-  | Contract_type : 'a ty * string -> contract_type
+type contract_type = Contract_type : 'a ty * string -> contract_type
 
 (* type transfer_type = 
 | Transfer_type : 'a ty * Tez.t * contract_type -> transfer_type *)
@@ -286,9 +288,16 @@ let pp_contract_type : Format.formatter -> contract_type -> unit =
 
 let compare_contract_type x y = 0
 
-let compare_operation x y = 0
+let compare_packed_internal_operation x y = 0
 
-let pp_operation fmt _ = Format.fprintf fmt "<operation>"
+let pp_packed_internal_operation fmt _ = Format.fprintf fmt "<operation>"
+
+type compare_type =
+  | Compare_type : 'a comparable_ty -> compare_type [@deriving show]
+
+let pp_compare_type fmt x =
+  let (Compare_type x) = x in
+  Format.fprintf fmt "<comparable ty>"
 
 (* let pp_transfer_type fmt _ = Format.fprintf fmt "<transfer type>" *)
 
@@ -309,10 +318,10 @@ type my_item =
   | My_mutez of Tez.t
   | My_lambda_item of int * my_item list
   | My_address_item of Contract.t * string
-  | My_contract_item of Contract.t * contract_type 
+  | My_contract_item of Contract.t * contract_type
   | My_ret_address of int
   | My_timestamp of Script_timestamp.t
-  | My_operation of operation
+  | My_operation of packed_internal_operation * Lazy_storage.diffs option
 [@@deriving ord, show { with_path = false }]
 
 and my_map =
@@ -332,13 +341,15 @@ and my_map =
                show_my_item k ^ " = " ^ v_str ^ ";")
         |> String.concat ""
       in
-      Format.fprintf fmt "my_big_map { %s }" x])
+      Format.fprintf fmt "my_map { %s }" x])
 
 and my_big_map = {
   id : Big_map.Id.t option;
   diff : my_big_map_diff;
   value_type : Script_typed_ir.ex_ty;
-      [@compare fun a b -> 0] [@printer fun fmt _ -> Format.fprintf fmt "ex_ty"]
+      [@compare fun a b -> 0]
+      [@printer
+        fun fmt (Ex_ty x) -> Format.fprintf fmt "Ex_ty %s" (ty_to_string x)]
 }
 
 and my_big_map_diff =
@@ -422,6 +433,7 @@ type my_instr =
   | My_cons_some
   | My_TRANSFER_TOKENS
   | My_UNIT
+  | My_big_map_update
   | My_map_update
   | My_cons_list
 [@@deriving show { with_path = false }]
@@ -435,33 +447,6 @@ end)
 type my_stack = my_item list
 
 type my_dip_stack = my_stack
-
-let ty_to_string : type a. a ty -> string = function
-  | Unit_t _ -> "Unit_t"
-  | Int_t _ -> "Int_t"
-  | Nat_t _ -> "Nat_t"
-  | Signature_t _ -> "Signature_t"
-  | String_t _ -> "String_t"
-  | Bytes_t _ -> "Bytes_t"
-  | Mutez_t _ -> "Mutez_t"
-  | Key_hash_t _ -> "Key_hash_t"
-  | Key_t _ -> "Key_t"
-  | Timestamp_t _ -> "Timestamp_t"
-  | Address_t _ -> "Address_t"
-  | Bool_t _ -> "Bool_t"
-  | Pair_t _ -> "Pair_t"
-  | Union_t _ -> "Union_t"
-  | Lambda_t _ -> "Lambda_t"
-  | Option_t _ -> "Option_t"
-  | List_t _ -> "List_t"
-  | Set_t _ -> "Set_t"
-  | Map_t _ -> "Map_t"
-  | Big_map_t _ -> "Big_map_t"
-  | Contract_t _ -> "Contract_t"
-  | Operation_t _ -> "Operation_t"
-  | Chain_id_t _ -> "Chain_id_t"
-  | Never_t _ -> "Never_t"
-  | _ -> raise @@ Failure "ty_to_string fail"
 
 let show_my_item_list x =
   match x with
@@ -559,7 +544,7 @@ let rec translate : type bef aft. (bef, aft) descr -> my_instr list =
       let body_len = List.length cbody in
       (My_loop_if_not (body_len + 2) :: cbody) @ [ My_jump (-body_len - 1) ]
   | Car -> [ My_car ]
-  | Compare _ -> [ My_compare ]
+  | Compare t -> [ My_compare ]
   | Neq -> [ My_neq ]
   | Sub_int -> [ My_sub ]
   | Mul_intint -> [ My_mul_int ]
@@ -576,7 +561,7 @@ let rec translate : type bef aft. (bef, aft) descr -> my_instr list =
       @ l
       @ [ My_jump (List.length r + 1) ]
       @ r
-  | Big_map_update -> [ My_big_map_get ]
+  | Big_map_update -> [ My_big_map_update ]
   | Sender -> [ My_SENDER ]
   | Cons_some -> [ My_cons_some ]
   | Map_update -> [ My_map_update ]
@@ -605,10 +590,11 @@ let rec translate : type bef aft. (bef, aft) descr -> my_instr list =
   | Transfer_tokens -> [ My_TRANSFER_TOKENS ]
   | Amount -> [ My_amount ]
   | Self (t, entrypoint) -> [ My_SELF (Contract_type (t, entrypoint)) ]
-  | Contract (ty, entrypoint) -> [My_contract_instr (Contract_type (ty, entrypoint))]
+  | Contract (ty, entrypoint) ->
+      [ My_contract_instr (Contract_type (ty, entrypoint)) ]
   | Lambda (Lam (code, _)) ->
-      let body = translate code @ [My_RET] in
-       My_lambda_instr (List.length body) :: body
+      let body = translate code @ [ My_RET ] in
+      My_lambda_instr (List.length body) :: body
   | x -> raise @@ Failure ("Failed translating " ^ instr_to_string x)
 
 let translate : type bef aft. (bef, aft) descr -> my_instr list =
@@ -633,6 +619,7 @@ let rec yfym_item : type a. a ty * my_item -> a = function
         elements = List.map (fun ele -> yfym_item (ele_ty, ele)) lst;
         length = List.length lst;
       }
+  | (Unit_t _, My_unit) -> ()
   | (ty, _) -> raise (Failure ("yfym item: " ^ ty_to_string ty))
 
 let rec yfym_stack : type a. a stack_ty * my_stack -> a = function
@@ -675,14 +662,37 @@ let my_empty_map : my_map =
 
     let value = My_big_map.empty
   end )
-  let my_empty_big_map : my_big_map_diff =
-    ( module struct
-      type key = my_item
-  
-      type value = my_item option
-  
-      module OPS = My_big_map
-  
-      let value = My_big_map.empty
-    end )
-  
+
+let my_empty_big_map : my_big_map_diff =
+  ( module struct
+    type key = my_item
+
+    type value = my_item option
+
+    module OPS = My_big_map
+
+    let value = My_big_map.empty
+  end )
+
+let wrap_compare compare a b =
+  let res = compare a b in
+  if Compare.Int.(res = 0) then 0 else if Compare.Int.(res > 0) then 1 else -1
+
+let compare_address (x, ex) (y, ey) =
+  let lres = Contract.compare x y in
+  if Compare.Int.(lres = 0) then Compare.String.compare ex ey else lres
+
+let my_compare_comparable : my_item -> my_item -> int =
+ fun a b ->
+  match (a, b) with
+  | (My_int a, My_int b) -> assert false
+  | (My_mutez a, My_mutez b) -> wrap_compare Tez.compare a b
+  | (My_address_item (a, a_entrypoint), My_address_item (b, b_entrypoint)) ->
+      wrap_compare
+        compare_address
+        (a, a_entrypoint)
+        (b, b_entrypoint)
+  | _ ->
+      raise
+      @@ Failure
+           ("Failed to compare " ^ show_my_item a ^ " with " ^ show_my_item b)

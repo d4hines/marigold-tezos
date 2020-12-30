@@ -1,4 +1,12 @@
-(Pair (Pair 0
-            { Elt "tz1WAEDZQQpy83owXZB9gxs3aSgHZ4Sd8p7c" (Some (Pair {} 10)) ;
-              Elt "tz1Y9upjyQrcN1TpS4PkRw9Rp886tQ7WWLcw" (Some (Pair {} 99999999999990)) })
-      100000000000000)
+(My_pair
+   ((My_list []),
+    (My_pair
+       ((My_big_map
+           { id = (Some 0);
+             diff =
+             my_big_map { (My_address_item (tz1NEjksitutXC8Px13trwjEeRxN477JnnBU, "default")) = Some (My_pair
+   ((My_map
+       my_map { (My_address_item (tz1XXmPjMiuedmzxEmkSZnsGcD2tk6ZHyLix, "default")) = (My_nat 100); }),
+    (My_nat 0))); };
+             value_type = Ex_ty Pair_t (Map_t , Nat_t) }),
+        (My_nat 100000000000000)))))

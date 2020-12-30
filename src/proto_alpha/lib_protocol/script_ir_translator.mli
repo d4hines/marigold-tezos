@@ -170,6 +170,12 @@ val my_big_map_diff_set :
      with type key = Script_tagged_ir.my_item
       and type value = Script_tagged_ir.my_item option)
 
+val my_big_map_update :
+  Script_tagged_ir.my_item ->
+  Script_tagged_ir.my_item ->
+  Script_tagged_ir.my_big_map ->
+  Script_tagged_ir.my_big_map
+
 val my_big_map_mem :
   Alpha_context.t ->
   Script_tagged_ir.my_item ->
