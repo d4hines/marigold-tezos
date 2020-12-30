@@ -277,12 +277,20 @@ let poly_a x = assert false
 
 type contract_type =
   | Contract_type : 'a ty * string -> contract_type
-  
+
+(* type transfer_type = 
+| Transfer_type : 'a ty * Tez.t * contract_type -> transfer_type *)
 
 let pp_contract_type : Format.formatter -> contract_type -> unit =
   show_to_pp @@ fun (Contract_type (t, s)) -> ty_to_string t ^ ":" ^ s
 
 let compare_contract_type x y = 0
+
+let compare_operation x y = 0
+
+let pp_operation fmt _ = Format.fprintf fmt "<operation>"
+
+(* let pp_transfer_type fmt _ = Format.fprintf fmt "<transfer type>" *)
 
 type my_item =
   | My_bool of bool
@@ -302,7 +310,9 @@ type my_item =
   | My_lambda_item of int * my_item list
   | My_address_item of Contract.t * string
   | My_contract_item of Contract.t * contract_type 
+  | My_ret_address of int
   | My_timestamp of Script_timestamp.t
+  | My_operation of operation
 [@@deriving ord, show { with_path = false }]
 
 and my_map =
@@ -391,6 +401,7 @@ type my_instr =
   | My_EMPTY_MAP
   | My_EQ
   | My_EXEC
+  | My_RET
   | My_FAILWITH
   | My_GE
   | My_big_map_get
@@ -405,8 +416,7 @@ type my_instr =
   | My_NOW
   | My_OR
   | My_PAIR
-  | My_PUSH
-  | My_SELF : string -> my_instr
+  | My_SELF : contract_type -> my_instr
   | My_SENDER
   | My_SET_DELEGATE
   | My_cons_some
@@ -594,11 +604,11 @@ let rec translate : type bef aft. (bef, aft) descr -> my_instr list =
   | Cons_list -> [ My_cons_list ]
   | Transfer_tokens -> [ My_TRANSFER_TOKENS ]
   | Amount -> [ My_amount ]
-  | Self (x, entrypoint) -> [ My_SELF entrypoint ]
+  | Self (t, entrypoint) -> [ My_SELF (Contract_type (t, entrypoint)) ]
   | Contract (ty, entrypoint) -> [My_contract_instr (Contract_type (ty, entrypoint))]
   | Lambda (Lam (code, _)) ->
-      let body = translate code in
-      [ My_lambda_instr (List.length body) ] @ body
+      let body = translate code @ [My_RET] in
+       My_lambda_instr (List.length body) :: body
   | x -> raise @@ Failure ("Failed translating " ^ instr_to_string x)
 
 let translate : type bef aft. (bef, aft) descr -> my_instr list =
@@ -665,3 +675,14 @@ let my_empty_map : my_map =
 
     let value = My_big_map.empty
   end )
+  let my_empty_big_map : my_big_map_diff =
+    ( module struct
+      type key = my_item
+  
+      type value = my_item option
+  
+      module OPS = My_big_map
+  
+      let value = My_big_map.empty
+    end )
+  

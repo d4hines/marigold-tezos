@@ -4,7 +4,7 @@ open Util
 open Unit_tests
 let x = (==)
 
-let () = Printexc.record_backtrace false
+let () = Printexc.record_backtrace true
 
 exception RegressionDifference of string * string * string
 

@@ -97,8 +97,7 @@ val set_mem : 'elt -> 'elt Script_typed_ir.set -> bool
 
 val set_size : 'elt Script_typed_ir.set -> Script_int.n Script_int.num
 
-val empty_map :
-  'a Script_typed_ir.comparable_ty -> ('a, 'b) Script_typed_ir.map
+val empty_map : 'a Script_typed_ir.comparable_ty -> ('a, 'b) Script_typed_ir.map
 
 val map_fold :
   ('key -> 'value -> 'acc -> 'acc) ->
@@ -160,6 +159,16 @@ val my_map_set :
   (module Script_tagged_ir.My_boxed_map
      with type key = Script_tagged_ir.my_item
       and type value = Script_tagged_ir.my_item)
+
+val my_big_map_diff_set :
+  Script_tagged_ir.my_item ->
+  Script_tagged_ir.my_item ->
+  (module Script_tagged_ir.My_boxed_map
+     with type key = Script_tagged_ir.my_item
+      and type value = Script_tagged_ir.my_item option) ->
+  (module Script_tagged_ir.My_boxed_map
+     with type key = Script_tagged_ir.my_item
+      and type value = Script_tagged_ir.my_item option)
 
 val my_big_map_mem :
   Alpha_context.t ->

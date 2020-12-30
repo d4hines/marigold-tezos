@@ -139,25 +139,31 @@ let () =
   (* | My_address_instr *)
   make_test
     [ My_address_instr ]
-    [ My_contract_item (sender, "default") ]
+    [
+      My_contract_item
+        (sender, Contract_type (Script_typed_ir.Unit_t None, "default"));
+    ]
     [ My_address_item (sender, "default") ] ;
   (*| My_amount*)
   make_test [ My_amount ] [] [ My_mutez Tez.zero ] ;
-  (*| My_lambda_instr of int FIXME: *)
-  (*| My_EXEC FIXME:*)
-  (*| My_apply FIXME:*)
-  (* make_test [My_amount ] [] [My_mutez Tez.zero] ; *)
-  (*| My_cdr*)
-  (* make_test [ My_car ] [ My_pair (i 1, i 2) ] [ i 2 ] ; *)
+  make_test [ My_cdr ] [ My_pair (i 1, i 2) ] [ i 2 ] ;
   (*| My_contract*)
   make_test
     [
-      My_contract_instr
-        (Contract_type (Script_typed_ir.Unit_t None, "default"));
+      My_contract_instr (Contract_type (Script_typed_ir.Unit_t None, "default"));
     ]
     [ My_address_item (recipient, "default") ]
-    [ My_contract_item (recipient, "default") ] ;
-  make_test [ My_address_instr ] [ My_contract_item sender] [My_address_item sender] ;
+    [
+      My_contract_item
+        (recipient, Contract_type (Script_typed_ir.Unit_t None, "default"));
+    ] ;
+  make_test
+    [ My_address_instr ]
+    [
+      My_contract_item
+        (sender, Contract_type (Script_typed_ir.Unit_t None, "default"));
+    ]
+    [ My_address_item (sender, "default") ] ;
   (*| My_ediv*)
   make_test [ My_ediv ] [ i 13; i 3 ] [ My_some (My_pair (i 4, n 1)) ] ;
   make_test [ My_ediv ] [ i 13; i 0 ] [ My_none ] ;
@@ -171,9 +177,45 @@ let () =
   make_test [ My_GE ] [ i 3 ] [ t ] ;
   make_test [ My_GE ] [ i 0 ] [ t ] ;
   make_test [ My_GE ] [ i (-1) ] [ f ] ;
-  (*| My_big_map_get FIXME: *)
-  (*| My_map_get FIXME: *)
-  (*| My_map_update FIXME:*)
+  (*| My_big_map_get *)
+  (* None case *)
+  let big_map =
+    { id = None; diff = my_empty_big_map; value_type = Ex_ty (Int_t None) }
+  in
+  make_test [ My_big_map_get ] [ s "some key"; My_big_map big_map ] [ My_none ] ;
+
+  (* Some case *)
+  let diff : my_big_map_diff =
+    ( module struct
+      include (val my_empty_big_map)
+
+      let value = OPS.add (s "some key") (Some (s "some value")) value
+    end )
+  in
+  let big_map = { big_map with diff } in
+  make_test
+    [ My_big_map_get ]
+    [ s "some key"; My_big_map big_map ]
+    [ My_some (s "some value") ] ;
+  (*| My_map_get *)
+  make_test [ My_map_get ] [ s "some key"; My_map my_empty_map ] [ My_none ] ;
+  let map : my_map =
+    ( module struct
+      include (val my_empty_map)
+
+      let value = OPS.add (s "some key") (s "some value") value
+    end )
+  in
+  make_test
+    [ My_map_get ]
+    [ s "some key"; My_map map ]
+    [ My_some (s "some value") ] ;
+  (*| My_map_update *)
+  make_test
+    [ My_map_update; My_push (s "updated key"); My_map_get ]
+    [ s "updated key"; My_some (s "updated value"); My_map my_empty_map ]
+    [ My_some (s "updated value") ] ;
+
   (*| My_GT*)
   make_test [ My_GT ] [ i 3 ] [ t ] ;
   make_test [ My_GT ] [ i 0 ] [ f ] ;
@@ -201,17 +243,62 @@ let () =
   (* | My_PUSH *)
   make_test [ My_push t ] [] [ t ] ;
   (*| My_SELF*)
-  make_test [ My_SELF "default" ] [] [ My_contract_item (recipient, "default") ] ;
+  make_test
+    [ My_SELF (Contract_type (Script_typed_ir.Unit_t None, "default")) ]
+    []
+    [
+      My_contract_item
+        (recipient, Contract_type (Script_typed_ir.Unit_t None, "default"));
+    ] ;
   (*| My_SENDER*)
   make_test [ My_SENDER ] [] [ My_address_item (sender, "default") ] ;
   (*| My_SET_DELEGATE can probably skip*)
   (*| My_cons_some*)
   make_test [ My_cons_some ] [ i 0 ] [ My_some (i 0) ] ;
-  (*| My_TRANSFER_TOKENS FIXME:*)
+  (* | My_TRANSFER_TOKENS FIXME: *)
+  make_test
+    [ My_TRANSFER_TOKENS ]
+    [
+      My_unit;
+      My_mutez (Tez.of_mutez 1_000L |> Option.get);
+      My_contract_item
+        (sender, Contract_type (Script_typed_ir.Unit_t None, "default"));
+    ]
+    [] ;
   (*| My_UNIT *)
   make_test [ My_UNIT ] [] [ My_unit ] ;
   (*| My_cons_list*)
   make_test [ My_cons_list ] [ i 0; My_list [ i 1 ] ] [ My_list [ i 0; i 1 ] ] ;
+  (*| My_lambda_instr of int  *)
+  (*| My_EXEC *)
+  (*| My_apply *)
+  (*| My_cdr*)
+  make_test
+    [ My_jump 3; My_cdr; My_RET; My_EXEC; My_cdr ]
+    [ My_pair (i 1, My_pair (i 2, i 3)); My_lambda_item (1, []) ]
+    [ i 3 ] ;
+  (*
+     LAMBDA { # 1 :: []
+       # (1, (2, 3))
+       CDR
+     }
+     APPLY # \x :: 1
+     PUSH (Pair 2, 3) # \x
+     EXEC # (2, 3) :: \x
+     CDR
+  *)
+  make_test
+    [
+      My_jump 3;
+      My_cdr;
+      My_RET;
+      My_apply;
+      My_push (My_pair (i 2, i 3));
+      My_EXEC;
+      My_cdr;
+    ]
+    [ i 1; My_lambda_item (1, []) ]
+    [ i 3 ] ;
   ()
 
 let () = print_endline "All tests pass :thumbs up:"

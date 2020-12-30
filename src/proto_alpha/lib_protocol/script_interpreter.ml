@@ -442,6 +442,25 @@ let rec step_bounded :
           instr_array
           (My_lambda_item (n, []) :: s)
           dip_stack
+    | (My_apply, arg :: My_lambda_item (addr, args) :: s) ->
+        step_return
+          ctxt
+          (pc + 1)
+          instr_array
+          (My_lambda_item (addr, arg :: args) :: s)
+          dip_stack
+    | (My_EXEC, arg :: My_lambda_item (addr, args) :: s) ->
+        let arg =
+          args |> List.fold_left (fun right left -> My_pair (left, right)) arg
+        in
+        step_return
+          ctxt
+          addr
+          instr_array
+          (arg :: My_ret_address (pc + 1) :: s)
+          dip_stack
+    | (My_RET, ret :: My_ret_address addr :: s) ->
+        step_return ctxt addr instr_array (ret :: s) dip_stack
     | (My_PAIR, x :: x' :: s) ->
         step_return ctxt (pc + 1) instr_array (My_pair (x, x') :: s) dip_stack
     | (My_dig n, s) -> (
@@ -506,13 +525,13 @@ let rec step_bounded :
         step_return ctxt (pc + 1) instr_array (My_unit :: s) dip_stack
     | (My_cons_list, x :: My_list l :: s) ->
         step_return ctxt (pc + 1) instr_array (My_list (x :: l) :: s) dip_stack
-    | (My_SELF enrypoint, s) ->
+    | (My_SELF type_and_entry, s) ->
         let sender = step_constants.self in
         step_return
           ctxt
           (pc + 1)
           instr_array
-          (My_contract_item (sender, enrypoint) :: s)
+          (My_contract_item (sender, type_and_entry) :: s)
           dip_stack
     | (My_big_map_get, k :: My_big_map m :: s) -> (
         my_big_map_get ctxt k m >>=? fun x ->
@@ -551,7 +570,8 @@ let rec step_bounded :
             step_return ctxt (pc + 1) instr_array (My_map m :: s) dip_stack
         | My_none -> assert false
         | _ -> raise @@ Failure "Map update called on non-option value." )
-    | (My_address_instr, My_contract_item (contract, entrypoint) :: s) ->
+    | ( My_address_instr,
+        My_contract_item (contract, Contract_type (_, entrypoint)) :: s ) ->
         step_return
           ctxt
           (pc + 1)
@@ -577,7 +597,7 @@ let rec step_bounded :
         match ((contract, entrypoint), target_entrypoint) with
         | ((contract, "default"), entrypoint)
         | ((contract, entrypoint), "default") -> (
-            let loc = (-1) in
+            let loc = -1 in
             Script_ir_translator.parse_contract_for_script
               ~legacy:false
               ctxt
@@ -594,9 +614,42 @@ let rec step_bounded :
                   ctxt
                   (pc + 1)
                   instr_array
-                  (My_contract_item (contract, entrypoint) :: s)
+                  ( My_contract_item
+                      (contract, Contract_type (t, target_entrypoint))
+                  :: s )
                   dip_stack )
         | _ -> step_return ctxt (pc + 1) instr_array (My_none :: s) dip_stack )
+    | ( My_TRANSFER_TOKENS,
+        x :: My_mutez tez :: My_contract_item (tareget, _) :: s ) ->
+        collect_lazy_storage ctxt tp p >>?= fun (to_duplicate, ctxt) ->
+        let to_update = no_lazy_storage_id in
+        extract_lazy_storage_diff
+          ctxt
+          Optimized
+          tp
+          p
+          ~to_duplicate
+          ~to_update
+          ~temporary:true
+        >>=? fun (p, lazy_storage_diff, ctxt) ->
+        unparse_data ctxt Optimized tp p >>=? fun (p, ctxt) ->
+        Gas.consume ctxt (Script.strip_locations_cost p) >>?= fun ctxt ->
+        let operation =
+          Transaction
+            {
+              amount;
+              destination;
+              entrypoint;
+              parameters = Script.lazy_expr (Micheline.strip_locations p);
+            }
+        in
+        fresh_internal_nonce ctxt >>?= fun (ctxt, nonce) ->
+        logged_return
+          ( ( ( Internal_operation
+                  { source = step_constants.self; operation; nonce },
+                lazy_storage_diff ),
+              rest ),
+            ctxt )
     | (x, _s) ->
         let () = log_exit ctxt pc x _s in
         let instrs =
