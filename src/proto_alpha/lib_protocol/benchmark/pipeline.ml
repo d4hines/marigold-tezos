@@ -3,7 +3,9 @@ open Alpha_context
 open Script
 open Util
 
+
 [@@@warning "-27"]
+[@@@warning "-21"]
 
 let logger = None
 
@@ -29,11 +31,15 @@ let get_next_context b =
     >>=? fun b -> return (Incremental.alpha_ctxt b) )
 
 let do_transaction block ~sender ~recipient ~amount ~entrypoint ~parameters =
+  print_endline @@ Format.sprintf "============== Entrypoint: %s ============" entrypoint;
+  print_endline "============== Parameters ==============";
+  print_endline parameters;
   let parameters = parameters |> Expr.from_string in
   let parameters = lazy_expr parameters in
+  (* parse micheline -> translate -> show translation *)
   Incremental.begin_construction block
   >>=? fun b ->
-  Op.transaction
+  let x = Op.transaction
     (I b)
     ~parameters
     ~entrypoint
@@ -41,6 +47,9 @@ let do_transaction block ~sender ~recipient ~amount ~entrypoint ~parameters =
     sender
     recipient
     (of_mutez amount)
+  in 
+  print_endline "==========================================";
+  x
   >>=? fun op ->
   Incremental.add_operation b op >>=? fun b -> Incremental.finalize_block b
 
@@ -136,6 +145,7 @@ let rec run : type a. a operation -> Block.t -> (Block.t * a) tzresult Lwt.t =
           ~entrypoint:x.entrypoint
         |> force_global_lwt
       in
+      assert false;
       Error_monad.return (b, x)
   | Pending (op, f) ->
       run op b >>=? fun (b, x) -> run (f (b, x)) b

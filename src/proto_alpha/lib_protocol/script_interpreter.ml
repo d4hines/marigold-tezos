@@ -249,7 +249,7 @@ let cost_of_instr' : my_instr -> my_stack -> Gas.cost =
       Interp_costs.drop
   | (My_loop_if_not _, _) ->
       Interp_costs.loop
-  | (My_loop_jump _, _) ->
+  | (My_jump _, _) ->
       Gas.free
   | (My_car, _) ->
       Interp_costs.car
@@ -316,10 +316,6 @@ let[@inline] lwt_option_iter opt what =
 let lengths_equal l l' = Compare.Int.( = ) (List.length l) (List.length l')
 
 let rec split_at n l (acc, acc') =
-  (* print_endline @@ "l:" ^ show_my_item_list l ;
-  print_endline @@ "acc:" ^ show_my_item_list acc ;
-  print_endline @@ "acc':" ^ show_my_item_list acc' ;
-  print_endline "--------------------"; *)
   match l with
   | [] ->
       (acc, acc')
@@ -337,7 +333,7 @@ let rec step_bounded :
     my_instr array ->
     my_stack ->
     (my_stack * context) tzresult Lwt.t =
- fun logger ctxt _step_constants instrs stack ->
+ fun logger ctxt step_constants instrs stack ->
   let[@inline] log_entry ctxt pc instr stack =
     option_iter logger (fun logger ->
         let module Log = (val logger) in
@@ -366,20 +362,12 @@ let rec step_bounded :
     >>?= fun ctxt ->
     (* ====== TODO: Fix logging function here ====== *)
     log_entry ctxt pc instr stack ;
-    print_endline @@ "~" ^ my_stack_to_string stack ;
-    print_endline @@ ">" ^ show_my_instr instr ;
+    (* print_endline @@ "~" ^ my_stack_to_string stack ; *)
+    (* print_endline @@ ">" ^ show_my_instr instr ; *)
     match (instr, stack) with
-    (* stack ops *)
     | (My_dup, h :: t) ->
         step_return ctxt (pc + 1) instr_array (h :: h :: t) dip_stack
-    (* | (My_swap, _) -> *)
     | (My_swap, h :: h' :: t) ->
-        (* print_endline "================";
-        print_endline @@ "h: " ^ my_item_to_string h;
-        print_endline @@ "h': " ^ my_item_to_string h';
-        print_endline "================"; *)
-
-        (* raise (Failure "swap case") *)
         step_return ctxt (pc + 1) instr_array (h' :: h :: t) dip_stack
     | (My_push x, s) ->
         step_return ctxt (pc + 1) instr_array (x :: s) dip_stack
@@ -396,8 +384,12 @@ let rec step_bounded :
     | (My_loop_if_not n, My_bool b :: t) ->
         if b then step_return ctxt (pc + 1) instr_array t dip_stack
         else step_return ctxt (pc + n) instr_array t dip_stack
-    | (My_loop_jump n, s) ->
-        step_return ctxt (pc + n) instr_array s dip_stack
+    | (My_jump n, s) -> (
+      match n with
+      | 0 ->
+          raise @@ Failure "Received a 'JMP 0' command, which is invalid."
+      | _ ->
+          step_return ctxt (pc + n) instr_array s dip_stack )
     | (My_car, My_pair (l, _) :: s) ->
         step_return ctxt (pc + 1) instr_array (l :: s) dip_stack
     | (My_cons_pair, h :: h' :: t) ->
@@ -428,28 +420,90 @@ let rec step_bounded :
           instr_array
           (My_lambda_item (n, []) :: s)
           dip_stack
-    | (My_dig n, x :: s) ->
-        assert false
-        (* let (s, s') = split_at s n in
-        step_return ctxt (pc + 1) instr_array (s @ (x :: s')) dip_stack *)
+    | (My_dig n, s) -> (
+        let (x, s') = split_at n s in
+        match s' with
+        | [] ->
+            raise
+            @@ Failure
+                 (Format.sprintf
+                    "Dug %d called on stack with less than %d elements."
+                    n
+                    n)
+        | x :: s' ->
+            step_return ctxt (pc + 1) instr_array ((x :: s) @ s') dip_stack
+        (* step_return ctxt (pc + 1) instr_array (s @ (x :: s')) dip_stack *) )
     | (My_dug n, x :: s) ->
-        print_endline "========= x =========" ;
-        print_endline @@ show_my_item x ;
-        print_endline "========== full s ===========" ;
-        print_endline @@ show_my_item_list s ;
-        print_endline "========= s length =========" ;
-        print_endline (List.length s |> Int64.of_int |> Int64.to_string) ;
         let (s, s') = split_at n s in
-        print_endline "========== s ===========" ;
-        print_endline @@ show_my_item_list s ;
-        print_endline "========== s '===========" ;
-        print_endline @@ show_my_item_list s' ;
-        print_endline "======== s @ ( x :: s') =============" ;
-        print_endline @@ show_my_item_list (s @ [x] @ s') ;
-        print_endline "==========================" ;
-        step_return ctxt (pc + 1) instr_array (s @ x :: s') dip_stack   
+        step_return ctxt (pc + 1) instr_array (s @ (x :: s')) dip_stack
     | (My_cdr, My_pair (a, b) :: s) ->
         step_return ctxt (pc + 1) instr_array (b :: s) dip_stack
+    | (My_amount, s) ->
+        step_return
+          ctxt
+          (pc + 1)
+          instr_array
+          (My_mutez step_constants.amount :: s)
+          dip_stack
+    | (My_compare, a :: b :: s) ->
+        let cmp =
+          match (a, b) with
+          | (My_mutez a, My_mutez b) ->
+              Tez.compare a b
+          | _ ->
+              assert false
+        in
+        step_return
+          ctxt
+          (pc + 1)
+          instr_array
+          (My_int (Script_int.of_int cmp) :: s)
+          dip_stack
+    | (My_IF ln, My_bool x :: s) ->
+        let n = if x then 0 else ln in
+        step_return ctxt (pc + n + 1) instr_array s dip_stack
+    | (My_if_left ln, x :: s) ->
+        let (n, x) =
+          match x with
+          | My_left x ->
+              (0, x)
+          | My_right x ->
+              (ln, x)
+          | _ ->
+              raise
+              @@ Failure "Failed interpreting IF_LEFT on type other than Pair."
+        in
+        step_return ctxt (pc + n + 1) instr_array (x :: s) dip_stack
+    | (My_SENDER, s) ->
+        let sender = step_constants.self in
+        step_return
+          ctxt
+          (pc + 1)
+          instr_array
+          (My_address_item sender :: s)
+          dip_stack
+    | (My_big_map_get, k :: My_big_map m :: s) -> (
+        print_endline "`````````````` My Big map ```````````" ;
+        print_endline @@ show_my_big_map m ;
+        my_big_map_get ctxt k m
+        >>=? fun x ->
+        match x with
+        | (Some x, ctxt) ->
+            step_return ctxt (pc + 1) instr_array (My_some x :: s) dip_stack
+        | (None, ctxt) ->
+            step_return ctxt (pc + 1) instr_array (My_none :: s) dip_stack )
+    | (My_IF_NONE ln, x :: s) ->
+        let (n, x) =
+          match x with
+          | My_some x ->
+              (0, x)
+          | My_none ->
+              (ln, x)
+          | _ ->
+              raise
+              @@ Failure "Failed interpreting IF_NONE on type other than Pair."
+        in
+        step_return ctxt (pc + n + 1) instr_array (x :: s) dip_stack
     | (x, _s) ->
         let () = log_exit ctxt pc x _s in
         let instrs =
@@ -485,12 +539,20 @@ and step_descr :
     (a * context) tzresult Lwt.t =
  fun logger ctxt step_constants descr stack ->
   (* FIXME: That's ugly but this is only temporary. *)
+  ( match descr.bef with
+  | Item_t (ty, _, _) ->
+      let (v, _) = stack in
+      Script_ir_translator.unparse_data ctxt Readable ty v
+  | _ ->
+      assert false )
+  >>=? fun (micheline, ctxt) ->
+  let input_stack = myfy_stack (descr.bef, stack) in
   step_bounded
     logger
     ctxt
     step_constants
     (Array.of_list (translate descr))
-    (myfy_stack (descr.bef, stack))
+    input_stack
   >>=? fun (stack, ctxt) -> return @@ (yfym_stack (descr.aft, stack), ctxt)
 
 let rec step_tagged :

@@ -39,14 +39,10 @@ let logid label x =
   print_endline (label ^ ": " ^ x) ;
   x
 
-let contract_to_pkh : Contract.t -> string =  fun contract ->
-  match Contract.is_implicit contract with
-  | Some x -> Signature.Public_key_hash.to_b58check x
-  | None -> Contract.is_originated contract
-    |> Option.get |> Contract_hash.to_b58check
-
 let micheline_canonical_to_string c =
   Fmt.str
     "%a"
     Micheline_printer.print_expr
     (Micheline_printer.printable Michelson_v1_primitives.string_of_prim c)
+  
+let contract_to_pkh = Contract.to_b58check
