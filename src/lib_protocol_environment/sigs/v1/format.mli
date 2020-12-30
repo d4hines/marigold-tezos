@@ -1,3 +1,4 @@
+[@@@warning "-32"]
 (**************************************************************************)
 (*                                                                        *)
 (*                                 OCaml                                  *)
@@ -223,6 +224,9 @@ val pp_print_char : formatter -> char -> unit
 
 val pp_print_bool : formatter -> bool -> unit
 val std_formatter : formatter
+
+val sprintf : ('a, unit, string) format -> 'a
+
 (** Print a boolean in the current pretty-printing box. *)
 
 (** {1:breaks Break hints} *)

@@ -6916,12 +6916,20 @@ let my_map_get :
     Script_tagged_ir.my_item ->
     (module Script_tagged_ir.My_boxed_map
        with type key = Script_tagged_ir.my_item
+        and type value = Script_tagged_ir.my_item) ->
+    Script_tagged_ir.my_item option =
+ fun k (module Box) -> Box.OPS.find_opt k Box.value
+
+let my_big_map_diff_get :
+    Script_tagged_ir.my_item ->
+    (module Script_tagged_ir.My_boxed_map
+       with type key = Script_tagged_ir.my_item
         and type value = Script_tagged_ir.my_item option) ->
     Script_tagged_ir.my_item option option =
  fun k (module Box) -> Box.OPS.find_opt k Box.value
 
 let my_big_map_get ctxt key Script_tagged_ir.{id; diff; value_type} =
-  match (my_map_get key diff, id) with
+  match (my_big_map_diff_get key diff, id) with
   | (Some x, _) ->
       return (x, ctxt)
   | (None, None) ->
@@ -6946,7 +6954,7 @@ let my_big_map_get ctxt key Script_tagged_ir.{id; diff; value_type} =
           (Some (Script_tagged_ir.myfy_item (value_type, x)), ctxt) )
 
 let my_big_map_mem ctxt key Script_tagged_ir.{id; diff; _} =
-  match (my_map_get key diff, id) with
+  match (my_big_map_diff_get key diff, id) with
   | (None, None) ->
       return (false, ctxt)
   | (None, Some id) ->
@@ -6963,21 +6971,36 @@ let my_map_set :
     Script_tagged_ir.my_item ->
     (module Script_tagged_ir.My_boxed_map
        with type key = Script_tagged_ir.my_item
-        and type value = Script_tagged_ir.my_item option) ->
+        and type value = Script_tagged_ir.my_item) ->
     (module Script_tagged_ir.My_boxed_map
-        with type key = Script_tagged_ir.my_item
-         and type value = Script_tagged_ir.my_item option) =
+       with type key = Script_tagged_ir.my_item
+        and type value = Script_tagged_ir.my_item) =
  fun k v (module Box) ->
   ( module struct
     include Box
+    module OPS = Box.OPS
+    let value = Box.OPS.add k v Box.value
+  end )
 
+let my_big_map_diff_set :
+    Script_tagged_ir.my_item ->
+    Script_tagged_ir.my_item ->
+    (module Script_tagged_ir.My_boxed_map
+       with type key = Script_tagged_ir.my_item
+        and type value = Script_tagged_ir.my_item option) ->
+    (module Script_tagged_ir.My_boxed_map
+       with type key = Script_tagged_ir.my_item
+        and type value = Script_tagged_ir.my_item option) =
+ fun k v (module Box) ->
+  ( module struct
+    include Box
     module OPS = Box.OPS
 
-    let value = (Box.OPS.add k (Some v) Box.value)
+    let value = Box.OPS.add k (Some v) Box.value
   end )
 
 let my_big_map_update key value (Script_tagged_ir.{diff; _} as map) =
-  {map with diff = my_map_set key value diff}
+  {map with diff = my_big_map_diff_set key value diff}
 
 let big_map_update key value ({diff; _} as map) =
   {map with diff = map_set key value diff}

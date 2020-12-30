@@ -98,8 +98,22 @@ module type Boxed_map = sig
   val boxed : value OPS.t * int
 end
 
+module Format_ = Format
+module List_ = List
+
+module Ppx_deriving_runtime = struct
+  include Ppx_deriving_runtime
+  module Format = Format_
+  module List = List_
+end
+
 type ('key, 'value) map =
-  (module Boxed_map with type key = 'key and type value = 'value)
+  ((module Boxed_map with type key = 'key and type value = 'value)
+  [@printer fun fmt _ -> Format.fprintf fmt "ex_ty"]
+  [@compare
+                                                                    fun _ _ ->
+                                                                      0])
+[@@deriving ord, show {with_path = false}]
 
 type operation = packed_internal_operation * Lazy_storage.diffs option
 

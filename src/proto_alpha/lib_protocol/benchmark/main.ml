@@ -1,10 +1,14 @@
-open Util
+[@@@warning "-33"]
 
-let () = Printexc.record_backtrace true
+open Util
+open Unit_tests
+let x = (==)
+
+let () = Printexc.record_backtrace false
 
 exception RegressionDifference of string * string * string
 
-let create_benchmark name f =
+(* let create_benchmark name f =
   try
     let (eval, closure) = f () in
     let new_results = Lwt_main.run @@ eval () |> String.trim in
@@ -39,6 +43,6 @@ let benchmarks =
   [ (* create_benchmark "FA1.2_Approve" Fa12_benchmarks.approve_fa12_benchmark; *)
     (* create_benchmark "FA1.2_Transfer" Fa12_benchmarks.transfer_benchmark; *)
     create_benchmark "Dexter_xtzToToken" Dexter_benchmarks.xtzToToken_benchmark
-  ]
+  ] *)
 
 (* let () = Core.Command.run (Core_bench.Bench.make_command benchmarks) *)

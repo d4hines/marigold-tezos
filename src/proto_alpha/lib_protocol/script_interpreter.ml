@@ -45,8 +45,7 @@ open Script_ir_translator
 type execution_trace =
   (Script.location * Gas.t * (Script.expr * string option) list) list
 
-type error +=
-  | Reject of Script.location * Script.expr * execution_trace option
+type error += Reject of Script.location * Script.expr * execution_trace option
 
 type error += Overflow of Script.location * execution_trace option
 
@@ -105,10 +104,8 @@ let () =
        (req "contract_handle" Contract.encoding)
        (req "contract_code" Script.expr_encoding))
     (function
-      | Runtime_contract_error (contract, expr) ->
-          Some (contract, expr)
-      | _ ->
-          None)
+      | Runtime_contract_error (contract, expr) -> Some (contract, expr)
+      | _ -> None)
     (fun (contract, expr) -> Runtime_contract_error (contract, expr)) ;
   (* Bad contract parameter *)
   register_error_kind
@@ -196,9 +193,8 @@ let rec interp_stack_prefix_preserving_operation :
                 ( v4,
                   ( v5,
                     ( v6,
-                      ( v7,
-                        (v8, (v9, (va, (vb, (vc, (vd, (ve, (vf, rest'))))))))
-                      ) ) ) ) ) ) ) ),
+                      (v7, (v8, (v9, (va, (vb, (vc, (vd, (ve, (vf, rest')))))))))
+                    ) ) ) ) ) ) ),
         result )
   | (Prefix (Prefix (Prefix (Prefix n))), (v0, (v1, (v2, (v3, rest))))) ->
       interp_stack_prefix_preserving_operation f n rest
@@ -206,8 +202,7 @@ let rec interp_stack_prefix_preserving_operation :
   | (Prefix n, (v, rest)) ->
       interp_stack_prefix_preserving_operation f n rest
       |> fun (rest', result) -> ((v, rest'), result)
-  | (Rest, v) ->
-      f v
+  | (Rest, v) -> f v
 
 type step_constants = {
   source : Contract.t;
@@ -235,51 +230,34 @@ type logger = (module STEP_LOGGER)
 let cost_of_instr' : my_instr -> my_stack -> Gas.cost =
  fun instr stack ->
   match (instr, stack) with
-  | (My_dup, _) ->
-      Interp_costs.dup
-  | (My_swap, _) ->
-      Interp_costs.swap
-  | (My_push _, _) ->
-      Interp_costs.push
-  | (My_dip, _) ->
-      Interp_costs.dip
-  | (My_undip, _) ->
-      Gas.free
-  | (My_drop, _) ->
-      Interp_costs.drop
-  | (My_loop_if_not _, _) ->
-      Interp_costs.loop
-  | (My_jump _, _) ->
-      Gas.free
-  | (My_car, _) ->
-      Interp_costs.car
-  (* ========= TODO: FIX ME  ==========*)
-  | (My_compare, _) ->
-      Gas.free
-  | (My_neq, _) ->
-      Interp_costs.neq
+  | (My_dup, _) -> Interp_costs.dup
+  | (My_swap, _) -> Interp_costs.swap
+  | (My_push _, _) -> Interp_costs.push
+  | (My_dip, _) -> Interp_costs.dip
+  | (My_undip, _) -> Gas.free
+  | (My_drop, _) -> Interp_costs.drop
+  | (My_loop_if_not _, _) -> Interp_costs.loop
+  | (My_jump _, _) -> Gas.free
+  | (My_car, _) -> Interp_costs.car
+  (* ========= TODO: FIXME:  ==========*)
+  | (My_compare, _) -> Gas.free
+  | (My_neq, _) -> Interp_costs.neq
   | (My_sub, x :: y :: _) -> (
-    match (x, y) with
-    | (My_int x', My_int y') ->
-        Interp_costs.sub_bigint x' y'
-    | (_, _) ->
-        assert false )
+      match (x, y) with
+      | (My_int x', My_int y') -> Interp_costs.sub_bigint x' y'
+      | (_, _) -> assert false )
   | (My_mul_int, x :: y :: _) -> (
-    match (x, y) with
-    | (My_int x', My_int y') ->
-        Interp_costs.mul_bigint x' y'
-    | _ ->
-        assert false )
+      match (x, y) with
+      | (My_int x', My_int y') -> Interp_costs.mul_bigint x' y'
+      | _ -> assert false )
   (* Hack to get it working... *)
-  | (_, _) ->
-      Gas.free
+  | (_, _) -> Gas.free
 
 (* | (i, _) ->
       raise @@ Failure  (my_instr_to_str i) *)
 
 let unpack ctxt ~ty ~bytes =
-  Gas.check_enough ctxt (Script.serialized_cost bytes)
-  >>?= fun () ->
+  Gas.check_enough ctxt (Script.serialized_cost bytes) >>?= fun () ->
   if
     Compare.Int.(Bytes.length bytes >= 1)
     && Compare.Int.(TzEndian.get_uint8 bytes 0 = 0x05)
@@ -288,11 +266,10 @@ let unpack ctxt ~ty ~bytes =
     match Data_encoding.Binary.of_bytes Script.expr_encoding bytes with
     | None ->
         Lwt.return
-          ( Gas.consume ctxt (Interp_costs.unpack_failed bytes)
-          >|? fun ctxt -> (None, ctxt) )
+          ( Gas.consume ctxt (Interp_costs.unpack_failed bytes) >|? fun ctxt ->
+            (None, ctxt) )
     | Some expr -> (
-        Gas.consume ctxt (Script.deserialized_cost expr)
-        >>?= fun ctxt ->
+        Gas.consume ctxt (Script.deserialized_cost expr) >>?= fun ctxt ->
         parse_data
           ctxt
           ~legacy:false
@@ -300,11 +277,10 @@ let unpack ctxt ~ty ~bytes =
           ty
           (Micheline.root expr)
         >|= function
-        | Ok (value, ctxt) ->
-            ok (Some value, ctxt)
+        | Ok (value, ctxt) -> ok (Some value, ctxt)
         | Error _ignored ->
-            Gas.consume ctxt (Interp_costs.unpack_failed bytes)
-            >|? fun ctxt -> (None, ctxt) )
+            Gas.consume ctxt (Interp_costs.unpack_failed bytes) >|? fun ctxt ->
+            (None, ctxt) )
   else return (None, ctxt)
 
 let[@inline] option_iter opt what =
@@ -317,14 +293,26 @@ let lengths_equal l l' = Compare.Int.( = ) (List.length l) (List.length l')
 
 let rec split_at n l (acc, acc') =
   match l with
-  | [] ->
-      (acc, acc')
+  | [] -> (acc, acc')
   | _ ->
       if Compare.Int.( = ) n (List.length acc) then
-        split_at n (List.tl l) (acc, acc' @ [List.hd l])
-      else split_at n (List.tl l) (acc @ [List.hd l], acc')
+        split_at n (List.tl l) (acc, acc' @ [ List.hd l ])
+      else split_at n (List.tl l) (acc @ [ List.hd l ], acc')
 
 let split_at n l = split_at n l ([], [])
+
+let take n l = fst @@ split_at n l
+
+let rec drop n l acc =
+  match l with
+  | [] -> []
+  | h :: t ->
+      if Compare.Int.( > ) n (List.length acc) then drop n t (acc @ [ h ])
+      else acc
+
+let drop n l = drop n l []
+
+let int_to_string n = Int64.to_string (Int64.of_int n)
 
 let rec step_bounded :
     logger option ->
@@ -358,38 +346,48 @@ let rec step_bounded :
       log_exit ctxt (-1) instr stack ;
       step ctxt pc instr_array stack dip_stack
     in
-    Gas.consume ctxt gas
-    >>?= fun ctxt ->
-    (* ====== TODO: Fix logging function here ====== *)
+    Gas.consume ctxt gas >>?= fun ctxt ->
     log_entry ctxt pc instr stack ;
-    (* print_endline @@ "~" ^ my_stack_to_string stack ; *)
-    (* print_endline @@ ">" ^ show_my_instr instr ; *)
+    (* print_endline @@ "~" ^ my_stack_to_string stack ;
+       print_endline @@ "> "
+       ^ Int64.to_string (Int64.of_int pc)
+       ^ ": " ^ show_my_instr instr ; *)
+    (* let n = 94 in
+       let s = take 5 stack in
+       let () =
+         if Compare.Int.( = ) pc n then (
+           print_endline @@ "~" ^ my_stack_to_string s ;
+           print_endline @@ "> "
+           ^ Int64.to_string (Int64.of_int pc)
+           ^ ": " ^ show_my_instr instr )
+       in
+       let () =
+         if Compare.Int.( = ) pc (n + 1) then
+           print_endline @@ "~" ^ my_stack_to_string s
+       in *)
     match (instr, stack) with
     | (My_dup, h :: t) ->
         step_return ctxt (pc + 1) instr_array (h :: h :: t) dip_stack
     | (My_swap, h :: h' :: t) ->
         step_return ctxt (pc + 1) instr_array (h' :: h :: t) dip_stack
-    | (My_push x, s) ->
-        step_return ctxt (pc + 1) instr_array (x :: s) dip_stack
+    | (My_push x, s) -> step_return ctxt (pc + 1) instr_array (x :: s) dip_stack
     | (My_dip, h :: t) ->
         step_return ctxt (pc + 1) instr_array t (h :: dip_stack)
     | (My_undip, s) -> (
-      match dip_stack with
-      | h :: dip_stack' ->
-          step_return ctxt (pc + 1) instr_array (h :: s) dip_stack'
-      | [] ->
-          step_return ctxt (pc + 1) instr_array s dip_stack )
-    | (My_drop, _ :: t) ->
-        step_return ctxt (pc + 1) instr_array t dip_stack
+        match dip_stack with
+        | h :: dip_stack' ->
+            step_return ctxt (pc + 1) instr_array (h :: s) dip_stack'
+        | [] -> step_return ctxt (pc + 1) instr_array s dip_stack )
+    | (My_drop, _ :: t) -> step_return ctxt (pc + 1) instr_array t dip_stack
+    | (My_dropn n, s) ->
+        step_return ctxt (pc + 1) instr_array (drop n s) dip_stack
     | (My_loop_if_not n, My_bool b :: t) ->
         if b then step_return ctxt (pc + 1) instr_array t dip_stack
         else step_return ctxt (pc + n) instr_array t dip_stack
     | (My_jump n, s) -> (
-      match n with
-      | 0 ->
-          raise @@ Failure "Received a 'JMP 0' command, which is invalid."
-      | _ ->
-          step_return ctxt (pc + n) instr_array s dip_stack )
+        match n with
+        | 0 -> raise @@ Failure "Received a 'JMP 0' command, which is invalid."
+        | _ -> step_return ctxt (pc + n) instr_array s dip_stack )
     | (My_car, My_pair (l, _) :: s) ->
         step_return ctxt (pc + 1) instr_array (l :: s) dip_stack
     | (My_cons_pair, h :: h' :: t) ->
@@ -398,8 +396,25 @@ let rec step_bounded :
         let cmp = My_int (Script_int.of_int @@ Script_int.compare a b) in
         step_return ctxt (pc + 1) instr_array (cmp :: t) dip_stack
     | (My_neq, My_int n :: t) ->
+        let ns = Script_int.(compare n zero) in
         let neq = Compare.Int.( <> ) Script_int.(compare n zero) 0 in
         step_return ctxt (pc + 1) instr_array (My_bool neq :: t) dip_stack
+    | (My_EQ, My_int n :: t) ->
+        let ns = Script_int.(compare n zero) in
+        let eq = Compare.Int.( = ) Script_int.(compare n zero) 0 in
+        step_return ctxt (pc + 1) instr_array (My_bool eq :: t) dip_stack
+    | (My_GE, My_int n :: t) ->
+        let ns = Script_int.(compare n zero) in
+        let ge = Compare.Int.( >= ) Script_int.(compare n zero) 0 in
+        step_return ctxt (pc + 1) instr_array (My_bool ge :: t) dip_stack
+    | (My_GT, My_int n :: t) ->
+        let ns = Script_int.(compare n zero) in
+        let gt = Compare.Int.( > ) Script_int.(compare n zero) 0 in
+        step_return ctxt (pc + 1) instr_array (My_bool gt :: t) dip_stack
+    | (My_LT, My_int n :: t) ->
+        let ns = Script_int.(compare n zero) in
+        let gt = Compare.Int.( < ) Script_int.(compare n zero) 0 in
+        step_return ctxt (pc + 1) instr_array (My_bool gt :: t) dip_stack
     | (My_sub, My_int a :: My_int b :: t) ->
         let sub = Script_int.sub a b in
         step_return ctxt (pc + 1) instr_array (My_int sub :: t) dip_stack
@@ -409,10 +424,17 @@ let rec step_bounded :
     | (My_add_int_int, My_int a :: My_int b :: t) ->
         let add = Script_int.add a b in
         step_return ctxt (pc + 1) instr_array (My_int add :: t) dip_stack
-    | (My_halt, s) ->
-        Lwt.return (Ok (s, ctxt))
+    | (My_add_nat_nat, My_nat a :: My_nat b :: t) ->
+        (* assert false *)
+        let add = Script_int.add a b |> Obj.magic in
+        step_return ctxt (pc + 1) instr_array (My_nat add :: t) dip_stack
+    | (My_halt, s) -> Lwt.return (Ok (s, ctxt))
     | (My_nil, s) ->
         step_return ctxt (pc + 1) instr_array (My_list [] :: s) dip_stack
+    | (My_NOT, My_bool b :: s) ->
+        step_return ctxt (pc + 1) instr_array (My_bool (not b) :: s) dip_stack
+    | (My_OR, My_bool b :: My_bool b' :: s) ->
+        step_return ctxt (pc + 1) instr_array (My_bool (b || b') :: s) dip_stack
     | (My_lambda_instr n, s) ->
         step_return
           ctxt
@@ -420,8 +442,10 @@ let rec step_bounded :
           instr_array
           (My_lambda_item (n, []) :: s)
           dip_stack
+    | (My_PAIR, x :: x' :: s) ->
+        step_return ctxt (pc + 1) instr_array (My_pair (x, x') :: s) dip_stack
     | (My_dig n, s) -> (
-        let (x, s') = split_at n s in
+        let (s, s') = split_at n s in
         match s' with
         | [] ->
             raise
@@ -448,10 +472,8 @@ let rec step_bounded :
     | (My_compare, a :: b :: s) ->
         let cmp =
           match (a, b) with
-          | (My_mutez a, My_mutez b) ->
-              Tez.compare a b
-          | _ ->
-              assert false
+          | (My_mutez a, My_mutez b) -> Tez.compare a b
+          | _ -> assert false
         in
         step_return
           ctxt
@@ -465,45 +487,86 @@ let rec step_bounded :
     | (My_if_left ln, x :: s) ->
         let (n, x) =
           match x with
-          | My_left x ->
-              (0, x)
-          | My_right x ->
-              (ln, x)
+          | My_left x -> (0, x)
+          | My_right x -> (ln, x)
           | _ ->
               raise
-              @@ Failure "Failed interpreting IF_LEFT on type other than Pair."
+              @@ Failure "Failed interpreting IF_LEFT on type other than union."
         in
         step_return ctxt (pc + n + 1) instr_array (x :: s) dip_stack
     | (My_SENDER, s) ->
-        let sender = step_constants.self in
+        let sender = step_constants.source in
         step_return
           ctxt
           (pc + 1)
           instr_array
           (My_address_item sender :: s)
           dip_stack
+    | (My_UNIT, s) ->
+        step_return ctxt (pc + 1) instr_array (My_unit :: s) dip_stack
+    | (My_cons_list, x :: My_list l :: s) ->
+        step_return ctxt (pc + 1) instr_array (My_list (x :: l) :: s) dip_stack
+    | (My_SELF, s) ->
+        let sender = step_constants.self in
+        step_return
+          ctxt
+          (pc + 1)
+          instr_array
+          (My_contract_item sender :: s)
+          dip_stack
     | (My_big_map_get, k :: My_big_map m :: s) -> (
-        print_endline "`````````````` My Big map ```````````" ;
-        print_endline @@ show_my_big_map m ;
-        my_big_map_get ctxt k m
-        >>=? fun x ->
+        my_big_map_get ctxt k m >>=? fun x ->
         match x with
         | (Some x, ctxt) ->
             step_return ctxt (pc + 1) instr_array (My_some x :: s) dip_stack
         | (None, ctxt) ->
             step_return ctxt (pc + 1) instr_array (My_none :: s) dip_stack )
-    | (My_IF_NONE ln, x :: s) ->
-        let (n, x) =
-          match x with
-          | My_some x ->
-              (0, x)
-          | My_none ->
-              (ln, x)
-          | _ ->
-              raise
-              @@ Failure "Failed interpreting IF_NONE on type other than Pair."
-        in
-        step_return ctxt (pc + n + 1) instr_array (x :: s) dip_stack
+    | (My_IF_NONE ln, x :: s) -> (
+        match x with
+        | My_none -> step_return ctxt (pc + 1) instr_array s dip_stack
+        | My_some x ->
+            step_return ctxt (pc + ln + 1) instr_array (x :: s) dip_stack
+        | _ ->
+            raise
+            @@ Failure "Failed interpreting IF_NONE on type other than option."
+        )
+    | (My_EMPTY_MAP, s) ->
+        step_return
+          ctxt
+          (pc + 1)
+          instr_array
+          (My_map Script_tagged_ir.my_empty_map :: s)
+          dip_stack
+    | (My_map_get, k :: My_map m :: s) -> (
+        match my_map_get k m with
+        | None -> step_return ctxt (pc + 1) instr_array (My_none :: s) dip_stack
+        | Some x ->
+            step_return ctxt (pc + 1) instr_array (My_some x :: s) dip_stack )
+    | (My_cons_some, x :: s) ->
+        step_return ctxt (pc + 1) instr_array (My_some x :: s) dip_stack
+    | (My_map_update, k :: v :: My_map m :: s) -> (
+        match v with
+        | My_some v ->
+            let m = my_map_set k v m in
+            step_return ctxt (pc + 1) instr_array (My_map m :: s) dip_stack
+        | My_none -> assert false
+        | _ -> raise @@ Failure "Map update called on non-option value." )
+    | (My_address_instr, My_contract_item x :: s) ->
+        step_return ctxt (pc + 1) instr_array (My_address_item x :: s) dip_stack
+    | (My_ediv, My_int a :: My_int b :: s) -> (
+        match Script_int.ediv a b with
+        | Some (x, y) ->
+            step_return
+              ctxt
+              (pc + 1)
+              instr_array
+              (My_some (My_pair (My_int x, My_nat y)) :: s)
+              dip_stack
+        | None -> step_return ctxt (pc + 1) instr_array (My_none :: s) dip_stack
+        )
+    | (My_NOW, s) ->
+        let now = Script_timestamp.now ctxt in
+        step_return ctxt (pc + 1) instr_array (My_timestamp now :: s) dip_stack
     | (x, _s) ->
         let () = log_exit ctxt pc x _s in
         let instrs =
@@ -511,8 +574,12 @@ let rec step_bounded :
           |> String.concat ",\n"
         in
         (* raise @@ Failure (Format.sprintf "%s\n\n%s" instrs (my_stack_to_string _s)) *)
-        (* print_endline @@ my_stack_to_string _s; *)
-        raise @@ Failure ("Failed interpreting " ^ show_my_instr x)
+        let program = take 98 @@ Array.to_list instr_array in
+        let (s, _) = split_at 3 @@ _s in
+        let pc = Int64.to_string @@ Int64.of_int pc in
+        print_endline @@ my_stack_to_string s ;
+        raise
+        @@ Failure ("Failed interpreting instr " ^ pc ^ ": " ^ show_my_instr x)
   in
   step
     ctxt
@@ -543,8 +610,7 @@ and step_descr :
   | Item_t (ty, _, _) ->
       let (v, _) = stack in
       Script_ir_translator.unparse_data ctxt Readable ty v
-  | _ ->
-      assert false )
+  | _ -> assert false )
   >>=? fun (micheline, ctxt) ->
   let input_stack = myfy_stack (descr.bef, stack) in
   step_bounded
@@ -564,8 +630,8 @@ let rec step_tagged :
     (my_stack * context) tzresult Lwt.t =
  fun logger ctxt step_constants descr stack ->
   (* FIXME: That's ugly but this is only temporary. *)
-  step_bounded logger ctxt step_constants descr stack
-  >>=? fun (stack, ctxt) -> return (stack, ctxt)
+  step_bounded logger ctxt step_constants descr stack >>=? fun (stack, ctxt) ->
+  return (stack, ctxt)
 
 and interp :
     type p r.
@@ -577,8 +643,8 @@ and interp :
     (r * context) tzresult Lwt.t =
  fun logger ctxt step_constants (Lam (code, _)) arg ->
   let stack = (arg, ()) in
-  step_descr logger ctxt step_constants code stack
-  >|=? fun ((ret, ()), ctxt) -> (ret, ctxt)
+  step_descr logger ctxt step_constants code stack >|=? fun ((ret, ()), ctxt) ->
+  (ret, ctxt)
 
 let step = step_descr
 
@@ -592,7 +658,8 @@ let execute logger ctxt mode step_constants ~entrypoint ~internal
     tzresult
     Lwt.t =
   parse_script ctxt unparsed_script ~legacy:true ~allow_forged_in_storage:true
-  >>=? fun (Ex_script {code; arg_type; storage; storage_type; root_name}, ctxt) ->
+  >>=? fun (Ex_script { code; arg_type; storage; storage_type; root_name }, ctxt)
+    ->
   record_trace
     (Bad_contract_parameter step_constants.self)
     (find_entrypoint arg_type ~root_name entrypoint)
@@ -622,22 +689,19 @@ let execute logger ctxt mode step_constants ~entrypoint ~internal
   >>=? fun (storage, lazy_storage_diff, ctxt) ->
   trace
     Cannot_serialize_storage
-    ( unparse_data ctxt mode storage_type storage
-    >>=? fun (storage, ctxt) ->
-    Lwt.return
-      ( Gas.consume ctxt (Script.strip_locations_cost storage)
-      >>? fun ctxt -> ok (Micheline.strip_locations storage, ctxt) ) )
+    ( unparse_data ctxt mode storage_type storage >>=? fun (storage, ctxt) ->
+      Lwt.return
+        ( Gas.consume ctxt (Script.strip_locations_cost storage) >>? fun ctxt ->
+          ok (Micheline.strip_locations storage, ctxt) ) )
   >|=? fun (storage, ctxt) ->
   let (ops, op_diffs) = List.split ops.elements in
   let lazy_storage_diff =
     match
       List.flatten
-        (List.map (Option.value ~default:[]) (op_diffs @ [lazy_storage_diff]))
+        (List.map (Option.value ~default:[]) (op_diffs @ [ lazy_storage_diff ]))
     with
-    | [] ->
-        None
-    | diff ->
-        Some diff
+    | [] -> None
+    | diff -> Some diff
   in
   (storage, ops, ctxt, lazy_storage_diff)
 
@@ -660,4 +724,4 @@ let execute ?logger ctxt mode step_constants ~script ~entrypoint ~parameter
     script
     (Micheline.root parameter)
   >|=? fun (storage, operations, ctxt, lazy_storage_diff) ->
-  {ctxt; storage; lazy_storage_diff; operations}
+  { ctxt; storage; lazy_storage_diff; operations }

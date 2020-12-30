@@ -284,14 +284,14 @@ include Tezos_raw_protocol_alpha.Main
  (library_flags (:standard -linkall))
  (libraries tezos-protocol-environment)
  (modules Environment)
- (preprocess (pps ppx_deriving.ord ppx_deriving.show)))
+ (preprocess (pps ppx_deriving.ord ppx_deriving.eq ppx_deriving.show)))
 
 (library
  (name tezos_raw_protocol_alpha)
  (public_name tezos-protocol-alpha.raw)
  (libraries tezos_protocol_environment_alpha)
  (library_flags (:standard -linkall))
- (preprocess (pps ppx_deriving.ord ppx_deriving.show))
+ (preprocess (pps ppx_deriving.ord ppx_deriving.eq ppx_deriving.show))
  (flags (:standard -nopervasives -nostdlib
                    -w +a-4-6-7-9-29-32-40..42-44-45-48
                    -warn-error +a
@@ -393,7 +393,7 @@ include Tezos_raw_protocol_alpha.Main
  (flags -w "+a-4-6-7-9-29-40..42-44-45-48"
         -warn-error "+a"
         -nopervasives)
- (preprocess (pps ppx_deriving.ord ppx_deriving.show))
+ (preprocess (pps ppx_deriving.ord ppx_deriving.eq ppx_deriving.show))
  (modules Protocol))
 
 (library
@@ -403,7 +403,7 @@ include Tezos_raw_protocol_alpha.Main
       tezos-protocol-environment
       tezos-protocol-environment-sigs
       tezos_raw_protocol_alpha)
- (preprocess (pps ppx_deriving.ord ppx_deriving.show))
+ (preprocess (pps ppx_deriving.ord ppx_deriving.eq ppx_deriving.show))
  (flags -w "+a-4-6-7-9-29-40..42-44-45-48"
         -warn-error "+a"
         -nopervasives)
@@ -416,7 +416,7 @@ include Tezos_raw_protocol_alpha.Main
  (libraries tezos-protocol-alpha
             tezos-protocol-updater
             tezos-protocol-environment)
- (preprocess (pps ppx_deriving.ord ppx_deriving.show))
+ (preprocess (pps ppx_deriving.ord ppx_deriving.eq ppx_deriving.show))
  (flags (:standard -w +a-4-6-7-9-29-32-40..42-44-45-48
                    -warn-error +a))
  (modules Registerer))
