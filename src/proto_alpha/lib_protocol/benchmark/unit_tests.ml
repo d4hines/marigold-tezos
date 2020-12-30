@@ -139,8 +139,8 @@ let () =
   (* | My_address_instr *)
   make_test
     [ My_address_instr ]
-    [ My_contract_item sender ]
-    [ My_address_item sender ] ;
+    [ My_contract_item (sender, "default") ]
+    [ My_address_item (sender, "default") ] ;
   (*| My_amount*)
   make_test [ My_amount ] [] [ My_mutez Tez.zero ] ;
   (*| My_lambda_instr of int FIXME: *)
@@ -150,7 +150,10 @@ let () =
   (*| My_cdr*)
   (* make_test [ My_car ] [ My_pair (i 1, i 2) ] [ i 2 ] ; *)
   (*| My_contract*)
-  make_test [My_contract_instr] [My_address_item ]
+  (* make_test
+    [ My_contract_instr ]
+    [ My_address_item (recipient, "default") ]
+    [ My_contract_item (recipient, "default") ] ; *)
   (* FIXME: *)
   (* make_test [ My_address_instr ] [ My_contract_item sender] [My_address_item sender] ; *)
   (*| My_ediv*)
@@ -185,7 +188,7 @@ let () =
   make_test [ My_NOT ] [ f ] [ t ] ;
   (*| My_NOW can't test this one the normal way *)
   let ctxt = get_next_context b in
-  make_test [My_NOW] [] [My_timestamp (Script_timestamp.now ctxt)];
+  make_test [ My_NOW ] [] [ My_timestamp (Script_timestamp.now ctxt) ] ;
   (*| My_OR*)
   make_test [ My_OR ] [ t; t ] [ t ] ;
   make_test [ My_OR ] [ t; f ] [ t ] ;
@@ -196,9 +199,9 @@ let () =
   (* | My_PUSH *)
   make_test [ My_push t ] [] [ t ] ;
   (*| My_SELF*)
-  make_test [ My_SELF ] [] [ My_contract_item recipient ] ;
+  make_test [ My_SELF "default" ] [] [ My_contract_item (recipient, "default") ] ;
   (*| My_SENDER*)
-  make_test [ My_SENDER ] [] [ My_address_item sender ] ;
+  make_test [ My_SENDER ] [] [ My_address_item (sender, "default") ] ;
   (*| My_SET_DELEGATE can probably skip*)
   (*| My_cons_some*)
   make_test [ My_cons_some ] [ i 0 ] [ My_some (i 0) ] ;
@@ -206,7 +209,7 @@ let () =
   (*| My_UNIT *)
   make_test [ My_UNIT ] [] [ My_unit ] ;
   (*| My_cons_list*)
-  make_test [ My_cons_list ] [ i 0; My_list [i 1] ] [ My_list [ i 0; i 1 ] ] ;
+  make_test [ My_cons_list ] [ i 0; My_list [ i 1 ] ] [ My_list [ i 0; i 1 ] ] ;
   ()
 
 let () = print_endline "All tests pass :thumbs up:"

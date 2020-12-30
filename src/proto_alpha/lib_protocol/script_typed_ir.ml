@@ -68,9 +68,7 @@ type _ comparable_ty =
       * ('b comparable_ty * field_annot option)
       * type_annot option
       -> ('a, 'b) union comparable_ty
-  | Option_key :
-      'v comparable_ty * type_annot option
-      -> 'v option comparable_ty
+  | Option_key : 'v comparable_ty * type_annot option -> 'v option comparable_ty
 
 module type Boxed_set = sig
   type elt
@@ -110,14 +108,12 @@ end
 type ('key, 'value) map =
   ((module Boxed_map with type key = 'key and type value = 'value)
   [@printer fun fmt _ -> Format.fprintf fmt "ex_ty"]
-  [@compare
-                                                                    fun _ _ ->
-                                                                      0])
-[@@deriving ord, show {with_path = false}]
+  [@compare fun _ _ -> 0])
+[@@deriving ord, show { with_path = false }]
 
 type operation = packed_internal_operation * Lazy_storage.diffs option
 
-type 'a ticket = {ticketer : address; contents : 'a; amount : n num}
+type 'a ticket = { ticketer : address; contents : 'a; amount : n num }
 
 type ('arg, 'storage) script = {
   code : (('arg, 'storage) pair, (operation boxed_list, 'storage) pair) lambda;
@@ -195,7 +191,7 @@ and ('key, 'value) big_map = {
   value_type : 'value ty;
 }
 
-and 'elt boxed_list = {elements : 'elt list; length : int}
+and 'elt boxed_list = { elements : 'elt list; length : int }
 
 (* ---- Instructions --------------------------------------------------------*)
 
@@ -301,21 +297,13 @@ and ('bef, 'aft) instr =
   | Bytes_size : (bytes * 'rest, n num * 'rest) instr
   (* timestamp operations *)
   | Add_seconds_to_timestamp
-      : ( z num * (Script_timestamp.t * 'rest),
-          Script_timestamp.t * 'rest )
-        instr
+      : (z num * (Script_timestamp.t * 'rest), Script_timestamp.t * 'rest) instr
   | Add_timestamp_to_seconds
-      : ( Script_timestamp.t * (z num * 'rest),
-          Script_timestamp.t * 'rest )
-        instr
+      : (Script_timestamp.t * (z num * 'rest), Script_timestamp.t * 'rest) instr
   | Sub_timestamp_seconds
-      : ( Script_timestamp.t * (z num * 'rest),
-          Script_timestamp.t * 'rest )
-        instr
+      : (Script_timestamp.t * (z num * 'rest), Script_timestamp.t * 'rest) instr
   | Diff_timestamps
-      : ( Script_timestamp.t * (Script_timestamp.t * 'rest),
-          z num * 'rest )
-        instr
+      : (Script_timestamp.t * (Script_timestamp.t * 'rest), z num * 'rest) instr
   (* tez operations *)
   | Add_tez : (Tez.t * (Tez.t * 'rest), Tez.t * 'rest) instr
   | Sub_tez : (Tez.t * (Tez.t * 'rest), Tez.t * 'rest) instr
@@ -582,34 +570,20 @@ and ('bef, 'aft) descr = {
 let rec ty_of_comparable_ty : type a. a comparable_ty -> a ty =
  fun s ->
   match s with
-  | Unit_key _ ->
-      Unit_t None
-  | Never_key _ ->
-      Never_t None
-  | Int_key _ ->
-      Int_t None
-  | Nat_key _ ->
-      Nat_t None
-  | Signature_key _ ->
-      Signature_t None
-  | String_key _ ->
-      String_t None
-  | Bytes_key _ ->
-      Bytes_t None
-  | Mutez_key _ ->
-      Mutez_t None
-  | Bool_key _ ->
-      Bool_t None
-  | Key_hash_key _ ->
-      Key_hash_t None
-  | Key_key _ ->
-      Key_t None
-  | Timestamp_key _ ->
-      Timestamp_t None
-  | Chain_id_key _ ->
-      Chain_id_t None
-  | Address_key _ ->
-      Address_t None
+  | Unit_key _ -> Unit_t None
+  | Never_key _ -> Never_t None
+  | Int_key _ -> Int_t None
+  | Nat_key _ -> Nat_t None
+  | Signature_key _ -> Signature_t None
+  | String_key _ -> String_t None
+  | Bytes_key _ -> Bytes_t None
+  | Mutez_key _ -> Mutez_t None
+  | Bool_key _ -> Bool_t None
+  | Key_hash_key _ -> Key_hash_t None
+  | Key_key _ -> Key_t None
+  | Timestamp_key _ -> Timestamp_t None
+  | Chain_id_key _ -> Chain_id_t None
+  | Address_key _ -> Address_t None
   | Pair_key ((a, _), (b, _), _) ->
       Pair_t
         ( (ty_of_comparable_ty a, None, None),
@@ -618,34 +592,30 @@ let rec ty_of_comparable_ty : type a. a comparable_ty -> a ty =
   | Union_key ((a, _), (b, _), _) ->
       Union_t
         ((ty_of_comparable_ty a, None), (ty_of_comparable_ty b, None), None)
-  | Option_key (t, _) ->
-      Option_t (ty_of_comparable_ty t, None)
+  | Option_key (t, _) -> Option_t (ty_of_comparable_ty t, None)
 
 let unlist_ty : type a. a boxed_list ty -> a ty = function
-  | List_t (a, _) ->
-      a
+  | List_t (a, _) -> a
   | _ ->
       (* FIXME: This is not robust to evolutions. *)
       (* because of the concrete implementations of the type
-        constructors occurring in the definition of [ty]: *)
+         constructors occurring in the definition of [ty]: *)
       assert false
 
 let unset_ty : type a. a set ty -> a ty = function
-  | Set_t (a, _) ->
-      ty_of_comparable_ty a
+  | Set_t (a, _) -> ty_of_comparable_ty a
   | _ ->
       (* FIXME: This is not robust to evolutions. *)
       (* because of the concrete implementations of the type
-        constructors occurring in the definition of [ty]: *)
+         constructors occurring in the definition of [ty]: *)
       assert false
 
 let unmap_ty : type k v. (k, v) map ty -> k ty * v ty = function
-  | Map_t (k, v, _) ->
-      (ty_of_comparable_ty k, v)
+  | Map_t (k, v, _) -> (ty_of_comparable_ty k, v)
   | _ ->
       (* FIXME: This is not robust to evolutions. *)
       (* because of the concrete implementations of the type
-        constructors occurring in the definition of [ty]: *)
+         constructors occurring in the definition of [ty]: *)
       assert false
 
 type ex_ty = Ex_ty : 'a ty -> ex_ty

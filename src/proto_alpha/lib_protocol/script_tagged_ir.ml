@@ -271,6 +271,8 @@ module Big_map = struct
   end
 end
 
+let compare_comparable_ty x y = 0
+
 type my_item =
   | My_bool of bool
   | My_nat of n_num
@@ -287,8 +289,8 @@ type my_item =
   | My_string of string
   | My_mutez of Tez.t
   | My_lambda_item of int * my_item list
-  | My_address_item of Contract.t
-  | My_contract_item of Contract.t
+  | My_address_item of Contract.t * string
+  | My_contract_item of Contract.t * string
   | My_timestamp of Script_timestamp.t
 [@@deriving ord, show { with_path = false }]
 
@@ -373,7 +375,7 @@ and my_instr =
   | My_amount
   | My_apply
   | My_cdr
-  | My_contract_instr
+  | My_contract_instr of string
   | My_ediv
   | My_EMPTY_MAP
   | My_EQ
@@ -393,7 +395,7 @@ and my_instr =
   | My_OR
   | My_PAIR
   | My_PUSH
-  | My_SELF
+  | My_SELF of string
   | My_SENDER
   | My_SET_DELEGATE
   | My_cons_some
@@ -496,7 +498,7 @@ let rec myfy_item : type a. a ty * a -> my_item = function
       | R x -> My_right (myfy_item (rty, x)) )
   | (String_t _, x) -> My_string x
   | (Mutez_t _, x) -> My_mutez x
-  | (Address_t _, (c, _)) -> My_address_item c
+  | (Address_t _, (contract, entrypoint)) -> My_address_item (contract, entrypoint)
   | (Map_t _, x) -> assert false
   | (ty, _) -> raise (Failure ("myfy item:" ^ ty_to_string ty))
 
@@ -579,6 +581,8 @@ let rec translate : type bef aft. (bef, aft) descr -> my_instr list =
   | Cons_list -> [ My_cons_list ]
   | Transfer_tokens -> [ My_TRANSFER_TOKENS ]
   | Amount -> [ My_amount ]
+  | Self (x, entrypoint) -> [My_SELF entrypoint]
+  | Contract (ty, entrypoint) -> [My_contract_instr entrypoint]
   | Lambda (Lam (code, _)) ->
       let body = translate code in
       [ My_lambda_instr (List.length body) ] @ body

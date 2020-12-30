@@ -500,19 +500,19 @@ let rec step_bounded :
           ctxt
           (pc + 1)
           instr_array
-          (My_address_item sender :: s)
+          (My_address_item (sender, "default") :: s)
           dip_stack
     | (My_UNIT, s) ->
         step_return ctxt (pc + 1) instr_array (My_unit :: s) dip_stack
     | (My_cons_list, x :: My_list l :: s) ->
         step_return ctxt (pc + 1) instr_array (My_list (x :: l) :: s) dip_stack
-    | (My_SELF, s) ->
+    | (My_SELF enrypoint, s) ->
         let sender = step_constants.self in
         step_return
           ctxt
           (pc + 1)
           instr_array
-          (My_contract_item sender :: s)
+          (My_contract_item (sender, enrypoint) :: s)
           dip_stack
     | (My_big_map_get, k :: My_big_map m :: s) -> (
         my_big_map_get ctxt k m >>=? fun x ->
@@ -551,8 +551,13 @@ let rec step_bounded :
             step_return ctxt (pc + 1) instr_array (My_map m :: s) dip_stack
         | My_none -> assert false
         | _ -> raise @@ Failure "Map update called on non-option value." )
-    | (My_address_instr, My_contract_item x :: s) ->
-        step_return ctxt (pc + 1) instr_array (My_address_item x :: s) dip_stack
+    | (My_address_instr, My_contract_item (contract, entrypoint) :: s) ->
+        step_return
+          ctxt
+          (pc + 1)
+          instr_array
+          (My_address_item (contract, entrypoint) :: s)
+          dip_stack
     | (My_ediv, My_int a :: My_int b :: s) -> (
         match Script_int.ediv a b with
         | Some (x, y) ->
@@ -567,6 +572,32 @@ let rec step_bounded :
     | (My_NOW, s) ->
         let now = Script_timestamp.now ctxt in
         step_return ctxt (pc + 1) instr_array (My_timestamp now :: s) dip_stack
+    | ( My_contract_instr target_entrypoint,
+        My_address_item (contract, entrypoint) :: s ) -> (
+        match ((contract, entrypoint), target_entrypoint) with
+        | ((contract, "default"), entrypoint)
+        | ((contract, entrypoint), "default") -> (
+            let loc = assert false in
+            let t = assert false in
+            Script_ir_translator.parse_contract_for_script
+              ~legacy:false
+              ctxt
+              loc
+              t
+              contract
+              ~entrypoint
+            >>=? fun (ctxt, maybe_contract) ->
+            match maybe_contract with
+            | None ->
+                step_return ctxt (pc + 1) instr_array (My_none :: s) dip_stack
+            | Some (_, (contract, entrypoint)) ->
+                step_return
+                  ctxt
+                  (pc + 1)
+                  instr_array
+                  (My_contract_item (contract, entrypoint) :: s)
+                  dip_stack )
+        | _ -> step_return ctxt (pc + 1) instr_array (My_none :: s) dip_stack )
     | (x, _s) ->
         let () = log_exit ctxt pc x _s in
         let instrs =
