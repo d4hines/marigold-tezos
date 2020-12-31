@@ -396,7 +396,7 @@ class TestExecOrd:
     @pytest.mark.parametrize(
         "child_contract_name,parent_contract, grandparent_contract,expected",
         [
-            ("ordering2_concat_string", "ordering_mix2_dfs_bfs_sec", "ordering_mix2_dfs_bfs_top", "ABCD"),
+            ("ordering2_concat_string", "ordering_mix2_dfs_bfs_sec", "ordering_mix2_dfs_bfs_top", "EFDBCA"),
         ],
     )
     def test_bfs_dfs_mix2(
@@ -432,13 +432,14 @@ class TestExecOrd:
                 "5",
                 "--arg",
                 (
-                    "{{ Pair {{ Pair \"A\" \"{}\" ; "
-                    + "         Pair \"B\" \"{}\" ; "
-                    + "         Pair \"C\" \"{}\" }} \"{}\" ; "
-                    + " Pair {{ Pair \"D\" \"{}\" ; "
-                    + "         Pair \"E\" \"{}\" ; "
-                    + "         Pair \"F\" \"{}\" }} \"{}\" }}"
-                ).format(addr, addr, addr, p_addr, addr, addr, addr, p_addr),
+                    "{{ Pair ( Pair {{ Pair (Pair \"A\" \"{}\") True ; "
+                    + "                Pair (Pair \"B\" \"{}\") False ; "
+                    + "                Pair (Pair \"C\" \"{}\") False }} \"{}\") True ; "
+                    + " Pair ( Pair {{}} \"{}\" ) True ; "
+                    + " Pair ( Pair {{ Pair (Pair \"D\" \"{}\") True ; "
+                    + "                Pair (Pair \"E\" \"{}\") False ; "
+                    + "                Pair (Pair \"F\" \"{}\") False }} \"{}\") False }}"
+                ).format(addr, addr, addr, p_addr, p_addr, addr, addr, addr, p_addr),
             ],
         )
 

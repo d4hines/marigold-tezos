@@ -1,12 +1,12 @@
-{ parameter (list (pair string address)) ;
+{ parameter (list (pair (pair string address) bool)) ;
   storage unit ;
   code { NIL operation ;
          SWAP ;
          CAR ;
-         ITER { SWAP ;
-                PAIR ;
-                DUP ;
+         ITER { DUP ;
                 CDR ;
+                SWAP ;
+                CAR ;
                 DUP ;
                 CDR ;
                 SWAP ;
@@ -15,12 +15,8 @@
                 CONTRACT string ;
                 IF_NONE { PUSH string "Not a contract" ; FAILWITH } {} ;
                 DIG 2 ;
-                CAR ;
-                SWAP ;
-                PUSH mutez 0 ;
-                DIG 3 ;
-                TRANSFER_TOKENS ;
-                CONS } ;
+                IF { DIG 2 ; SWAP ; PUSH mutez 0 ; DIG 3 ; TRANSFER_TOKENS ; CONS }
+                   { DIG 2 ; SWAP ; PUSH mutez 0 ; DIG 3 ; TRANSFER_TOKENS ; MAKE_DFS ; CONS } } ;
          NIL operation ;
          SWAP ;
          PAIR ;
