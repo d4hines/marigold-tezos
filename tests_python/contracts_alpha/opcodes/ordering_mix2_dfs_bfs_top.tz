@@ -1,0 +1,38 @@
+{ parameter (list (pair (list (pair string address)) address)) ;
+  storage unit ;
+  code { NIL operation ;
+         SWAP ;
+         CAR ;
+         ITER { SWAP ;
+                PAIR ;
+                DUP ;
+                CDR ;
+                DUP ;
+                CDR ;
+                SWAP ;
+                CAR ;
+                SWAP ;
+                CONTRACT (list (pair string address)) ;
+                IF_NONE { PUSH string "Not a contract" ; FAILWITH } {} ;
+                DIG 2 ;
+                CAR ;
+                SWAP ;
+                PUSH mutez 0 ;
+                DIG 3 ;
+                TRANSFER_TOKENS ;
+                CONS } ;
+         NIL operation ;
+         SWAP ;
+         PAIR ;
+         LEFT (list operation) ;
+         LOOP_LEFT
+           { DUP ;
+             CDR ;
+             SWAP ;
+             CAR ;
+             IF_CONS
+               { DIG 2 ; SWAP ; CONS ; SWAP ; PAIR ; LEFT (list operation) }
+               { RIGHT (pair (list operation) (list operation)) } } ;
+         PUSH unit Unit ;
+         SWAP ;
+         PAIR } }

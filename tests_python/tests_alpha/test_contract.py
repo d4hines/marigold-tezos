@@ -349,8 +349,8 @@ class TestExecOrd:
     @pytest.mark.parametrize(
         "child_contract_name,parent_contract,expected",
         [
-            ("ordering_concat_string1", "ordering_mix_dfs_bfs1", "BDAC"),
-            ("ordering_concat_string2", "ordering_mix_dfs_bfs2", "ABDC"),
+            #("ordering_concat_string1", "ordering_mix_dfs_bfs1", "BDAC"),
+            #("ordering_concat_string2", "ordering_mix_dfs_bfs2", "ABDC"),
             ("ordering_concat_string3", "ordering_mix_dfs_bfs3", "DABC"),
         ],
     )
@@ -384,6 +384,61 @@ class TestExecOrd:
                     + "(Pair (Pair \"C\" \"{}\") "
                     + "(Pair \"D\" \"{}\")))"
                 ).format(addr, addr, addr, addr),
+            ],
+        )
+
+        client.bake('bootstrap3', ["--minimal-timestamp"])
+
+        assert client.get_storage(child_contract_name) == "\"{}\"".format(
+            expected
+        )
+
+    @pytest.mark.parametrize(
+        "child_contract_name,parent_contract, grandparent_contract,expected",
+        [
+            ("ordering2_concat_string", "ordering_mix2_dfs_bfs_sec", "ordering_mix2_dfs_bfs_top", "ABCD"),
+        ],
+    )
+    def test_bfs_dfs_mix2(
+        self, client, session, child_contract_name, parent_contract, grandparent_contract, expected
+    ):
+        path = f'{CONTRACT_PATH}/opcodes/ordering_concat_string.tz'
+        originate(
+            client, session, path, '""', 0, contract_name=child_contract_name
+        )
+        session[child_contract_name] = session['contract']
+        client.bake('bootstrap3', ["--minimal-timestamp"])
+
+        path = f'{CONTRACT_PATH}/opcodes/' + parent_contract + '.tz'
+        originate(client, session, path, 'Unit', 0)
+        session[parent_contract] = session['contract']
+        client.bake('bootstrap3', ["--minimal-timestamp"])
+
+        path = f'{CONTRACT_PATH}/opcodes/' + grandparent_contract + '.tz'
+        originate(client, session, path, 'Unit', 0)
+        session[grandparent_contract] = session['contract']
+        client.bake('bootstrap3', ["--minimal-timestamp"])
+
+
+        addr = session[child_contract_name]
+        p_addr = session[parent_contract]
+
+        client.transfer(
+            0,
+            'bootstrap2',
+            grandparent_contract,
+            [
+                "--burn-cap",
+                "5",
+                "--arg",
+                (
+                    "{{ Pair {{ Pair \"A\" \"{}\" ; "
+                    + "         Pair \"B\" \"{}\" ; "
+                    + "         Pair \"C\" \"{}\" }} \"{}\" ; "
+                    + " Pair {{ Pair \"D\" \"{}\" ; "
+                    + "         Pair \"E\" \"{}\" ; "
+                    + "         Pair \"F\" \"{}\" }} \"{}\" }}"
+                ).format(addr, addr, addr, p_addr, addr, addr, addr, p_addr),
             ],
         )
 
