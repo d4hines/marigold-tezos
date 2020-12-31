@@ -4,9 +4,9 @@
        ((My_big_map
            { id = (Some 0);
              diff =
-             my_big_map { (My_address_item (tz1PMQ6d6YmCw4vgyXWVucfrQVaGMYQUXRBx, "default")) = Some (My_pair
+             my_big_map { (My_address_item (tz1TTAuzs8A1Mm4aDncHexodqNoAcKd7JRfg, "default")) = Some (My_pair
    ((My_map
-       my_map { (My_address_item (tz1h9sRaQur4weugAuRxHy5yioBS24fyaWVL, "default")) = (My_nat 100); }),
+       my_map { (My_address_item (tz1TAN9oBiGe7RoAReMZUi4c1CfvDMjbrz3x, "default")) = (My_nat 100); }),
     (My_nat 0))); };
              value_type = Ex_ty Pair_t (Map_t , Nat_t) }),
         (My_nat 100000000000000)))))
