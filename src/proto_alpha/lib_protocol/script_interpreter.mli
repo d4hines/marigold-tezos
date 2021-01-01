@@ -43,6 +43,9 @@ type error += Cannot_serialize_storage
 
 type error += Michelson_too_many_recursive_calls
 
+val entrypoint_running : string ref
+val print_balance : (string -> Alpha_context.t -> unit) ref
+
 type execution_result = {
   ctxt : context;
   storage : Script.expr;

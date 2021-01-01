@@ -40,6 +40,17 @@ open Script_typed_ir
 open Script_tagged_ir
 open Script_ir_translator
 
+module Option = struct
+  include Option
+
+  let get x = match x with None -> assert false | Some x -> x
+end
+
+let print_balance : (string -> Alpha_context.t -> unit) ref =
+  ref (fun _ _ -> ())
+
+let entrypoint_running = ref ""
+
 (* ---- Run-time errors -----------------------------------------------------*)
 
 type execution_trace =
@@ -245,7 +256,8 @@ let cost_of_instr' : my_instr -> my_stack -> Gas.cost =
   | (My_sub, x :: y :: _) -> (
       match (x, y) with
       | (My_int x', My_int y') -> Interp_costs.sub_bigint x' y'
-      | (_, _) -> assert false )
+      (* FIXME: *)
+      | (x, y) -> Gas.free )
   | (My_mul_int, x :: y :: _) -> (
       match (x, y) with
       | (My_int x', My_int y') -> Interp_costs.mul_bigint x' y'
@@ -303,14 +315,11 @@ let split_at n l = split_at n l ([], [])
 
 let take n l = fst @@ split_at n l
 
-let rec drop n l acc =
-  match l with
-  | [] -> []
-  | h :: t ->
-      if Compare.Int.( > ) n (List.length acc) then drop n t (acc @ [ h ])
-      else acc
-
-let drop n l = drop n l []
+let rec drop n acc =
+  (match n, acc with
+  | (0, acc) -> acc
+  | (_, []) -> []
+  | (n, _ :: t) -> drop (n - 1) t)
 
 let int_to_string n = Int64.to_string (Int64.of_int n)
 
@@ -348,16 +357,30 @@ let rec step_bounded :
     in
     Gas.consume ctxt gas >>?= fun ctxt ->
     log_entry ctxt pc instr stack ;
-    print_endline @@ "~" ^ my_stack_to_string stack ;
-       print_endline @@ "> "
+
+    (* (!print_balance) "Inside step bounded\n" (Obj.magic ctxt); *)
+    (* print_endline @@ "~ " ^ show_my_item_list (take 3 stack);
+    print_endline @@ "> "
        ^ Int64.to_string (Int64.of_int pc)
-       ^ ": " ^ show_my_instr instr ;
+       ^ ": " ^ show_my_instr instr ; *)
+    (* let () =
+         if String.equal !entrypoint_running "xtzToToken" then assert false else ()
+       in *)
+
+    (* let () =
+         match instr with
+         | My_mul_int | My_mul_natnat | My_mul_nattez | My_ediv | My_ediv_natnat
+         | My_ediv_tez | My_apply | My_NOW ->
+
+             (* assert false *)
+         | _ -> ()
+       in *)
+
     (* let () = (match pc with | 22 -> assert false |  _ -> ()) in *)
     (* let n = 94 in
        let s = take 5 stack in
        let () =
          if Compare.Int.( = ) pc n then (
-           print_endline @@ "~" ^ my_stack_to_string s ;
            print_endline @@ "> "
            ^ Int64.to_string (Int64.of_int pc)
            ^ ": " ^ show_my_instr instr )
@@ -419,16 +442,39 @@ let rec step_bounded :
     | (My_sub, My_int a :: My_int b :: t) ->
         let sub = Script_int.sub a b in
         step_return ctxt (pc + 1) instr_array (My_int sub :: t) dip_stack
+    | (My_sub, My_nat a :: My_nat b :: t) ->
+        let sub = Script_int.sub a b in
+        step_return ctxt (pc + 1) instr_array (My_int sub :: t) dip_stack
+    | (My_abs, My_int a :: t) ->
+        let abs = Script_int.abs a in
+        step_return ctxt (pc + 1) instr_array (My_nat abs :: t) dip_stack
     | (My_mul_int, My_int a :: My_int b :: t) ->
         let mul = Script_int.mul a b in
         step_return ctxt (pc + 1) instr_array (My_int mul :: t) dip_stack
+    | (My_mul_natnat, My_nat a :: My_nat b :: t) ->
+        let mul = Script_int.mul_n a b in
+        step_return ctxt (pc + 1) instr_array (My_nat mul :: t) dip_stack
+    | (My_ediv_natnat, My_nat a :: My_nat b :: t) ->
+        let result =
+          match Script_int.ediv_n a b with
+          | None -> My_none
+          | Some (a, b) -> My_some (My_pair (My_nat a, My_nat b))
+        in
+        step_return ctxt (pc + 1) instr_array (result :: t) dip_stack
     | (My_add_int_int, My_int a :: My_int b :: t) ->
         let add = Script_int.add a b in
         step_return ctxt (pc + 1) instr_array (My_int add :: t) dip_stack
     | (My_add_nat_nat, My_nat a :: My_nat b :: t) ->
         (* assert false *)
-        let add = Script_int.add a b |> Obj.magic in
+        let add = Script_int.add_n a b in
         step_return ctxt (pc + 1) instr_array (My_nat add :: t) dip_stack
+    | (My_add_tez, My_mutez a :: My_mutez b :: t) -> (
+        match Tez.( +? ) a b with
+        | Ok add ->
+            step_return ctxt (pc + 1) instr_array (My_mutez add :: t) dip_stack
+        | Error _ ->
+            raise @@ Failure "Failed adding tez. It's to much mmmonnnneeeeeyyy!"
+        )
     | (My_halt, s) -> Lwt.return (Ok (s, ctxt))
     | (My_nil, s) ->
         step_return ctxt (pc + 1) instr_array (My_list [] :: s) dip_stack
@@ -439,9 +485,9 @@ let rec step_bounded :
     | (My_lambda_instr n, s) ->
         step_return
           ctxt
-          (pc + n + 1)
+          (pc + n + 2)
           instr_array
-          (My_lambda_item (n, []) :: s)
+          (My_lambda_item (pc + 1, []) :: s)
           dip_stack
     | (My_apply, arg :: My_lambda_item (addr, args) :: s) ->
         step_return
@@ -475,8 +521,7 @@ let rec step_bounded :
                     n
                     n)
         | x :: s' ->
-            step_return ctxt (pc + 1) instr_array ((x :: s) @ s') dip_stack
-        (* step_return ctxt (pc + 1) instr_array (s @ (x :: s')) dip_stack *) )
+            step_return ctxt (pc + 1) instr_array ((x :: s) @ s') dip_stack )
     | (My_dug n, x :: s) ->
         let (s, s') = split_at n s in
         step_return ctxt (pc + 1) instr_array (s @ (x :: s')) dip_stack
@@ -490,7 +535,7 @@ let rec step_bounded :
           (My_mutez step_constants.amount :: s)
           dip_stack
     | (My_compare, a :: b :: s) ->
-        let cmp = my_compare_comparable a b in 
+        let cmp = my_compare_comparable a b in
         step_return
           ctxt
           (pc + 1)
@@ -498,18 +543,27 @@ let rec step_bounded :
           (My_int (Script_int.of_int cmp) :: s)
           dip_stack
     | (My_IF ln, My_bool x :: s) ->
-        let n = if x then 0 else ln in
-        step_return ctxt (pc + n + 1) instr_array s dip_stack
+        let offset = if x then 1 else ln in
+        step_return ctxt (pc + offset) instr_array s dip_stack
     | (My_if_left ln, x :: s) ->
         let (n, x) =
           match x with
-          | My_left x -> (0, x)
+          | My_left x -> (1, x)
           | My_right x -> (ln, x)
           | _ ->
               raise
               @@ Failure "Failed interpreting IF_LEFT on type other than union."
         in
-        step_return ctxt (pc + n + 1) instr_array (x :: s) dip_stack
+        step_return ctxt (pc + n) instr_array (x :: s) dip_stack
+    | (My_IF_NONE ln, x :: s) -> (
+        match x with
+        | My_none -> step_return ctxt (pc + 1) instr_array s dip_stack
+        | My_some x ->
+            step_return ctxt (pc + ln) instr_array (x :: s) dip_stack
+        | _ ->
+            raise
+            @@ Failure "Failed interpreting IF_NONE on type other than option."
+        )
     | (My_SENDER, s) ->
         let sender = step_constants.source in
         step_return
@@ -537,15 +591,6 @@ let rec step_bounded :
             step_return ctxt (pc + 1) instr_array (My_some x :: s) dip_stack
         | (None, ctxt) ->
             step_return ctxt (pc + 1) instr_array (My_none :: s) dip_stack )
-    | (My_IF_NONE ln, x :: s) -> (
-        match x with
-        | My_none -> step_return ctxt (pc + 1) instr_array s dip_stack
-        | My_some x ->
-            step_return ctxt (pc + ln + 1) instr_array (x :: s) dip_stack
-        | _ ->
-            raise
-            @@ Failure "Failed interpreting IF_NONE on type other than option."
-        )
     | (My_EMPTY_MAP, s) ->
         step_return
           ctxt
@@ -567,13 +612,13 @@ let rec step_bounded :
             step_return ctxt (pc + 1) instr_array (My_map m :: s) dip_stack
         | My_none -> assert false
         | _ -> raise @@ Failure "Map update called on non-option value." )
-     | (My_big_map_update, k :: v :: My_big_map m :: s) -> (
+    | (My_big_map_update, k :: v :: My_big_map m :: s) -> (
         match v with
         | My_some v ->
             let m = my_big_map_update k v m in
             step_return ctxt (pc + 1) instr_array (My_big_map m :: s) dip_stack
         | My_none -> assert false
-        | _ -> raise @@ Failure "Map update called on non-option value." )   
+        | _ -> raise @@ Failure "Map update called on non-option value." )
     | ( My_address_instr,
         My_contract_item (contract, Contract_type (_, entrypoint)) :: s ) ->
         step_return
@@ -593,6 +638,21 @@ let rec step_bounded :
               dip_stack
         | None -> step_return ctxt (pc + 1) instr_array (My_none :: s) dip_stack
         )
+    | (My_ediv_tez, My_mutez x :: My_mutez y :: s) ->
+        let x = Script_int.abs (Script_int.of_int64 (Tez.to_mutez x)) in
+        let y = Script_int.abs (Script_int.of_int64 (Tez.to_mutez y)) in
+        let result =
+          match Script_int.ediv_n x y with
+          | None -> My_none
+          | Some (q, r) -> (
+              match Script_int.to_int64 r with
+              | None -> assert false (* Cannot overflow *)
+              | Some r -> (
+                  match Tez.of_mutez r with
+                  | None -> assert false (* Cannot overflow *)
+                  | Some r -> My_some (My_pair (My_nat q, My_mutez r)) ) )
+        in
+        step_return ctxt (pc + 1) instr_array (result :: s) dip_stack
     | (My_NOW, s) ->
         let now = Script_timestamp.now ctxt in
         step_return ctxt (pc + 1) instr_array (My_timestamp now :: s) dip_stack
@@ -618,8 +678,9 @@ let rec step_bounded :
                   ctxt
                   (pc + 1)
                   instr_array
-                  ( My_contract_item
-                      (contract, Contract_type (t, target_entrypoint))
+                  ( My_some
+                      (My_contract_item
+                         (contract, Contract_type (t, target_entrypoint)))
                   :: s )
                   dip_stack )
         | _ -> step_return ctxt (pc + 1) instr_array (My_none :: s) dip_stack )
@@ -669,7 +730,6 @@ let rec step_bounded :
         let program = take 98 @@ Array.to_list instr_array in
         let (s, _) = split_at 3 @@ _s in
         let pc = Int64.to_string @@ Int64.of_int pc in
-        print_endline @@ my_stack_to_string s ;
         raise
         @@ Failure ("Failed interpreting instr " ^ pc ^ ": " ^ show_my_instr x)
   in
@@ -705,13 +765,22 @@ and step_descr :
   | _ -> assert false )
   >>=? fun (micheline, ctxt) ->
   let input_stack = myfy_stack (descr.bef, stack) in
+  (* ( match input_stack with
+     | [ My_pair (_, storage) ] ->
+         print_endline @@ "~~~~~~~~~~~~~ " ^ show_my_item storage
+     | _ -> assert false ) ; *)
   step_bounded
     logger
     ctxt
     step_constants
     (Array.of_list (translate descr))
     input_stack
-  >>=? fun (stack, ctxt) -> return @@ (yfym_stack (descr.aft, stack), ctxt)
+  >>=? fun (stack, ctxt) ->
+  (* ( match stack with
+     | [ My_pair (_, storage) ] ->
+         print_endline @@ "~~~~~~~~~~~~~ " ^ show_my_item storage
+     | _ -> assert false ) ; *)
+  return @@ (yfym_stack (descr.aft, stack), ctxt)
 
 let rec step_tagged :
     logger option ->
@@ -720,9 +789,11 @@ let rec step_tagged :
     my_instr Array.t ->
     my_stack ->
     (my_stack * context) tzresult Lwt.t =
- fun logger ctxt step_constants descr stack ->
+ fun logger ctxt step_constants instrs stack ->
   (* FIXME: That's ugly but this is only temporary. *)
-  step_bounded logger ctxt step_constants descr stack >>=? fun (stack, ctxt) ->
+  (* print_endline @@ "================ Step Tagged Entrypoint: "
+     ^ !entrypoint_running ^ "================" ; *)
+  step_bounded logger ctxt step_constants instrs stack >>=? fun (stack, ctxt) ->
   return (stack, ctxt)
 
 and interp :
@@ -749,6 +820,8 @@ let execute logger ctxt mode step_constants ~entrypoint ~internal
     * Lazy_storage.diffs option )
     tzresult
     Lwt.t =
+  (* print_endline @@ "================ Execute Entrypoint: " ^ entrypoint
+     ^ "================" ; *)
   parse_script ctxt unparsed_script ~legacy:true ~allow_forged_in_storage:true
   >>=? fun (Ex_script { code; arg_type; storage; storage_type; root_name }, ctxt)
     ->
@@ -770,6 +843,7 @@ let execute logger ctxt mode step_constants ~entrypoint ~internal
     (Runtime_contract_error (step_constants.self, script_code))
     (interp logger ctxt step_constants code (arg, storage))
   >>=? fun ((ops, storage), ctxt) ->
+  (* !print_balance ("Execute 1" ^ entrypoint ^ "\n") ctxt ; *)
   Script_ir_translator.extract_lazy_storage_diff
     ctxt
     mode
@@ -779,6 +853,7 @@ let execute logger ctxt mode step_constants ~entrypoint ~internal
     storage_type
     storage
   >>=? fun (storage, lazy_storage_diff, ctxt) ->
+  (* !print_balance "Execute 2.\n" ctxt ; *)
   trace
     Cannot_serialize_storage
     ( unparse_data ctxt mode storage_type storage >>=? fun (storage, ctxt) ->
@@ -786,6 +861,7 @@ let execute logger ctxt mode step_constants ~entrypoint ~internal
         ( Gas.consume ctxt (Script.strip_locations_cost storage) >>? fun ctxt ->
           ok (Micheline.strip_locations storage, ctxt) ) )
   >|=? fun (storage, ctxt) ->
+  (* !print_balance "Execute 3.\n" ctxt ; *)
   let (ops, op_diffs) = List.split ops.elements in
   let lazy_storage_diff =
     match
@@ -795,6 +871,7 @@ let execute logger ctxt mode step_constants ~entrypoint ~internal
     | [] -> None
     | diff -> Some diff
   in
+  (* !print_balance "Execute 4.\n" ctxt ; *)
   (storage, ops, ctxt, lazy_storage_diff)
 
 type execution_result = {

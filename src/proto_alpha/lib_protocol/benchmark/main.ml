@@ -41,8 +41,11 @@ let create_benchmark name f =
 let benchmarks =
   [
     create_benchmark "FA1.2_Approve" Fa12_benchmarks.approve_fa12_benchmark;
-    (* create_benchmark "FA1.2_Transfer" Fa12_benchmarks.transfer_benchmark; *)
-    (* create_benchmark "Dexter_xtzToToken" Dexter_benchmarks.xtzToToken_benchmark; *)
+    create_benchmark "FA1.2_Transfer" Fa12_benchmarks.transfer_benchmark;
+    create_benchmark "Dexter_xtzToToken" Dexter_benchmarks.xtzToToken_benchmark;
   ]
 
-(* let () = Core.Command.run (Core_bench.Bench.make_command benchmarks) *)
+
+let () = Core.Command.run (Core_bench.Bench.make_command benchmarks)
+
+(* let () = print_endline "👍 All benchmarks complete 👍"; *)

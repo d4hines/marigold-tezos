@@ -29,7 +29,15 @@ open Script_typed_ir
 
 [@@@warning "-21"]
 
+[@@@warning "-26"]
+
 [@@@warning "-27"]
+
+module Option = struct
+  include Option
+
+  let get x = match x with None -> assert false | Some x -> x
+end
 
 external ( = ) : 'a -> 'a -> bool = "%equal"
 
@@ -65,6 +73,27 @@ let rec ty_to_string : type a. a ty -> string = function
   | Operation_t _ -> "Operation_t"
   | Chain_id_t _ -> "Chain_id_t"
   | Never_t _ -> "Never_t"
+  | _ -> raise @@ Failure "ty_to_string fail"
+
+  let rec cty_to_string : type a. a comparable_ty -> string = function
+  | Unit_key None -> "Unit_key None"
+  | Int_key _ -> "Int_key"
+  | Nat_key _ -> "Nat_key"
+  | Signature_key _ -> "Signature_key"
+  | String_key _ -> "String_key"
+  | Bytes_key _ -> "Bytes_key"
+  | Mutez_key _ -> "Mutez_key"
+  | Key_hash_key _ -> "Key_hash_key"
+  | Key_key _ -> "Key_key"
+  | Timestamp_key _ -> "Timestamp_key"
+  | Address_key _ -> "Address_key"
+  | Bool_key _ -> "Bool_key"
+  | Pair_key ((x, _), (y, _), None) ->
+      "Pair_key (" ^ cty_to_string x ^ " , " ^ cty_to_string y ^ ")"
+  | Union_key _ -> "Union_key"
+  | Option_key _ -> "Option_key"
+  | Chain_id_key _ -> "Chain_id_key"
+  | Never_key _ -> "Never_key"
   | _ -> raise @@ Failure "ty_to_string fail"
 
 (* | stack_ty , stack ->
@@ -397,10 +426,16 @@ type my_instr =
   | My_neq
   | My_sub
   | My_mul_int
+  | My_mul_nattez
   | My_halt
   | My_add_int_int
   | My_add_nat_nat
+  | My_add_tez
+  | My_ediv_tez
+  | My_ediv_natnat
   | My_abs
+  | My_mul_natnat
+  | My_sub_tez
   (* Union *)
   | My_if_left : int -> my_instr
   | My_address_instr
@@ -507,7 +542,32 @@ let rec myfy_item : type a. a ty * a -> my_item = function
   | (Mutez_t _, x) -> My_mutez x
   | (Address_t _, (contract, entrypoint)) ->
       My_address_item (contract, entrypoint)
-  | (Map_t _, x) -> assert false
+  | (Map_t (cty, ty, _), m) -> 
+    let module Boxed_map = (val m) in
+      let (x, _) = Boxed_map.boxed in
+      let value =
+        Boxed_map.OPS.bindings x
+        |> List.map (fun (key, v) ->
+               ( myfy_cty_item (cty, key), (myfy_item (ty, v)) ))
+        |> List.fold_left
+             (fun map (k, v) -> My_big_map.add k v map)
+             My_big_map.empty
+      in
+      let diff =
+        ( module struct
+          type key = my_item
+
+          type value = my_item
+
+          let value = value
+
+          module OPS = My_big_map
+        end : My_boxed_map
+          with type key = my_item
+           and type value = my_item )
+      in
+      My_map diff
+  | (Timestamp_t _, x) -> My_timestamp x
   | (ty, _) -> raise (Failure ("myfy item:" ^ ty_to_string ty))
 
 and myfy_cty_item : type a. a Script_typed_ir.comparable_ty * a -> my_item =
@@ -522,7 +582,9 @@ and myfy_cty_item : type a. a Script_typed_ir.comparable_ty * a -> my_item =
       match u with
       | L x -> My_left (myfy_cty_item (lty, x))
       | R x -> My_right (myfy_cty_item (rty, x)) )
-  | (ty, _) -> raise (Failure "mycfy item")
+  | (Address_key _, (contract, entrypoint)) ->
+    My_address_item (contract, entrypoint)
+  | (ty, ty_) -> raise (Failure ("myfy item:" ^ (cty_to_string ty)))
 
 let rec repeat x = function 0 -> [ x ] | n -> x :: repeat x (n - 1)
 
@@ -557,25 +619,22 @@ let rec translate : type bef aft. (bef, aft) descr -> my_instr list =
   | If_left (l, r) ->
       let l = translate l in
       let r = translate r in
-      [ My_if_left (List.length l + 1) ]
-      @ l
-      @ [ My_jump (List.length r + 1) ]
-      @ r
+      [ My_if_left (List.length l + 1 + 1) ] @ l @ [ My_jump (List.length r + 1) ] @ r
+  | If_none (l, r) ->
+      let l = translate l in
+      let r = translate r in
+      [ My_IF_NONE (List.length l + 1 + 1) ] @ l @ [ My_jump (List.length r + 1) ] @ r
+  | If (l, r) ->
+      let l = translate l in
+      let r = translate r in
+      [ My_IF (List.length l + 1 + 1) ] @ l @ [ My_jump (List.length r + 1) ] @ r
   | Big_map_update -> [ My_big_map_update ]
   | Sender -> [ My_SENDER ]
   | Cons_some -> [ My_cons_some ]
   | Map_update -> [ My_map_update ]
   | Dig (n, _) -> [ My_dig n ]
   | Dug (n, _) -> [ My_dug n ]
-  | If_none (l, r) ->
-      let l = translate l in
-      let r = translate r in
-      [ My_IF_NONE (List.length l) ] @ l @ [ My_jump (List.length r + 1) ] @ r
   | Cdr -> [ My_cdr ]
-  | If (l, r) ->
-      let l = translate l in
-      let r = translate r in
-      [ My_IF (List.length l) ] @ l @ [ My_jump (List.length r + 1) ] @ r
   | Add_natnat -> [ My_add_nat_nat ]
   | Empty_map (_, _) -> [ My_EMPTY_MAP ]
   | Big_map_get -> [ My_big_map_get ]
@@ -593,8 +652,22 @@ let rec translate : type bef aft. (bef, aft) descr -> my_instr list =
   | Contract (ty, entrypoint) ->
       [ My_contract_instr (Contract_type (ty, entrypoint)) ]
   | Lambda (Lam (code, _)) ->
-      let body = translate code @ [ My_RET ] in
-      My_lambda_instr (List.length body) :: body
+      let body = translate code in
+      (My_lambda_instr (List.length body) :: body) @ [ My_RET ]
+  | Address -> [ My_address_instr ]
+  | Add_tez -> [ My_add_tez ]
+  | Ediv_natnat -> [ My_ediv_natnat ]
+  | Mul_natnat -> [ My_mul_natnat ]
+  | Lt -> [ My_LT ]
+  | Now -> [ My_NOW ]
+  | Sub_tez -> [ My_sub_tez ]
+  | Set_delegate -> [ My_SET_DELEGATE ]
+  | Implicit_account -> [ My_IMPLICIT_ACCOUNT ]
+  | Or -> [ My_OR ]
+  | Not -> [ My_NOT ]
+  | Apply _ -> [ My_apply ]
+  | Mul_nattez -> [ My_mul_nattez ]
+  | Ediv_tez -> [ My_ediv_tez ]
   | x -> raise @@ Failure ("Failed translating " ^ instr_to_string x)
 
 let translate : type bef aft. (bef, aft) descr -> my_instr list =
@@ -606,9 +679,122 @@ let rec myfy_stack : type a. a stack_ty * a -> my_stack = function
       let x = myfy_item (item_ty, item) in
       x :: myfy_stack (stack_ty, stack)
 
+let wrap_compare compare a b =
+  let res = compare a b in
+  if Compare.Int.(res = 0) then 0 else if Compare.Int.(res > 0) then 1 else -1
+
+let compare_address (x, ex) (y, ey) =
+  let lres = Contract.compare x y in
+  if Compare.Int.(lres = 0) then Compare.String.compare ex ey else lres
+
+let rec compare_comparable : type a. a comparable_ty -> a -> a -> int =
+ fun kind ->
+  match kind with
+  | Unit_key _ -> fun () () -> 0
+  | Never_key _ -> ( function _ -> . )
+  | Signature_key _ -> wrap_compare Signature.compare
+  | String_key _ -> wrap_compare Compare.String.compare
+  | Bool_key _ -> wrap_compare Compare.Bool.compare
+  | Mutez_key _ -> wrap_compare Tez.compare
+  | Key_hash_key _ -> wrap_compare Signature.Public_key_hash.compare
+  | Key_key _ -> wrap_compare Signature.Public_key.compare
+  | Int_key _ -> wrap_compare Script_int.compare
+  | Nat_key _ -> wrap_compare Script_int.compare
+  | Timestamp_key _ -> wrap_compare Script_timestamp.compare
+  | Address_key _ -> wrap_compare compare_address
+  | Bytes_key _ -> wrap_compare Compare.Bytes.compare
+  | Chain_id_key _ -> wrap_compare Chain_id.compare
+  | Pair_key ((tl, _), (tr, _), _) ->
+      fun (lx, rx) (ly, ry) ->
+        let lres = compare_comparable tl lx ly in
+        if Compare.Int.(lres = 0) then compare_comparable tr rx ry else lres
+  | Union_key ((tl, _), (tr, _), _) -> (
+      fun x y ->
+        match (x, y) with
+        | (L x, L y) -> compare_comparable tl x y
+        | (L _, R _) -> -1
+        | (R _, L _) -> 1
+        | (R x, R y) -> compare_comparable tr x y )
+  | Option_key (t, _) -> (
+      fun x y ->
+        match (x, y) with
+        | (None, None) -> 0
+        | (None, Some _) -> -1
+        | (Some _, None) -> 1
+        | (Some x, Some y) -> compare_comparable t x y )
+
+let empty_map : type a b. a comparable_ty -> (a, b) map =
+ fun ty ->
+  let module OPS = Map.Make (struct
+    type t = a
+
+    let compare = compare_comparable ty
+  end) in
+  ( module struct
+    type key = a
+
+    type value = b
+
+    let key_ty = ty
+
+    module OPS = OPS
+
+    let boxed = (OPS.empty, 0)
+  end )
+
+let map_update : type a b. a -> b option -> (a, b) map -> (a, b) map =
+ fun k v (module Box) ->
+  ( module struct
+    type key = a
+
+    type value = b
+
+    let key_ty = Box.key_ty
+
+    module OPS = Box.OPS
+
+    let boxed =
+      let (map, size) = Box.boxed in
+      let contains = Box.OPS.mem k map in
+      match v with
+      | Some v -> (Box.OPS.add k v map, size + if contains then 0 else 1)
+      | None -> (Box.OPS.remove k map, size - if contains then 1 else 0)
+  end )
+
+let rec ty_of_comparable_ty : type a. a comparable_ty -> a ty =
+ fun s ->
+  match s with
+  | Unit_key _ -> Unit_t None
+  | Never_key _ -> Never_t None
+  | Int_key _ -> Int_t None
+  | Nat_key _ -> Nat_t None
+  | Signature_key _ -> Signature_t None
+  | String_key _ -> String_t None
+  | Bytes_key _ -> Bytes_t None
+  | Mutez_key _ -> Mutez_t None
+  | Bool_key _ -> Bool_t None
+  | Key_hash_key _ -> Key_hash_t None
+  | Key_key _ -> Key_t None
+  | Timestamp_key _ -> Timestamp_t None
+  | Chain_id_key _ -> Chain_id_t None
+  | Address_key _ -> Address_t None
+  | Pair_key ((a, _), (b, _), _) ->
+      Pair_t
+        ( (ty_of_comparable_ty a, None, None),
+          (ty_of_comparable_ty b, None, None),
+          None )
+  | Union_key ((a, _), (b, _), _) ->
+      Union_t
+        ((ty_of_comparable_ty a, None), (ty_of_comparable_ty b, None), None)
+  | Option_key (t, _) -> Option_t (ty_of_comparable_ty t, None)
+
 let rec yfym_item : type a. a ty * my_item -> a = function
   | (Nat_t _, My_nat n) -> n
+  (* This is probably due to some mistake in the interpreter :/ *)
+  | (Nat_t _, My_mutez n) ->
+      n |> Tez.to_mutez |> Script_int.of_int64 |> Obj.magic
   | (Int_t _, My_int n) -> n
+  | (Mutez_t _, My_mutez x) -> x
   | (Bool_t _, My_bool b) -> b
   | (Pair_t ((a_ty, _, _), (b_ty, _, _), _), My_pair (a, b)) ->
       (yfym_item (a_ty, a), yfym_item (b_ty, b))
@@ -620,14 +806,55 @@ let rec yfym_item : type a. a ty * my_item -> a = function
         length = List.length lst;
       }
   | (Unit_t _, My_unit) -> ()
-  | (ty, _) -> raise (Failure ("yfym item: " ^ ty_to_string ty))
+  | (Address_t _, My_address_item (contract, entrypoint)) ->
+      (contract, entrypoint)
+  | (Map_t (kt, vt, _), My_map m) ->
+      let module Boxed_map = ( val m : My_boxed_map
+                                 with type key = my_item
+                                  and type value = my_item )
+      in
+      let kv_pairs = Boxed_map.OPS.bindings Boxed_map.value in
+      List.fold_left
+        (fun acc (k, v) ->
+          let ty = ty_of_comparable_ty kt in
+          let k = yfym_item (ty, k) in
+          let v = yfym_item (vt, v) in
+          map_update k (Some v) acc)
+        (empty_map kt)
+        kv_pairs
+  | (Operation_t _, My_operation (x, y)) -> (x, y)
+  | (Big_map_t (kt, vt, _), My_big_map { id; diff; value_type }) ->
+      let module Boxed_map = ( val diff : My_boxed_map
+                                 with type key = my_item
+                                  and type value = my_item option )
+      in
+      let kv_pairs = Boxed_map.OPS.bindings Boxed_map.value in
+      let diff : (_, _ option) map =
+        List.fold_left
+          (fun acc (k, v) ->
+            let ty = ty_of_comparable_ty kt in
+            let k = yfym_item (ty, k) in
+            match v with
+            | Some v ->
+                let v = yfym_item (vt, v) in
+                map_update k (Some (Some v)) acc
+            | None -> map_update k None acc)
+          (empty_map kt)
+          kv_pairs
+      in
+      let bm : (_, _) big_map = { id; diff; value_type = vt; key_type = kt } in
+      bm
+  | (ty, x) ->
+      raise
+        (Failure
+           ("yfym item: " ^ ty_to_string ty ^ ", my_item: " ^ show_my_item x))
 
-let rec yfym_stack : type a. a stack_ty * my_stack -> a = function
+(* let rec yfym_stack : type a. a stack_ty * my_stack -> a = function
   | (Empty_t, []) -> ()
   | (Item_t (hd_ty, tl_ty, _), hd :: tl) ->
       (yfym_item (hd_ty, hd), yfym_stack (tl_ty, tl))
   | ((Item_t _ as _stack_ty), _stack) -> raise (Failure "yfym stack ty. type: ")
-  | (_stack_ty, (_ :: _ as _stack)) -> raise (Failure "yfym stack item. type: ")
+  | (_stack_ty, (_ :: _ as _stack)) -> raise (Failure "yfym stack item. type: ") *)
 
 let rec my_stack_to_string = function
   | [] -> "()"
@@ -674,24 +901,15 @@ let my_empty_big_map : my_big_map_diff =
     let value = My_big_map.empty
   end )
 
-let wrap_compare compare a b =
-  let res = compare a b in
-  if Compare.Int.(res = 0) then 0 else if Compare.Int.(res > 0) then 1 else -1
-
-let compare_address (x, ex) (y, ey) =
-  let lres = Contract.compare x y in
-  if Compare.Int.(lres = 0) then Compare.String.compare ex ey else lres
-
 let my_compare_comparable : my_item -> my_item -> int =
  fun a b ->
   match (a, b) with
-  | (My_int a, My_int b) -> assert false
+  | (My_nat a, My_nat b) -> Script_int.compare a b
+  | (My_int a, My_int b) -> Script_int.compare a b
   | (My_mutez a, My_mutez b) -> wrap_compare Tez.compare a b
   | (My_address_item (a, a_entrypoint), My_address_item (b, b_entrypoint)) ->
-      wrap_compare
-        compare_address
-        (a, a_entrypoint)
-        (b, b_entrypoint)
+      wrap_compare compare_address (a, a_entrypoint) (b, b_entrypoint)
+  | (My_timestamp a, My_timestamp b) -> Script_timestamp.compare a b
   | _ ->
       raise
       @@ Failure

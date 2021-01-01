@@ -1,0 +1,87 @@
+Entering directory '/workspaces/repos/tezos'
+        main alias src/proto_alpha/lib_protocol/benchmark/runtest_proto_alpha (exit 2)
+(cd _build/default/src/proto_alpha/lib_protocol/benchmark && ./main.bc)
+> 0: (My_lambda_instr 9)
+> 11: My_swap
+> 12: My_dup
+> 13: (My_dug 2)
+> 14: My_cdr
+> 15: (My_push (My_mutez 0))
+> 16: My_amount
+> 17: My_compare
+> 18: My_neq
+> 19: (My_IF 2)
+> 23: (My_dig 2)
+> 24: My_car
+> 25: (My_if_left 176)
+> 203: My_dup
+> 204: (My_dug 2)
+> 205: My_cdr
+> 206: My_cdr
+> 207: My_cons_pair
+> 208: My_swap
+> 209: My_dup
+> 210: (My_dug 2)
+> 211: My_cdr
+> 212: My_car
+> 213: (My_dig 2)
+> 214: My_car
+> 215: My_cons_pair
+> 216: My_cons_pair
+> 217: My_dup
+> 218: My_car
+> 219: My_car
+> 220: My_swap
+> 221: My_dup
+> 222: (My_dug 2)
+> 223: My_car
+> 224: My_cdr
+> 225: (My_dig 2)
+> 226: My_dup
+> 227: (My_dug 3)
+> 228: My_cdr
+> 229: My_car
+> 230: (My_dig 3)
+> 231: My_cdr
+> 232: My_cdr
+> 233: (My_dig 2)
+> 234: My_dup
+> 235: (My_dug 3)
+> 236: (My_dig 4)
+> 237: My_dup
+> 238: (My_dug 5)
+> 239: My_compare
+> 240: My_EQ
+> 241: (My_IF 8)
+> 251: My_dup
+> 252: (My_dig 2)
+> 253: My_dup
+> 254: (My_dug 3)
+> 255: (My_dig 5)
+> 256: My_dup
+> 257: (My_dug 6)
+> 258: My_cons_pair
+> 259: My_cons_pair
+> 260: My_dup
+> 261: My_car
+> 262: My_car
+> 263: My_dup
+> 264: My_SENDER
+> 265: My_compare
+> 266: My_neq
+> 267: (My_IF 25)
+> 294: (My_dropn 2)
+> 295: (My_push (My_bool true))
+> 296: (My_IF 0)
+> 297: (My_jump 3)
+> 300: My_dup
+> 301: My_car
+Uncaught exception:
+  
+  (Failure "Failed interpreting instr 301: My_car")
+
+Called from file "src/proto_alpha/lib_protocol/script_interpreter.ml", line 739, characters 2-290
+Called from file "src/proto_alpha/lib_protocol/script_interpreter.ml", line 799, characters 2-54
+Called from file "src/proto_alpha/lib_protocol/benchmark/pipeline.ml", line 202, characters 6-20
+Called from file "src/proto_alpha/lib_protocol/benchmark/main.ml", line 15, characters 38-45
+Called from file "src/proto_alpha/lib_protocol/benchmark/main.ml", line 44, characters 4-72

@@ -45,10 +45,14 @@ let step_constants : Script_interpreter.step_constants =
     chain_id = Chain_id.zero;
   }
 
+let counter = ref 0
 let make_test instrs stack expected =
+  let n = !counter in
+incr counter;
   let _ =
     let ctxt = get_next_context b in
     let instr_arr : my_instr array = Array.of_list (instrs @ [ My_halt ]) in
+    Printf.printf "test: %d\n%!" n;
     Lwt.bind
       (Script_interpreter.step_tagged None ctxt step_constants instr_arr stack)
       (fun x ->
@@ -80,15 +84,16 @@ let () =
   (*| My_dip*)
   make_test [ My_dip; My_dup ] [ i 3; i 7 ] [ i 7; i 7 ] ;
   (*| My_undip*)
-  make_test [ My_dip; My_dup; My_undip ] [ i 3; i 7 ] [ i 3; i 7; i 7 ] ;
+  make_test [ My_dip; My_dup; My_undip ] [ i 3; i 7 ; i 10 ] [ i 3; i 7; i 7 ; i 10] ;
   (*| My_drop*)
   make_test [ My_drop ] [ i 3; i 7 ] [ i 7 ] ;
   (*| My_dropn of int*)
   make_test [ My_dropn 2 ] [ i 3; i 7 ] [] ;
+  make_test [ My_dropn 2 ] [ i 3; i 7;  i 1 ] [ i 1 ] ;
   (*| My_dig of int*)
-  make_test [ My_dig 2 ] [ i 1; i 2; i 3 ] [ i 3; i 1; i 2 ] ;
+  make_test [ My_dig 2 ] [ i 1; i 2; i 3; i 4 ] [ i 3; i 1; i 2; i 4 ] ;
   (*| My_dug of int*)
-  make_test [ My_dug 2 ] [ i 1; i 2; i 3 ] [ i 2; i 3; i 1 ] ;
+  make_test [ My_dug 2 ] [ i 1; i 2; i 3; i 4 ] [ i 2; i 3; i 1; i 4 ] ;
   (*(* Loop *)*)
   (*| My_loop_if_not of int*)
   (*| My_jump of int (* Pai  r instructions *)*)
@@ -136,13 +141,34 @@ let () =
   (*(* Union *)*)
   (*| My_if_left of int*)
   make_test
-    [ My_if_left 1; My_push (s "foo"); My_jump 2; My_push (s "bar") ]
+    (* IF_LEFT { PUSH "foo"; } { PUSH "bar"; }; *)
+    [ My_if_left 3; My_push (s "foo"); My_jump 2; My_push (s "bar") ]
     [ My_left (i 0) ]
     [ s "foo"; i 0 ] ;
   make_test
-    [ My_if_left 2; My_push (s "foo"); My_jump 2; My_push (s "bar") ]
+    [ My_if_left 3; My_push (s "foo"); My_jump 2; My_push (s "bar") ]
     [ My_right (i 0) ]
     [ s "bar"; i 0 ] ;
+  make_test
+    (* IF_None { PUSH "foo"; } { PUSH "bar"; }; *)
+    [ My_IF_NONE 3; My_push (s "foo"); My_jump 2; My_push (s "bar") ]
+    [ My_none ]
+    [ s "foo" ] ;
+  make_test
+    (* IF_None { PUSH "foo"; } { PUSH "bar"; }; *)
+    [ My_IF_NONE 3; My_push (s "foo"); My_jump 2; My_push (s "bar") ]
+    [ My_some My_unit ]
+    [ s "bar"; My_unit ] ;
+  (*| My_IF of int*)
+  (* pc + offset *)
+  make_test
+    [ My_IF 3; My_push (s "left"); My_jump 2; My_push (s "right") ]
+    [ t ]
+    [ s "left" ] ;
+  make_test
+    [ My_IF 3; My_push (s "left"); My_jump 2; My_push (s "right") ]
+    [ f ]
+    [ s "right" ] ;
   (* | My_address_instr *)
   make_test [ My_address_instr ] [ contract sender ] [ address sender ] ;
   (*| My_amount*)
@@ -154,7 +180,7 @@ let () =
       My_contract_instr (Contract_type (Script_typed_ir.Unit_t None, "default"));
     ]
     [ address recipient ]
-    [ contract recipient ] ;
+    [ My_some (contract recipient ) ] ;
   make_test [ My_address_instr ] [ contract sender ] [ address sender ] ;
   (*| My_ediv*)
   make_test [ My_ediv ] [ i 13; i 3 ] [ My_some (My_pair (i 4, n 1)) ] ;
@@ -216,7 +242,7 @@ let () =
   make_test [ My_GT ] [ i 3 ] [ t ] ;
   make_test [ My_GT ] [ i 0 ] [ f ] ;
   make_test [ My_GT ] [ i (-1) ] [ f ] ;
-  (*| My_IF of int*)
+
   (*| My_IF_NONE of int*)
   (*| My_IMPLICIT_ACCOUNT*)
   (*| My_LT*)
@@ -273,9 +299,14 @@ let () =
   (*| My_EXEC *)
   (*| My_apply *)
   (*| My_cdr*)
+  (*
+     LAMBDA {CDR;}
+     EXEC;
+     CDR;
+  *)
   make_test
-    [ My_jump 3; My_cdr; My_RET; My_EXEC; My_cdr ]
-    [ My_pair (i 1, My_pair (i 2, i 3)); My_lambda_item (1, []) ]
+    [ My_lambda_instr 1; My_cdr; My_RET; My_swap; My_EXEC; My_cdr ]
+    [ My_pair (i 1, My_pair (i 2, i 3)); ]
     [ i 3 ] ;
   (*
      LAMBDA { # 1 :: []
@@ -289,35 +320,17 @@ let () =
   *)
   make_test
     [
-      My_jump 3;
+      My_lambda_instr 1;
       My_cdr;
       My_RET;
+      My_push (i 1);
       My_apply;
       My_push (My_pair (i 2, i 3));
       My_EXEC;
       My_cdr;
     ]
-    [ i 1; My_lambda_item (1, []) ]
+    []
     [ i 3 ] ;
   ()
-
-(* let stack =
-  My_pair
-    ( My_left (My_left (My_left (My_pair (contract sender, n 100)))),
-      My_pair
-        ( My_big_map
-            {
-              id = Some (Obj.magic 0);
-              diff = my_empty_big_map;
-              value_type =
-                Script_typed_ir.Ex_ty
-                  (Script_typed_ir.Pair_t
-                     ((Script_typed_ir.Map_t, None, None), (), None));
-            },
-          n 100000000000000 ) ) *)
-
-(* let () =
-  make_test [] [] [] ;
-  () *)
 
 let () = print_endline "All tests pass :thumbs up:"

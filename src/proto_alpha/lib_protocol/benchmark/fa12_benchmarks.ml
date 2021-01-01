@@ -8,8 +8,10 @@ let set_up_fa12 :
     unit -> Block.t * (Contract.t * Contract.t * Contract.t) Pipeline.operation
     =
  fun () ->
-  let (b, contracts) = Context.init 2 |> force_global_lwt in
+  let rng_state = (Random.State.make [|0x1337533D; 0x1337533D|]) in
+  let (b, contracts) = Context.init ~rng_state 2 |> force_global_lwt in
   let alice = List.nth contracts 0 in
+  Util.alice := alice;
   let bob = List.nth contracts 1 in
   let initial_storage =
     sprintf {|Pair {Elt "%s" (Pair {} 100000000000000)} 100000000000000|} (contract_to_pkh alice)
@@ -58,11 +60,12 @@ let approve_fa12_benchmark () =
       amount = 0;
       parameters;
     }
-
 let transfer_benchmark : unit -> Pipeline.goal =
  fun () ->
+
   set_up_fa12 ()
   >>=! fun (_, (token, alice, bob)) ->
+  (Obj.magic Script_interpreter.entrypoint_running) := "Transfer";
   let parameters =
     sprintf
       {|Right (Pair "%s" (Pair "%s" 10))|}

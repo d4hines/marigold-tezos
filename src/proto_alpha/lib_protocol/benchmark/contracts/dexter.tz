@@ -42,56 +42,56 @@
              CAR ;
              GET ;
              IF_NONE { PUSH nat 0 ; SWAP ; PAIR } { SWAP ; DROP } } ;
-         SWAP ;
+         SWAP ; # 38
          APPLY ;
          DIG 4 ;
          DUP ;
          DUG 5 ;
          CDR ;
          DIG 5 ;
-         CAR ;
+         CAR ; # 45
          IF_LEFT
            { IF_LEFT
                { IF_LEFT
                    { DIG 3 ;
                      DROP ;
                      IF_LEFT
-                       { DUP ;
+                       { DUP ; #52
                          DUG 2 ;
                          CDR ;
                          CDR ;
-                         DIG 2 ;
+                         DIG 2 ; #56
                          DUP ;
                          DUG 3 ;
                          CDR ;
                          CAR ;
-                         PAIR ;
+                         PAIR ; #61
                          DIG 2 ;
                          DUP ;
                          DUG 3 ;
                          CAR ;
                          CDR ;
-                         DIG 3 ;
+                         DIG 3 ; #67
                          CAR ;
                          CAR ;
                          PAIR ;
                          PAIR ;
-                         PAIR ;
+                         PAIR ; # 72
                          DUP ;
                          CAR ;
                          CAR ;
                          CAR ;
-                         SWAP ;
+                         SWAP ; #77
                          DUP ;
                          DUG 2 ;
                          CAR ;
                          CAR ;
                          CDR ;
-                         DIG 2 ;
+                         DIG 2 ; #83
                          DUP ;
                          DUG 3 ;
                          CAR ;
-                         CDR ;
+                         CDR ; #87
                          CAR ;
                          DIG 3 ;
                          DUP ;
@@ -101,10 +101,10 @@
                          CDR ;
                          CAR ;
                          CDR ;
-                         CDR ;
+                         CDR ; #97
                          IF { PUSH string "self_is_updating_token_pool must be false" ; FAILWITH }
                             { PUSH unit Unit } ;
-                         DROP ;
+                         DROP ; #103
                          DIG 4 ;
                          CAR ;
                          CDR ;

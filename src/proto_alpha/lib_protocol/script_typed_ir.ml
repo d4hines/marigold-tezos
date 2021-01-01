@@ -80,6 +80,23 @@ type _ comparable_ty =
       -> ('a, 'b) union comparable_ty
   | Option_key : 'v comparable_ty * type_annot option -> 'v option comparable_ty
 
+let show_comparable_ty  = fun x ->
+    match x with
+  | Int_key _ -> "Never_key"
+  | Unit_key _ -> "Unit_key"
+  | Nat_key _ -> "Nat_key"
+  | Signature_key _ -> "Signature_key"
+  | String_key _ -> "String_key"
+  | Bytes_key _ -> "Bytes_key"
+  | Mutez_key _ -> "Mutez_key"
+  | Bool_key _ -> "Bool_key"
+  | Key_hash_key _ -> "kh_key"
+  | Key_key _ -> "key_key"
+  | Timestamp_key _ -> "timestapm_key"
+  | Chain_id_key _ -> "chain_id_key"
+  | Address_key _ -> "address-key"
+  | _ -> "unknown key"
+
 module type Boxed_set = sig
   type elt
 

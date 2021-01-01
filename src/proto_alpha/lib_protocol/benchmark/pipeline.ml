@@ -3,8 +3,8 @@ open Alpha_context
 open Script
 open Util
 
-
 [@@@warning "-27"]
+
 [@@@warning "-21"]
 
 let logger = None
@@ -16,30 +16,19 @@ let make_contract :
     b:Block.t ->
     (Block.t * Contract.t, tztrace) result Lwt.t =
  fun ~script ~originator ~amount ~b ->
-  Incremental.begin_construction b
-  >>=? fun b ->
+  Incremental.begin_construction b >>=? fun b ->
   Op.origination (I b) originator ~script ~credit:(Util.of_mutez amount)
   >>=? fun (op, originated_contract) ->
-  Incremental.add_operation b op
-  >>=? fun b ->
-  Incremental.finalize_block b
-  >>=? fun b -> Error_monad.return (b, originated_contract)
-
-let get_next_context b =
-  force_global_lwt
-    ( Incremental.begin_construction b
-    >>=? fun b -> return (Incremental.alpha_ctxt b) )
+  Incremental.add_operation b op >>=? fun b ->
+  Incremental.finalize_block b >>=? fun b ->
+  Error_monad.return (b, originated_contract)
 
 let do_transaction block ~sender ~recipient ~amount ~entrypoint ~parameters =
-  print_endline @@ Format.sprintf "============== Entrypoint: %s ============" entrypoint;
-  print_endline "============== Parameters ==============";
-  print_endline parameters;
   let parameters = parameters |> Expr.from_string in
   let parameters = lazy_expr parameters in
   (* parse micheline -> translate -> show translation *)
-  Incremental.begin_construction block
-  >>=? fun b ->
-  let x = Op.transaction
+  Incremental.begin_construction block >>=? fun b ->
+  Op.transaction
     (I b)
     ~parameters
     ~entrypoint
@@ -47,11 +36,10 @@ let do_transaction block ~sender ~recipient ~amount ~entrypoint ~parameters =
     sender
     recipient
     (of_mutez amount)
-  in 
-  print_endline "==========================================";
-  x
   >>=? fun op ->
-  Incremental.add_operation b op >>=? fun b -> Incremental.finalize_block b
+  Incremental.add_operation b op >>=? fun b ->
+  
+  Incremental.finalize_block b
 
 let type_script context script =
   force_lwt
@@ -102,14 +90,10 @@ type 'a operation =
 let op_to_string : type a. a operation -> string =
  fun op ->
   match op with
-  | Transfer _ ->
-      "Transfer"
-  | Origination _ ->
-      "Origination"
-  | Pending _ ->
-      "Pending"
-  | Return _ ->
-      "Return"
+  | Transfer _ -> "Transfer"
+  | Origination _ -> "Origination"
+  | Pending _ -> "Pending"
+  | Return _ -> "Return"
 
 let return v = Return v
 
@@ -126,15 +110,19 @@ let ( >>| ) = map
 let rec run : type a. a operation -> Block.t -> (Block.t * a) tzresult Lwt.t =
  fun op b ->
   match op with
-  | Origination {originator; amount; contract; initial_storage} ->
+  | Origination { originator; amount; contract; initial_storage } ->
       let contract = contract |> Expr.from_string |> lazy_expr in
       let storage = initial_storage |> Expr.from_string |> lazy_expr in
-      let script = Script.{code = contract; storage} in
+      let script = Script.{ code = contract; storage } in
       let x =
         make_contract ~script ~originator ~amount ~b |> force_global_lwt
       in
       Error_monad.return x
   | Transfer x ->
+      (* let () =
+        try print_token_balance_from_block "Run before: " b 0 !alice
+        with _ -> ()
+      in *)
       let b =
         do_transaction
           b
@@ -145,12 +133,13 @@ let rec run : type a. a operation -> Block.t -> (Block.t * a) tzresult Lwt.t =
           ~entrypoint:x.entrypoint
         |> force_global_lwt
       in
-      assert false;
+      (* let () =
+        try print_token_balance_from_block "Run after: " b 0 !alice
+        with _ -> ()
+      in *)
       Error_monad.return (b, x)
-  | Pending (op, f) ->
-      run op b >>=? fun (b, x) -> run (f (b, x)) b
-  | Return v ->
-      Error_monad.return (b, v)
+  | Pending (op, f) -> run op b >>=? fun (b, x) -> run (f (b, x)) b
+  | Return v -> Error_monad.return (b, v)
 
 let get_transfer : Transfer.t operation -> Transfer.t =
  fun op -> match op with Transfer x -> x | _ -> assert false
@@ -175,7 +164,7 @@ let finally :
     Alpha_context.Contract.get_script context transfer.recipient |> force_lwt
   in
   let script = script |> Option.get in
-  let ( Ex_script {code; arg_type; storage; storage_type; root_name = _},
+  let ( Ex_script { code; arg_type; storage; storage_type; root_name = _ },
         context ) =
     type_script context script
   in
@@ -190,6 +179,14 @@ let finally :
     |> force_lwt
   in
   let reg = (arg, storage) in
+  let (node, context) =
+    Script_ir_translator.unparse_data
+      context
+      Script_ir_translator.Readable
+      storage_type
+      storage
+    |> force_lwt
+  in
   let instr = Script_tagged_ir.translate code |> Array.of_list in
   let eval_script () =
     Script_interpreter.step_tagged
@@ -202,10 +199,12 @@ let finally :
   let run_script () = eval_script () |> Lwt.map (fun _ -> ()) in
   let eval_script () =
     let output =
-      eval_script ()
-      >>=? fun (x, _) ->
-      List.map Script_tagged_ir.show_my_item x
-      |> String.concat " :: " |> Error_monad.return
+      eval_script () >>=? fun (storage, ctx) ->
+      let ((_, storage), ()) = Script_tagged_ir.yfym_stack (code.aft, storage) in
+      Script_ir_translator.unparse_data ctx Readable storage_type storage
+      >>=? fun (micheline, _) ->
+      Micheline.strip_locations micheline
+      |> micheline_canonical_to_string |> Error_monad.return
     in
     output |> Lwt.map (fun v -> force v)
   in
