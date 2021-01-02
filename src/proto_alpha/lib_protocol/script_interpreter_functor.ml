@@ -1404,20 +1404,15 @@ module Make (P : Script_interpreter_parameters.Type) :
 
   let execute ?(logger = (module No_trace : STEP_LOGGER)) ctxt mode
       step_constants ~script ~entrypoint ~parameter ~internal =
-    let script : script = script in
-    let parameter : expr = parameter in
-    let value : execution_result tzresult lwt =
-      execute
-        logger
-        ctxt
-        mode
-        step_constants
-        ~entrypoint
-        ~internal
-        script
-        (Micheline.root parameter)
-      >|=? fun (storage, operations, ctxt, lazy_storage_diff) ->
-      {ctxt; storage; lazy_storage_diff; operations}
-    in
-    value
+    execute
+      logger
+      ctxt
+      mode
+      step_constants
+      ~entrypoint
+      ~internal
+      script
+      (Micheline.root parameter)
+    >|=? fun (storage, operations, ctxt, lazy_storage_diff) ->
+    {ctxt; storage; lazy_storage_diff; operations}
 end
