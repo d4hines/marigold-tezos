@@ -55,6 +55,43 @@ type context = t
 
 type root_context = t
 
+(** Definition of cache structure *)
+module Cache : sig
+  type t
+
+  type key = string list
+
+  type value = bytes
+
+  val get_remnant : t -> int
+
+  val get_content_list : t -> (key * value) list
+
+  val get_keys_list : t -> key list
+
+  val empty : t
+
+  val is_empty : t -> bool
+
+  (** Tests the existence for the given key. *)
+  val mem : key -> t -> bool
+
+  (** Adds a new cache record for the given key and value.
+      If the key is absent, a new cache record will be stored.
+      If the key exists already, the old data will be replaced by the new one.
+      Returns the updated cache *)
+  val add : key -> bytes -> t -> t
+
+  (** Finds the value for a given key.
+      Returns the value and the updated cache *)
+  val find_opt : key -> t -> value option
+
+  (** Removes cache record for the given key ;
+      Do nothing if the ey is absent.
+      Returns an updated cache. *)
+  val remove : key -> t -> t
+end
+
 (** Retrieves the state of the database and gives its abstract view.
     It also returns wether this is the first block validated
     with this version of the protocol. *)
@@ -121,7 +158,7 @@ val get_rewards : context -> Tez_repr.t
 
 val get_deposits : context -> Tez_repr.t Signature.Public_key_hash.Map.t
 
-val get_carbonated_cache : context -> (string list * bytes) list
+val get_carbonated_cache : context -> Cache.t
 
 type error += Gas_limit_too_high (* `Permanent *)
 
@@ -255,19 +292,14 @@ module type T = sig
 
   val description : context Storage_description.t
 
-  (** Internally used in {!Storage_functors} to init de-carbonated cache *)
   val carbonated_cache_init : context -> context
 
-  (** Internally used in {!Storage_functors} to get de-carbonated cache *)
   val carbonated_cache_mem : context -> key -> bool
 
-  (** Internally used in {!Storage_functors} to get de-carbonated cache *)
   val carbonated_cache_find_option : context -> key -> value option
 
-  (** Internally used in {!Storage_functors} to add de-carbonated cache *)
   val carbonated_cache_add : context -> key -> value -> context
 
-  (** Internally used in {!Storage_functors} to remove de-carbonated cache *)
   val carbonated_cache_remove : context -> key -> context
 end
 

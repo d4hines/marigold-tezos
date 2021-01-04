@@ -55,8 +55,10 @@ let init (gas_limit : int) =
   >>=? fun x -> return x
 
 (* # cache utilities and wraps *)
-module Cache = struct
-  let get_list ctx = Raw_context.get_carbonated_cache ctx
+module CacheUtil = struct
+  let get_list ctx =
+    let cache = Raw_context.get_carbonated_cache ctx in
+    Raw_context.Cache.get_content_list cache
 
   let leng ctx = List.length (get_list ctx)
 
@@ -187,13 +189,13 @@ module Operability = struct
     >>=? fun (ctx, bm_id) ->
     let (k1, v1, _decost1) = mockdata 1 in
     let (k2, v2, _decost2) = mockdata 2 in
-    Cache.set_option ~loc:__LOC__ ctx bm_id k2 (Some v2) 1
+    CacheUtil.set_option ~loc:__LOC__ ctx bm_id k2 (Some v2) 1
     >>=? fun ctx ->
-    Cache.init_set ~loc:__LOC__ ctx bm_id k1 v1 2
+    CacheUtil.init_set ~loc:__LOC__ ctx bm_id k1 v1 2
     >>=? fun ctx ->
-    Cache.init_set ~loc:__LOC__ ctx bm_id k1 v2 2
+    CacheUtil.init_set ~loc:__LOC__ ctx bm_id k1 v2 2
     >>=? fun ctx ->
-    Cache.set_option ~loc:__LOC__ ctx bm_id k1 (Some v1) 2
+    CacheUtil.set_option ~loc:__LOC__ ctx bm_id k1 (Some v1) 2
     >>=? fun _ctx -> return_unit
 
   (* ### safe_obtain *)
@@ -202,15 +204,15 @@ module Operability = struct
     >>=? fun (ctx, bm_id) ->
     let (k1, v1, _decost1) = mockdata 1 in
     let (k2, _v2, _decost2) = mockdata 2 in
-    Cache.init_set ~loc:__LOC__ ctx bm_id k1 v1 1
+    CacheUtil.init_set ~loc:__LOC__ ctx bm_id k1 v1 1
     >>=? fun ctx ->
-    Cache.mem ~loc:__LOC__ ctx bm_id k1 1 true
+    CacheUtil.mem ~loc:__LOC__ ctx bm_id k1 1 true
     >>=? fun ctx ->
-    Cache.mem ~loc:__LOC__ ctx bm_id k2 1 false
+    CacheUtil.mem ~loc:__LOC__ ctx bm_id k2 1 false
     >>=? fun ctx ->
-    Cache.get_option ~loc:__LOC__ ctx bm_id k1 1 true
+    CacheUtil.get_option ~loc:__LOC__ ctx bm_id k1 1 true
     >>=? fun ctx ->
-    Cache.get_option ~loc:__LOC__ ctx bm_id k2 1 false
+    CacheUtil.get_option ~loc:__LOC__ ctx bm_id k2 1 false
     >>=? fun _ctx -> return_unit
 
   (* ### safe_eliminate *)
@@ -220,17 +222,17 @@ module Operability = struct
     let (k1, v1, _decost1) = mockdata 1 in
     let (k2, v2, _decost2) = mockdata 2 in
     let (k3, _v3, _decost3) = mockdata 3 in
-    Cache.init_set ~loc:__LOC__ ctx bm_id k1 v1 1
+    CacheUtil.init_set ~loc:__LOC__ ctx bm_id k1 v1 1
     >>=? fun ctx ->
-    Cache.init_set ~loc:__LOC__ ctx bm_id k2 v2 2
+    CacheUtil.init_set ~loc:__LOC__ ctx bm_id k2 v2 2
     >>=? fun ctx ->
-    Cache.remove ~loc:__LOC__ ctx bm_id k3 2
+    CacheUtil.remove ~loc:__LOC__ ctx bm_id k3 2
     >>=? fun ctx ->
-    Cache.set_option ~loc:__LOC__ ctx bm_id k3 None 2
+    CacheUtil.set_option ~loc:__LOC__ ctx bm_id k3 None 2
     >>=? fun ctx ->
-    Cache.remove ~loc:__LOC__ ctx bm_id k2 1
+    CacheUtil.remove ~loc:__LOC__ ctx bm_id k2 1
     >>=? fun ctx ->
-    Cache.set_option ~loc:__LOC__ ctx bm_id k1 None 0
+    CacheUtil.set_option ~loc:__LOC__ ctx bm_id k1 None 0
     >>=? fun _ctx -> return_unit
 
   (* ## unsafe: may raise exception *)
@@ -241,17 +243,18 @@ module Operability = struct
     let (k1, v1, _decost1) = mockdata 1 in
     let (k2, v2, _decost2) = mockdata 2 in
     let (k3, _v3, _decost3) = mockdata 3 in
-    Cache.init ~loc:__LOC__ ctx bm_id k1 v1 1
+    CacheUtil.init ~loc:__LOC__ ctx bm_id k1 v1 1
     >>=? fun ctx ->
-    Cache.init_err ~loc:__LOC__ ctx bm_id k1 v1 1
+    CacheUtil.init_err ~loc:__LOC__ ctx bm_id k1 v1 1
     >>=? fun ctx ->
-    Cache.init_err ~loc:__LOC__ ctx bm_id k1 v2 1
+    CacheUtil.init_err ~loc:__LOC__ ctx bm_id k1 v2 1
     >>=? fun ctx ->
-    Cache.init ~loc:__LOC__ ctx bm_id k2 v2 2
+    CacheUtil.init ~loc:__LOC__ ctx bm_id k2 v2 2
     >>=? fun ctx ->
-    Cache.set ~loc:__LOC__ ctx bm_id k2 v1 2
+    CacheUtil.set ~loc:__LOC__ ctx bm_id k2 v1 2
     >>=? fun ctx ->
-    Cache.set_err ~loc:__LOC__ ctx bm_id k3 v1 2 >>=? fun _ctx -> return_unit
+    CacheUtil.set_err ~loc:__LOC__ ctx bm_id k3 v1 2
+    >>=? fun _ctx -> return_unit
 
   (* ### unsafe_obtain *)
   let unsafe_obtain () =
@@ -259,11 +262,11 @@ module Operability = struct
     >>=? fun (ctx, bm_id) ->
     let (k1, v1, _decost1) = mockdata 1 in
     let (k2, _v2, _decost2) = mockdata 2 in
-    Cache.init ~loc:__LOC__ ctx bm_id k1 v1 1
+    CacheUtil.init ~loc:__LOC__ ctx bm_id k1 v1 1
     >>=? fun ctx ->
-    Cache.get_err ~loc:__LOC__ ctx bm_id k2 1
+    CacheUtil.get_err ~loc:__LOC__ ctx bm_id k2 1
     >>=? fun ctx ->
-    Cache.get ~loc:__LOC__ ctx bm_id k1 1 >>=? fun _ctx -> return_unit
+    CacheUtil.get ~loc:__LOC__ ctx bm_id k1 1 >>=? fun _ctx -> return_unit
 
   (* ### unsafe_eliminate *)
   let unsafe_eliminate () =
@@ -271,11 +274,11 @@ module Operability = struct
     >>=? fun (ctx, bm_id) ->
     let (k1, v1, _decost1) = mockdata 1 in
     let (k2, _v2, _decost2) = mockdata 2 in
-    Cache.init ~loc:__LOC__ ctx bm_id k1 v1 1
+    CacheUtil.init ~loc:__LOC__ ctx bm_id k1 v1 1
     >>=? fun ctx ->
-    Cache.delete_err ~loc:__LOC__ ctx bm_id k2 1
+    CacheUtil.delete_err ~loc:__LOC__ ctx bm_id k2 1
     >>=? fun ctx ->
-    Cache.delete ~loc:__LOC__ ctx bm_id k1 0 >>=? fun _ctx -> return_unit
+    CacheUtil.delete ~loc:__LOC__ ctx bm_id k1 0 >>=? fun _ctx -> return_unit
 end
 
 (* # testing for gas consumption *)
@@ -286,23 +289,23 @@ module Reduction = struct
     >>=? fun (ctx, bm_id) ->
     let (k1, v1, decost1) = mockdata 1 in
     let (k2, _v2, _decost2) = mockdata 2 in
-    Cache.init_set ~loc:__LOC__ ctx bm_id k1 v1 1
+    CacheUtil.init_set ~loc:__LOC__ ctx bm_id k1 v1 1
     >>=? fun ctx ->
-    Cache.mem ~loc:__LOC__ ctx bm_id k1 1 true
+    CacheUtil.mem ~loc:__LOC__ ctx bm_id k1 1 true
     >>=? fun ctx' ->
     let consumed_gas =
       Gas.consumed ~since:(patronum_ctx ctx) ~until:(patronum_ctx ctx')
     in
     Assert.Gas.eq_z ~loc:__LOC__ consumed_gas
     >>=? fun () ->
-    Cache.get_option ~loc:__LOC__ ctx' bm_id k1 1 true
+    CacheUtil.get_option ~loc:__LOC__ ctx' bm_id k1 1 true
     >>=? fun ctx ->
     let consumed_gas =
       Gas.consumed ~since:(patronum_ctx ctx') ~until:(patronum_ctx ctx)
     in
     Assert.Gas.eq ~loc:__LOC__ (patronum_gas decost1) consumed_gas
     >>=? fun () ->
-    Cache.get_option ~loc:__LOC__ ctx bm_id k2 1 false
+    CacheUtil.get_option ~loc:__LOC__ ctx bm_id k2 1 false
     >>=? fun ctx' ->
     let mem_cost_gas =
       Storage_costs.read_access ~path_length:7 ~read_bytes:0
@@ -319,18 +322,18 @@ module Reduction = struct
     >>=? fun (ctx, bm_id) ->
     let (k1, v1, decost1) = mockdata 1 in
     let (k2, _v2, _decost2) = mockdata 2 in
-    Cache.init_set ~loc:__LOC__ ctx bm_id k1 v1 1
+    CacheUtil.init_set ~loc:__LOC__ ctx bm_id k1 v1 1
     >>=? fun ctx ->
-    Cache.mem ~loc:__LOC__ ctx bm_id k1 1 true
+    CacheUtil.mem ~loc:__LOC__ ctx bm_id k1 1 true
     >>=? fun ctx' ->
-    Cache.get ~loc:__LOC__ ctx' bm_id k1 1
+    CacheUtil.get ~loc:__LOC__ ctx' bm_id k1 1
     >>=? fun ctx ->
     let consumed_gas =
       Gas.consumed ~since:(patronum_ctx ctx') ~until:(patronum_ctx ctx)
     in
     Assert.Gas.eq ~loc:__LOC__ (patronum_gas decost1) consumed_gas
     >>=? fun () ->
-    Cache.get_err ~loc:__LOC__ ctx bm_id k2 1
+    CacheUtil.get_err ~loc:__LOC__ ctx bm_id k2 1
     >>=? fun ctx' ->
     let consumed_gas =
       Gas.consumed ~since:(patronum_ctx ctx) ~until:(patronum_ctx ctx')
@@ -424,7 +427,8 @@ struct
         >>=? fun () ->
         (* [check] contract is non-cached bef get *)
         let cache = Raw_context.get_carbonated_cache ctx in
-        Assert.equal_int ~loc:__LOC__ (List.length cache) 0
+        let cctnt = Raw_context.Cache.get_content_list cache in
+        Assert.equal_int ~loc:__LOC__ (List.length cctnt) 0
         >>=? fun () ->
         (* get the deployed contract *)
         let ctx_t1 = ctx in
@@ -434,7 +438,8 @@ struct
         let ctx_t2 = ctx in
         (* [check] contract is well-cached aft get *)
         let cache = Raw_context.get_carbonated_cache ctx in
-        Assert.equal_int ~loc:__LOC__ (List.length cache) 1
+        let cctnt = Raw_context.Cache.get_content_list cache in
+        Assert.equal_int ~loc:__LOC__ (List.length cctnt) 1
         >>=? fun () ->
         (* get the deployed contract - 2nd *)
         let ctx_t3 = ctx in
