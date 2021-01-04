@@ -346,52 +346,6 @@ class TestManager:
 @pytest.mark.contract
 @pytest.mark.incremental
 class TestExecOrd:
-#    @pytest.mark.parametrize(
-#        "child_contract,parent_contract,expected",
-#        [
-#            #("ordering_concat_string_child1", "ordering_mix_dfs_bfs1", "BDAC"),
-#            #("ordering_concat_string_child2", "ordering_mix_dfs_bfs2", "ABDC"),
-#            #("ordering_concat_string_child3", "ordering_mix_dfs_bfs3", "DABC"),
-#        ],
-#    )
-#    def test_bfs_dfs_mix(
-#        self, client, session, child_contract, parent_contract, expected
-#    ):
-#        path = f'{CONTRACT_PATH}/opcodes/ordering_concat_string_child.tz'
-#        originate(
-#            client, session, path, '""', 0, contract_name=child_contract_name
-#        )
-#        session['ordering_concat_string_child'] = session['contract']
-#        client.bake('bootstrap3', ["--minimal-timestamp"])
-#
-#        path = f'{CONTRACT_PATH}/opcodes/' + parent_contract + '.tz'
-#        originate(client, session, path, 'Unit', 0)
-#        session[parent_contract] = session['contract']
-#        client.bake('bootstrap3', ["--minimal-timestamp"])
-#
-#        addr = session['ordering_concat_string_child']
-#        client.transfer(
-#            0,
-#            'bootstrap2',
-#            parent_contract,
-#            [
-#                "--burn-cap",
-#                "5",
-#                "--arg",
-#                (
-#                    "(Pair (Pair (Pair \"A\" \"{}\") "
-#                    + "(Pair \"B\" \"{}\"))"
-#                    + "(Pair (Pair \"C\" \"{}\") "
-#                    + "(Pair \"D\" \"{}\")))"
-#                ).format(addr, addr, addr, addr),
-#            ],
-#        )
-#
-#        client.bake('bootstrap3', ["--minimal-timestamp"])
-#
-#        assert client.get_storage(child_contract) == "\"{}\"".format(
-#            expected
-#        )
 
     ##
     # This test case uses string concatenation to verify the execution flow of operations.
@@ -496,6 +450,64 @@ class TestExecOrd:
             0,
             'bootstrap2',
             grandparent_contract,
+            [
+                "--burn-cap",
+                "5",
+                "--arg",
+                m_input
+            ],
+        )
+
+        client.bake('bootstrap3', ["--minimal-timestamp"])
+
+        assert client.get_storage(child_contract) == "\"{}\"".format(
+            expected
+        )
+
+    ##
+    # This test case is like pervious one, but only 2 layers.
+    @pytest.mark.parametrize(
+        "child_contract, parent_contract, contract_input,expected",
+        [
+            ("ordering2_concat_string_child1",
+             "ordering2_mix_dfs_bfs_parent1",
+             [("A","True"), ("B","False"), ("C","True"), ("D","False")],
+             "BDAC"),
+            ("ordering2_concat_string_child2",
+             "ordering2_mix_dfs_bfs_parent2",
+             [("A","False"), ("B","False"), ("C","True"), ("D","False")],
+             "ABDC"),
+            ("ordering2_concat_string_child3",
+             "ordering2_mix_dfs_bfs_parent3",
+             [("A","True"), ("B","True"), ("C","True"), ("D","False")],
+             "DABC"),
+        ]
+    )
+    def test_bfs_dfs_mix_2layer(
+        self, client, session, child_contract, parent_contract, contract_input, expected
+    ):
+        path = f'{CONTRACT_PATH}/opcodes/ordering_concat_string_child.tz'
+        originate(
+            client, session, path, '""', 0, contract_name=child_contract
+        )
+        session[child_contract] = session['contract']
+        client.bake('bootstrap3', ["--minimal-timestamp"])
+
+        path = f'{CONTRACT_PATH}/opcodes/ordering_mix_dfs_bfs_parent.tz'
+        originate(client, session, path, 'Unit', 0, contract_name=parent_contract)
+        session[parent_contract] = session['contract']
+        client.bake('bootstrap3', ["--minimal-timestamp"])
+
+        c_addr = session[child_contract]
+
+        c_input = lambda x : ("Pair (Pair \"{}\" \"{}\") {}").format(x[0], c_addr, x[1])
+
+        m_input = "{" + ";".join(map(c_input, contract_input)) + "}"
+
+        client.transfer(
+            0,
+            'bootstrap2',
+            parent_contract,
             [
                 "--burn-cap",
                 "5",
