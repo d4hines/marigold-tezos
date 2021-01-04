@@ -25,8 +25,98 @@
 
 module Int_set = Set.Make (Compare.Int)
 
-module CacheMap = struct
-  include Map.Make (Compare.List (Compare.String))
+(*
+
+Cache structure is constructed by
+  - remnant: the remaining capacity (size of bytes)
+  - content: map of key to bytes
+  - kqueue: keys stored in a queue,
+            represent the internal trimming priority
+
+*)
+module Cache = struct
+  module Map = Map.Make (Compare.List (Compare.String))
+
+  type key = string list
+
+  type value = bytes
+
+  type t = {
+    remnant : int;
+    content : value Map.t;
+    kqueue : key FQueue.t;
+  }
+
+  (* max size := 1 GB *)
+  let max_size = 1 * 1000000000
+
+  let key_equal (k1 : key) (k2 : key) : bool =
+    String.equal (String.concat "" k1) (String.concat "" k2)
+
+  let get_remnant t : int = t.remnant
+
+  let get_content_list t : (key * value) list = Map.bindings t.content
+
+  let get_keys_list t : key list = FQueue.to_list t.kqueue
+
+  let empty : t =
+    { remnant = max_size;
+      content = Map.empty;
+      kqueue = FQueue.empty; }
+
+  let is_empty t : bool = FQueue.is_empty t.kqueue
+
+  let mem (k : key) t : bool = Map.mem k t.content
+
+  let rec trim (required_size : int) t : t =
+    (* { P1 := required_size <= max_size } *)
+    (* { P2 := remnant < required_size } *)
+    match FQueue.take_back t.kqueue with
+    | None ->
+      (* { empty cache → remnant == max_size } *)
+      (* { Q1 := remnant == max_size } *)
+      (* { P1 ∧ P2 ∧ Q1 → ⊥ } *)
+      empty
+    | Some (kqueue, k) ->
+      let (remnant, content) =
+        match Map.find_opt k t.content with
+        | None ->
+          (* { ∃ k . k ∈ queue ∧ k ∉ map } *)
+          (max_size, Map.empty)
+        | Some v ->
+          let r = t.remnant + (Bytes.length v) in
+          let c = Map.remove k t.content in (r, c) in
+      if Compare.Int.(remnant >= required_size)
+      (* { P1 ∧ ¬P2 } *)
+      then {remnant; content; kqueue}
+      (* { P1 ∧ P2 } *)
+      else trim required_size {remnant; content; kqueue}
+
+  let add_unsafe (k : key) (v : value) t : t =
+    let required_size = Bytes.length v in
+    let content = Map.add k v t.content in
+    let kqueue = FQueue.cons k t.kqueue in
+    let remnant = t.remnant - required_size in
+    {remnant; content; kqueue}
+
+  let add (k : key) (v : value) t : t =
+    let required_size = Bytes.length v in
+    if Compare.Int.(required_size > max_size) then t
+    else if Compare.Int.(required_size <= t.remnant) then add_unsafe k v t
+    else add_unsafe k v (trim required_size t)
+
+  let find_opt (k : key) t : value option = Map.find_opt k t.content
+
+  let remove (k : key) t : t =
+    let remnant =
+      match Map.find_opt k t.content with
+      | None -> t.remnant
+      | Some v -> t.remnant + (Bytes.length v) in
+    let content = Map.remove k t.content in
+    let keys = FQueue.to_list t.kqueue in
+    let keys' = List.filter (fun k' -> not (key_equal k k')) keys in
+    let kqueue = FQueue.of_list keys' in
+    {remnant; content; kqueue}
 end
 
 (*
@@ -104,7 +194,7 @@ type back = {
   internal_nonce : int;
   internal_nonces_used : Int_set.t;
   gas_counter_status : gas_counter_status;
-  carbonated_cache : bytes CacheMap.t;
+  carbonated_cache : Cache.t;
 }
 
 (*
@@ -337,7 +427,7 @@ let get_rewards = rewards
 
 let get_fees = fees
 
-let get_carbonated_cache ctx = CacheMap.bindings (carbonated_cache ctx)
+let get_carbonated_cache ctx = carbonated_cache ctx
 
 type error += Undefined_operation_nonce (* `Permanent *)
 
@@ -766,7 +856,7 @@ let prepare ~level ~predecessor_timestamp ~timestamp ~fitness ctxt =
         internal_nonce = 0;
         internal_nonces_used = Int_set.empty;
         gas_counter_status = Unlimited_operation_gas;
-        carbonated_cache = CacheMap.empty;
+        carbonated_cache = Cache.empty;
       };
   }
 
@@ -959,20 +1049,22 @@ let absolute_key _ k = k
 
 let description = Storage_description.create ()
 
-let carbonated_cache_init ctx = update_carbonated_cache ctx CacheMap.empty
+let carbonated_cache_init ctx = update_carbonated_cache ctx Cache.empty
 
-let carbonated_cache_mem ctx key = CacheMap.mem key (carbonated_cache ctx)
+let carbonated_cache_mem ctx key = Cache.mem key (carbonated_cache ctx)
 
 let carbonated_cache_find_option ctx key =
-  CacheMap.find_opt key (carbonated_cache ctx)
+  Cache.find_opt key (carbonated_cache ctx)
 
 let carbonated_cache_add ctx key value =
-  let cm = CacheMap.add key value (carbonated_cache ctx) in
-  update_carbonated_cache ctx cm
+  let cache = carbonated_cache ctx in
+  let updated_cache = Cache.add key value cache in
+  update_carbonated_cache ctx updated_cache
 
 let carbonated_cache_remove ctx key =
-  let cm = CacheMap.remove key (carbonated_cache ctx) in
-  update_carbonated_cache ctx cm
+  let cache = carbonated_cache ctx in
+  let updated_cache = Cache.remove key cache in
+  update_carbonated_cache ctx updated_cache
 
 let fold_map_temporary_lazy_storage_ids ctxt f =
   f (temporary_lazy_storage_ids ctxt)

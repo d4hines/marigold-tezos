@@ -470,8 +470,9 @@ struct
     let key = C.absolute_key ctx (data_key i) in
     C.carbonated_cache_find_option ctx key
 
-  (* [TODO] free space checking *)
-  let cache_add ctx key bytes = C.carbonated_cache_add ctx key bytes
+  let cache_add ctx i bytes =
+    let key = C.absolute_key ctx (data_key i) in
+    C.carbonated_cache_add ctx key bytes
 
   let cache_remove ctx i =
     let key = C.absolute_key ctx (data_key i) in
@@ -494,7 +495,7 @@ struct
         >>=? fun s ->
         C.get s key
         >>=? fun b ->
-        let s = cache_add s (C.absolute_key s key) b in
+        let s = cache_add s i b in
         Lwt.return (of_bytes ~key b >|? fun v -> (C.project s, v))
 
   let get_option s i =
@@ -512,7 +513,7 @@ struct
           >>=? fun s ->
           C.get s key
           >>=? fun b ->
-          let s = cache_add s (C.absolute_key s key) b in
+          let s = cache_add s i b in
           Lwt.return (of_bytes ~key b >|? fun v -> (C.project s, Some v))
         else return (C.project s, None)
 
@@ -525,7 +526,7 @@ struct
     C.set s key bytes
     >|=? fun t ->
     let size_diff = Bytes.length bytes - prev_size in
-    let u = cache_add t (C.absolute_key t key) bytes in
+    let u = cache_add t i bytes in
     (C.project u, size_diff)
 
   let init s i v =
@@ -535,7 +536,7 @@ struct
     C.init s key bytes
     >|=? fun t ->
     let size = Bytes.length bytes in
-    let u = cache_add t (C.absolute_key t key) bytes in
+    let u = cache_add t i bytes in
     (C.project u, size)
 
   let init_set s i v =
@@ -548,7 +549,7 @@ struct
     init_set s key bytes
     >|=? fun t ->
     let size_diff = Bytes.length bytes - prev_size in
-    let u = cache_add t (C.absolute_key t key) bytes in
+    let u = cache_add t i bytes in
     (C.project u, size_diff, existed)
 
   let remove s i =
@@ -852,11 +853,11 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
       pack u i
 
     let carbonated_cache_mem c k =
-      let (t, _) = unpack c in
+      let (t, _i) = unpack c in
       C.carbonated_cache_mem t k
 
     let carbonated_cache_find_option c k =
-      let (t, _) = unpack c in
+      let (t, _i) = unpack c in
       C.carbonated_cache_find_option t k
 
     let carbonated_cache_add c k v =
@@ -1123,15 +1124,13 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
     let cache_find_option pc key =
       Raw_context.carbonated_cache_find_option pc key
 
-    (* [TODO] free space checking *)
     let cache_add pc key bytes = Raw_context.carbonated_cache_add pc key bytes
 
     let cache_remove pc key = Raw_context.carbonated_cache_remove pc key
 
     let mem s i =
       let c = pack s i in
-      let b = cache_mem c data_name in
-      if b then return (Raw_context.project c, true)
+      if cache_mem c data_name then return (Raw_context.project c, true)
       else
         consume_mem_gas c
         >>?= fun c ->
