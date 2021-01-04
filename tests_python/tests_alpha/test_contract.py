@@ -394,19 +394,25 @@ class TestExecOrd:
         )
 
     @pytest.mark.parametrize(
-        "child_contract_name,parent_contract, grandparent_contract,expected",
+        "child_contract, parent_contract, grandparent_contract,contract_input,expected",
         [
-            ("ordering2_concat_string", "ordering_mix2_dfs_bfs_sec", "ordering_mix2_dfs_bfs_top", "EFDBCA"),
+            ("ordering2_concat_string",
+             "ordering_mix2_dfs_bfs_sec",
+             "ordering_mix2_dfs_bfs_top",
+             [([("A","True"), ("B","False"), ("C","False")], "True"),
+              ([], "True"),
+              ([("D", "True"), ("E", "False"), ("F","False")], "False")],
+             "EFDBCA"),
         ],
     )
     def test_bfs_dfs_mix2(
-        self, client, session, child_contract_name, parent_contract, grandparent_contract, expected
+        self, client, session, child_contract, parent_contract, grandparent_contract, contract_input, expected
     ):
         path = f'{CONTRACT_PATH}/opcodes/ordering_concat_string.tz'
         originate(
-            client, session, path, '""', 0, contract_name=child_contract_name
+            client, session, path, '""', 0, contract_name=child_contract
         )
-        session[child_contract_name] = session['contract']
+        session[child_contract] = session['contract']
         client.bake('bootstrap3', ["--minimal-timestamp"])
 
         path = f'{CONTRACT_PATH}/opcodes/' + parent_contract + '.tz'
@@ -420,8 +426,13 @@ class TestExecOrd:
         client.bake('bootstrap3', ["--minimal-timestamp"])
 
 
-        addr = session[child_contract_name]
+        c_addr = session[child_contract]
         p_addr = session[parent_contract]
+
+        c_input = lambda x : ("Pair (Pair \"{}\" \"{}\") {}").format(x[0], c_addr, x[1])
+        p_input = lambda x : ("Pair ( Pair {{" + ";".join(map(c_input, x[0])) + "}}\"{}\") {}").format(p_addr, x[1])
+
+        m_input = "{" + ";".join(map(p_input, contract_input)) + "}"
 
         client.transfer(
             0,
@@ -431,21 +442,13 @@ class TestExecOrd:
                 "--burn-cap",
                 "5",
                 "--arg",
-                (
-                    "{{ Pair ( Pair {{ Pair (Pair \"A\" \"{}\") True ; "
-                    + "                Pair (Pair \"B\" \"{}\") False ; "
-                    + "                Pair (Pair \"C\" \"{}\") False }} \"{}\") True ; "
-                    + " Pair ( Pair {{}} \"{}\" ) True ; "
-                    + " Pair ( Pair {{ Pair (Pair \"D\" \"{}\") True ; "
-                    + "                Pair (Pair \"E\" \"{}\") False ; "
-                    + "                Pair (Pair \"F\" \"{}\") False }} \"{}\") False }}"
-                ).format(addr, addr, addr, p_addr, p_addr, addr, addr, addr, p_addr),
+                m_input
             ],
         )
 
         client.bake('bootstrap3', ["--minimal-timestamp"])
 
-        assert client.get_storage(child_contract_name) == "\"{}\"".format(
+        assert client.get_storage(child_contract) == "\"{}\"".format(
             expected
         )
 
