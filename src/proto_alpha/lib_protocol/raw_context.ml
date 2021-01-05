@@ -34,6 +34,7 @@ Cache structure is constructed by
             represent the internal trimming priority
 
 *)
+
 module Cache = struct
   module Map = Map.Make (Compare.List (Compare.String))
 
@@ -42,13 +43,11 @@ module Cache = struct
   type value = bytes
 
   type t = {
+    max_size : int;
     remnant : int;
     content : value Map.t;
     kqueue : key FQueue.t;
   }
-
-  (* max size := 1 GB *)
-  let max_size = 1 * 1000000000
 
   let key_equal (k1 : key) (k2 : key) : bool =
     String.equal (String.concat "" k1) (String.concat "" k2)
@@ -60,9 +59,15 @@ module Cache = struct
   let get_keys_list t : key list = FQueue.to_list t.kqueue
 
   let empty : t =
-    { remnant = max_size;
+    let size = 2_000_000_000 in
+    { max_size = size;
+      remnant = size;
       content = Map.empty;
       kqueue = FQueue.empty; }
+
+  let testing_empty : t =
+    let size = 1_000_000 in
+    { empty with max_size = size; remnant = size }
 
   let is_empty t : bool = FQueue.is_empty t.kqueue
 
@@ -76,32 +81,32 @@ module Cache = struct
       (* { empty cache → remnant == max_size } *)
       (* { Q1 := remnant == max_size } *)
       (* { P1 ∧ P2 ∧ Q1 → ⊥ } *)
-      empty
+      { empty with max_size = t.max_size }
     | Some (kqueue, k) ->
       let (remnant, content) =
         match Map.find_opt k t.content with
         | None ->
           (* { ∃ k . k ∈ queue ∧ k ∉ map } *)
-          (max_size, Map.empty)
+          (t.max_size, Map.empty)
         | Some v ->
           let r = t.remnant + (Bytes.length v) in
           let c = Map.remove k t.content in (r, c) in
       if Compare.Int.(remnant >= required_size)
       (* { P1 ∧ ¬P2 } *)
-      then {remnant; content; kqueue}
+      then {t with remnant; content; kqueue}
       (* { P1 ∧ P2 } *)
-      else trim required_size {remnant; content; kqueue}
+      else trim required_size {t with remnant; content; kqueue}
 
   let add_unsafe (k : key) (v : value) t : t =
     let required_size = Bytes.length v in
     let content = Map.add k v t.content in
     let kqueue = FQueue.cons k t.kqueue in
     let remnant = t.remnant - required_size in
-    {remnant; content; kqueue}
+    {t with remnant; content; kqueue}
 
   let add (k : key) (v : value) t : t =
     let required_size = Bytes.length v in
-    if Compare.Int.(required_size > max_size) then t
+    if Compare.Int.(required_size > t.max_size) then t
     else if Compare.Int.(required_size <= t.remnant) then add_unsafe k v t
     else add_unsafe k v (trim required_size t)
 
@@ -116,7 +121,7 @@ module Cache = struct
     let keys = FQueue.to_list t.kqueue in
     let keys' = List.filter (fun k' -> not (key_equal k k')) keys in
     let kqueue = FQueue.of_list keys' in
-    {remnant; content; kqueue}
+    {t with remnant; content; kqueue}
 end
 
 (*
@@ -527,6 +532,9 @@ let set_gas_unlimited ctxt =
   let block_gas = block_gas_level ctxt in
   let ctxt = {ctxt with gas_counter = block_gas} in
   update_gas_counter_status ctxt Unlimited_operation_gas
+
+let set_testing_cache ctxt =
+  update_carbonated_cache ctxt Cache.testing_empty
 
 let is_gas_unlimited ctxt =
   match ctxt.back.gas_counter_status with
