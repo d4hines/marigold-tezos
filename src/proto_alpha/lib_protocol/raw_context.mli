@@ -71,6 +71,8 @@ module Cache : sig
 
   val empty : t
 
+  val testing_empty : t
+
   val is_empty : t -> bool
 
   (** Tests the existence for the given key. *)
@@ -167,6 +169,8 @@ val check_gas_limit : t -> 'a Gas_limit_repr.Arith.t -> unit tzresult
 val set_gas_limit : t -> 'a Gas_limit_repr.Arith.t -> t
 
 val set_gas_unlimited : t -> t
+
+val set_testing_cache : t -> t
 
 val gas_level : t -> Gas_limit_repr.t
 
