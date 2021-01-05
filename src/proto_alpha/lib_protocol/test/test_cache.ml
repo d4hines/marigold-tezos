@@ -27,6 +27,8 @@ open Protocol
 open Alpha_context
 open Micheline
 
+(* predefined local and/or aux functions *)
+
 let wrap e = Lwt.return (Environment.wrap_error e)
 
 let patronum_idx = Obj.magic
@@ -42,7 +44,7 @@ let mockdata (i : int) =
   let decost = Script_repr.deserialized_cost value in
   (key, value, decost)
 
-let init (gas_limit : int) =
+let init_ctx_with_gas_limit (gas_limit : int) =
   Context.init 1
   >>=? fun (b, _) ->
   Incremental.begin_construction b
@@ -54,8 +56,7 @@ let init (gas_limit : int) =
   >>= wrap
   >>=? fun x -> return x
 
-(* # cache utilities and wraps *)
-module CacheUtil = struct
+module BigmapUtil = struct
   let get_list ctx =
     let cache = Raw_context.get_carbonated_cache ctx in
     Raw_context.Cache.get_content_list cache
@@ -180,132 +181,130 @@ module CacheUtil = struct
         Assert.equal_int ~loc (leng ctx) n >>=? fun () -> return ctx
 end
 
-(* # testing for cache inhabitancy *)
+(*****************************************************************************)
+(* Test case I : basic cache properties, including:                          *)
+(*                                                                           *)
+(*   + Operability: cache is working for Creation/Reading/Deleting.          *)
+(*   + Reduction: the gas cost of access should be reduced                   *)
+(*                                                                           *)
+(* All tests are categoried as *safe* and *unsafe*: safe raise no exception  *)
+(* yet unsafe might.                                                         *)
+(*****************************************************************************)
 module Operability = struct
-  (* ## safe: no exception *)
-  (* ### safe_introduce *)
   let safe_introduce () =
-    init 100_000_000
+    init_ctx_with_gas_limit 100_000_000
     >>=? fun (ctx, bm_id) ->
     let (k1, v1, _decost1) = mockdata 1 in
     let (k2, v2, _decost2) = mockdata 2 in
-    CacheUtil.set_option ~loc:__LOC__ ctx bm_id k2 (Some v2) 1
+    BigmapUtil.set_option ~loc:__LOC__ ctx bm_id k2 (Some v2) 1
     >>=? fun ctx ->
-    CacheUtil.init_set ~loc:__LOC__ ctx bm_id k1 v1 2
+    BigmapUtil.init_set ~loc:__LOC__ ctx bm_id k1 v1 2
     >>=? fun ctx ->
-    CacheUtil.init_set ~loc:__LOC__ ctx bm_id k1 v2 2
+    BigmapUtil.init_set ~loc:__LOC__ ctx bm_id k1 v2 2
     >>=? fun ctx ->
-    CacheUtil.set_option ~loc:__LOC__ ctx bm_id k1 (Some v1) 2
+    BigmapUtil.set_option ~loc:__LOC__ ctx bm_id k1 (Some v1) 2
     >>=? fun _ctx -> return_unit
 
-  (* ### safe_obtain *)
   let safe_obtain () =
-    init 100_000_000
+    init_ctx_with_gas_limit 100_000_000
     >>=? fun (ctx, bm_id) ->
     let (k1, v1, _decost1) = mockdata 1 in
     let (k2, _v2, _decost2) = mockdata 2 in
-    CacheUtil.init_set ~loc:__LOC__ ctx bm_id k1 v1 1
+    BigmapUtil.init_set ~loc:__LOC__ ctx bm_id k1 v1 1
     >>=? fun ctx ->
-    CacheUtil.mem ~loc:__LOC__ ctx bm_id k1 1 true
+    BigmapUtil.mem ~loc:__LOC__ ctx bm_id k1 1 true
     >>=? fun ctx ->
-    CacheUtil.mem ~loc:__LOC__ ctx bm_id k2 1 false
+    BigmapUtil.mem ~loc:__LOC__ ctx bm_id k2 1 false
     >>=? fun ctx ->
-    CacheUtil.get_option ~loc:__LOC__ ctx bm_id k1 1 true
+    BigmapUtil.get_option ~loc:__LOC__ ctx bm_id k1 1 true
     >>=? fun ctx ->
-    CacheUtil.get_option ~loc:__LOC__ ctx bm_id k2 1 false
+    BigmapUtil.get_option ~loc:__LOC__ ctx bm_id k2 1 false
     >>=? fun _ctx -> return_unit
 
-  (* ### safe_eliminate *)
   let safe_eliminate () =
-    init 100_000_000
+    init_ctx_with_gas_limit 100_000_000
     >>=? fun (ctx, bm_id) ->
     let (k1, v1, _decost1) = mockdata 1 in
     let (k2, v2, _decost2) = mockdata 2 in
     let (k3, _v3, _decost3) = mockdata 3 in
-    CacheUtil.init_set ~loc:__LOC__ ctx bm_id k1 v1 1
+    BigmapUtil.init_set ~loc:__LOC__ ctx bm_id k1 v1 1
     >>=? fun ctx ->
-    CacheUtil.init_set ~loc:__LOC__ ctx bm_id k2 v2 2
+    BigmapUtil.init_set ~loc:__LOC__ ctx bm_id k2 v2 2
     >>=? fun ctx ->
-    CacheUtil.remove ~loc:__LOC__ ctx bm_id k3 2
+    BigmapUtil.remove ~loc:__LOC__ ctx bm_id k3 2
     >>=? fun ctx ->
-    CacheUtil.set_option ~loc:__LOC__ ctx bm_id k3 None 2
+    BigmapUtil.set_option ~loc:__LOC__ ctx bm_id k3 None 2
     >>=? fun ctx ->
-    CacheUtil.remove ~loc:__LOC__ ctx bm_id k2 1
+    BigmapUtil.remove ~loc:__LOC__ ctx bm_id k2 1
     >>=? fun ctx ->
-    CacheUtil.set_option ~loc:__LOC__ ctx bm_id k1 None 0
+    BigmapUtil.set_option ~loc:__LOC__ ctx bm_id k1 None 0
     >>=? fun _ctx -> return_unit
 
-  (* ## unsafe: may raise exception *)
-  (* ### unsafe_introduce *)
   let unsafe_introduce () =
-    init 100_000_000
+    init_ctx_with_gas_limit 100_000_000
     >>=? fun (ctx, bm_id) ->
     let (k1, v1, _decost1) = mockdata 1 in
     let (k2, v2, _decost2) = mockdata 2 in
     let (k3, _v3, _decost3) = mockdata 3 in
-    CacheUtil.init ~loc:__LOC__ ctx bm_id k1 v1 1
+    BigmapUtil.init ~loc:__LOC__ ctx bm_id k1 v1 1
     >>=? fun ctx ->
-    CacheUtil.init_err ~loc:__LOC__ ctx bm_id k1 v1 1
+    BigmapUtil.init_err ~loc:__LOC__ ctx bm_id k1 v1 1
     >>=? fun ctx ->
-    CacheUtil.init_err ~loc:__LOC__ ctx bm_id k1 v2 1
+    BigmapUtil.init_err ~loc:__LOC__ ctx bm_id k1 v2 1
     >>=? fun ctx ->
-    CacheUtil.init ~loc:__LOC__ ctx bm_id k2 v2 2
+    BigmapUtil.init ~loc:__LOC__ ctx bm_id k2 v2 2
     >>=? fun ctx ->
-    CacheUtil.set ~loc:__LOC__ ctx bm_id k2 v1 2
+    BigmapUtil.set ~loc:__LOC__ ctx bm_id k2 v1 2
     >>=? fun ctx ->
-    CacheUtil.set_err ~loc:__LOC__ ctx bm_id k3 v1 2
+    BigmapUtil.set_err ~loc:__LOC__ ctx bm_id k3 v1 2
     >>=? fun _ctx -> return_unit
 
-  (* ### unsafe_obtain *)
   let unsafe_obtain () =
-    init 100_000_000
+    init_ctx_with_gas_limit 100_000_000
     >>=? fun (ctx, bm_id) ->
     let (k1, v1, _decost1) = mockdata 1 in
     let (k2, _v2, _decost2) = mockdata 2 in
-    CacheUtil.init ~loc:__LOC__ ctx bm_id k1 v1 1
+    BigmapUtil.init ~loc:__LOC__ ctx bm_id k1 v1 1
     >>=? fun ctx ->
-    CacheUtil.get_err ~loc:__LOC__ ctx bm_id k2 1
+    BigmapUtil.get_err ~loc:__LOC__ ctx bm_id k2 1
     >>=? fun ctx ->
-    CacheUtil.get ~loc:__LOC__ ctx bm_id k1 1 >>=? fun _ctx -> return_unit
+    BigmapUtil.get ~loc:__LOC__ ctx bm_id k1 1 >>=? fun _ctx -> return_unit
 
-  (* ### unsafe_eliminate *)
   let unsafe_eliminate () =
-    init 100_000_000
+    init_ctx_with_gas_limit 100_000_000
     >>=? fun (ctx, bm_id) ->
     let (k1, v1, _decost1) = mockdata 1 in
     let (k2, _v2, _decost2) = mockdata 2 in
-    CacheUtil.init ~loc:__LOC__ ctx bm_id k1 v1 1
+    BigmapUtil.init ~loc:__LOC__ ctx bm_id k1 v1 1
     >>=? fun ctx ->
-    CacheUtil.delete_err ~loc:__LOC__ ctx bm_id k2 1
+    BigmapUtil.delete_err ~loc:__LOC__ ctx bm_id k2 1
     >>=? fun ctx ->
-    CacheUtil.delete ~loc:__LOC__ ctx bm_id k1 0 >>=? fun _ctx -> return_unit
+    BigmapUtil.delete ~loc:__LOC__ ctx bm_id k1 0 >>=? fun _ctx -> return_unit
 end
 
-(* # testing for gas consumption *)
 module Reduction = struct
-  (* ## safe: no exception *)
   let safe_access () =
-    init 100_000_000
+    init_ctx_with_gas_limit 100_000_000
     >>=? fun (ctx, bm_id) ->
     let (k1, v1, decost1) = mockdata 1 in
     let (k2, _v2, _decost2) = mockdata 2 in
-    CacheUtil.init_set ~loc:__LOC__ ctx bm_id k1 v1 1
+    BigmapUtil.init_set ~loc:__LOC__ ctx bm_id k1 v1 1
     >>=? fun ctx ->
-    CacheUtil.mem ~loc:__LOC__ ctx bm_id k1 1 true
+    BigmapUtil.mem ~loc:__LOC__ ctx bm_id k1 1 true
     >>=? fun ctx' ->
     let consumed_gas =
       Gas.consumed ~since:(patronum_ctx ctx) ~until:(patronum_ctx ctx')
     in
     Assert.Gas.eq_z ~loc:__LOC__ consumed_gas
     >>=? fun () ->
-    CacheUtil.get_option ~loc:__LOC__ ctx' bm_id k1 1 true
+    BigmapUtil.get_option ~loc:__LOC__ ctx' bm_id k1 1 true
     >>=? fun ctx ->
     let consumed_gas =
       Gas.consumed ~since:(patronum_ctx ctx') ~until:(patronum_ctx ctx)
     in
     Assert.Gas.eq ~loc:__LOC__ (patronum_gas decost1) consumed_gas
     >>=? fun () ->
-    CacheUtil.get_option ~loc:__LOC__ ctx bm_id k2 1 false
+    BigmapUtil.get_option ~loc:__LOC__ ctx bm_id k2 1 false
     >>=? fun ctx' ->
     let mem_cost_gas =
       Storage_costs.read_access ~path_length:7 ~read_bytes:0
@@ -316,24 +315,23 @@ module Reduction = struct
     Assert.Gas.eq ~loc:__LOC__ (patronum_gas mem_cost_gas) consumed_gas
     >>=? fun () -> return_unit
 
-  (* ## unsafe: may raise exception *)
   let unsafe_access () =
-    init 100_000_000
+    init_ctx_with_gas_limit 100_000_000
     >>=? fun (ctx, bm_id) ->
     let (k1, v1, decost1) = mockdata 1 in
     let (k2, _v2, _decost2) = mockdata 2 in
-    CacheUtil.init_set ~loc:__LOC__ ctx bm_id k1 v1 1
+    BigmapUtil.init_set ~loc:__LOC__ ctx bm_id k1 v1 1
     >>=? fun ctx ->
-    CacheUtil.mem ~loc:__LOC__ ctx bm_id k1 1 true
+    BigmapUtil.mem ~loc:__LOC__ ctx bm_id k1 1 true
     >>=? fun ctx' ->
-    CacheUtil.get ~loc:__LOC__ ctx' bm_id k1 1
+    BigmapUtil.get ~loc:__LOC__ ctx' bm_id k1 1
     >>=? fun ctx ->
     let consumed_gas =
       Gas.consumed ~since:(patronum_ctx ctx') ~until:(patronum_ctx ctx)
     in
     Assert.Gas.eq ~loc:__LOC__ (patronum_gas decost1) consumed_gas
     >>=? fun () ->
-    CacheUtil.get_err ~loc:__LOC__ ctx bm_id k2 1
+    BigmapUtil.get_err ~loc:__LOC__ ctx bm_id k2 1
     >>=? fun ctx' ->
     let consumed_gas =
       Gas.consumed ~since:(patronum_ctx ctx) ~until:(patronum_ctx ctx')
@@ -341,7 +339,10 @@ module Reduction = struct
     Assert.Gas.eq_z ~loc:__LOC__ consumed_gas >>=? fun () -> return_unit
 end
 
-(* local helper for testing contract cache *)
+(*****************************************************************************)
+(* Test case II : Caching data for Carbonated_Map,                           *)
+(*                including Contract.Code and Contract.Storage.              *)
+(*****************************************************************************)
 module ScriptHelper = struct
   let toplevel_from_string str =
     let (ast, errs) = Michelson_v1_parser.parse_toplevel ~check:true str in
@@ -380,19 +381,19 @@ module TestContractCache
             and type t := Raw_context.t) =
 struct
   let run_test () =
-    (* init block with two accounts *)
+    (* init block with 1 account *)
     Context.init 1
     >>=? fun (b, srcs) ->
     let src0 = Option.get @@ List.nth srcs 0 in
     Incremental.begin_construction b
     >>=? fun inc ->
-    (* [check] there are only 1 contracts in alpha_ctxt *)
+    (* [check] there are only 1 contract(account) in alpha_ctxt *)
     let ctx = Incremental.alpha_ctxt inc in
     ScriptHelper.getContracts ctx
     >>=? fun cs ->
     Assert.equal_int ~loc:__LOC__ (List.length cs) 1
     >>=? fun () ->
-    (* deploy contract *)
+    (* deploy testing contract *)
     let script =
       ScriptHelper.load_script "contracts/cache_contract_acc.tz" "0"
     in
@@ -461,7 +462,107 @@ struct
         Assert.Gas.gt ~loc:__LOC__ delta_1 delta_2 >>=? fun () -> return_unit
 end
 
-(* # tztest tasks *)
+(*****************************************************************************)
+(* Test case III : cache size is restricted within 1MB in testing mode.      *)
+(*****************************************************************************)
+module Limitation = struct
+  let roughly3KBstring (i : int) : string =
+    let c = Char.chr i in
+    Bytes.to_string (Bytes.make (300_000) c)
+
+  let mock_bigdata (i : int) =
+    let str_i = string_of_int i in
+    let key = Script_expr_hash.hash_string [str_i] in
+    let value = Micheline.strip_locations @@ String (0, roughly3KBstring i) in
+    let decost = Script_repr.deserialized_cost value in
+    (key, value, decost)
+
+  let get_remnant ctx =
+    let cache = Raw_context.get_carbonated_cache ctx in
+    Raw_context.Cache.get_remnant cache
+
+  (* ## testing function *)
+  let size_limitation () =
+    init_ctx_with_gas_limit 100_000_000
+    >>=? fun (ctx, bm_id) ->
+    (*  *)
+    let ctx = Raw_context.set_testing_cache (patronum_ctx ctx) in
+    let (k1, v1, _decost1) = mock_bigdata 65 in
+    let (k2, v2, _decost2) = mock_bigdata 66 in
+    let (k3, v3, _decost3) = mock_bigdata 67 in
+    let (k4, v4, _decost3) = mock_bigdata 68 in
+    let (k5, v5, _decost5) = mock_bigdata 69 in
+    (*  *)
+    BigmapUtil.init_set ~loc:__LOC__ ctx bm_id k1 v1 1
+    >>=? fun ctx ->
+    let cremnent = get_remnant ctx in
+    let required_size = 1 * (300_000 + 5) in
+    Assert.equal_int ~loc:__LOC__ cremnent (1_000_000 - required_size)
+    >>=? fun () ->
+    (*  *)
+    BigmapUtil.init_set ~loc:__LOC__ ctx bm_id k2 v2 2
+    >>=? fun ctx ->
+    let cremnent = get_remnant ctx in
+    let required_size = 2 * (300_000 + 5) in
+    Assert.equal_int ~loc:__LOC__ cremnent (1_000_000 - required_size)
+    >>=? fun () ->
+    (*  *)
+    BigmapUtil.init_set ~loc:__LOC__ ctx bm_id k3 v3 3
+    >>=? fun ctx ->
+    let cremnent = get_remnant ctx in
+    let required_size = 3 * (300_000 + 5) in
+    Assert.equal_int ~loc:__LOC__ cremnent (1_000_000 - required_size)
+    >>=? fun () ->
+    (*  *)
+    let cache = Raw_context.get_carbonated_cache ctx in
+    let klist = Raw_context.Cache.get_keys_list cache in
+    Assert.equal_int ~loc:__LOC__ (List.length klist) 3
+    >>=? fun () ->
+    (*  *)
+    BigmapUtil.init_set ~loc:__LOC__ ctx bm_id k4 v4 3
+    >>=? fun ctx ->
+    let cache = Raw_context.get_carbonated_cache ctx in
+    let klist = Raw_context.Cache.get_keys_list cache in
+    Assert.equal_int ~loc:__LOC__ (List.length klist) 3
+    >>=? fun () ->
+    (*  *)
+    BigmapUtil.init_set ~loc:__LOC__ ctx bm_id k5 v5 3
+    >>=? fun ctx ->
+    let cache = Raw_context.get_carbonated_cache ctx in
+    let klist = Raw_context.Cache.get_keys_list cache in
+    Assert.equal_int ~loc:__LOC__ (List.length klist) 3
+    >>=? fun () ->
+    (*  *)
+    let cache = Raw_context.get_carbonated_cache ctx in
+    let klist = Raw_context.Cache.get_keys_list cache in
+    (* the head of queue must be k5 *)
+    match List.nth klist 0 with
+    | None -> failwith "List.nth klist 0 doesn't exist"
+    | Some kn ->
+      let k5_prefix = "big_mapsindex03170a2e75970contents" in
+      let k5_str = String.concat "" (Script_expr_hash.to_path k5 ["data"]) in
+      Assert.equal ~loc:__LOC__ String.equal "aren't equal"
+        Format.pp_print_string
+          (String.concat "" kn)
+          (String.concat "" [k5_prefix; k5_str])
+      >>=? fun () -> return_unit
+    >>=? fun () ->
+    (* the last of queue must be k3 *)
+    match List.nth klist 2 with
+    | None -> failwith "List.nth klist 2 doesn't exist"
+    | Some kn ->
+      let k3_prefix = "big_mapsindex03170a2e75970contents" in
+      let k3_str = String.concat "" (Script_expr_hash.to_path k3 ["data"]) in
+      Assert.equal ~loc:__LOC__ String.equal "aren't equal"
+        Format.pp_print_string
+          (String.concat "" kn)
+          (String.concat "" [k3_prefix; k3_str])
+      >>=? fun () -> return_unit
+end
+
+(*****************************************************************************)
+(* Setup all test cases                                                      *)
+(*****************************************************************************)
 let operability_safe () =
   Operability.safe_introduce ()
   >>=? fun () ->
@@ -485,10 +586,14 @@ let contract_code () = M1.run_test () >>=? fun () -> return_unit
 
 let contract_storage () = M2.run_test () >>=? fun () -> return_unit
 
+let size_limitation () =
+  Limitation.size_limitation () >>=? fun () -> return_unit
+
 let tests =
   [ Test.tztest "test_cache_operability_safe" `Quick operability_safe;
     Test.tztest "test_cache_operability_unsafe" `Quick operability_unsafe;
     Test.tztest "test_cache_reduction_safe" `Quick reduction_safe;
     Test.tztest "test_cache_reduction_unsafe" `Quick reduction_unsafe;
     Test.tztest "test_cache_contract_code" `Quick contract_code;
-    Test.tztest "test_cache_contract_storage" `Quick contract_storage ]
+    Test.tztest "test_cache_contract_storage" `Quick contract_storage;
+    Test.tztest "test_cache_limited_size" `Quick size_limitation ]
