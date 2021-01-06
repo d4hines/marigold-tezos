@@ -18,8 +18,10 @@ opam repository set-url tezos --dont-select $opam_repository || \
 
 opam update --repositories --development
 
+OCAML_COMPILER_VARIANT=ocaml-variants.$ocaml_version+flambda
+
 if [ ! -d "$src_dir/_opam" ] ; then
-    opam switch create "$src_dir" --repositories=tezos ocaml-base-compiler.$ocaml_version
+    opam switch create "$src_dir" --repositories=tezos $OCAML_COMPILER_VARIANT
 fi
 
 if [ ! -d "$src_dir/_opam" ] ; then
@@ -34,7 +36,11 @@ if [ -n "$dev" ]; then
 fi
 
 if [ "$(ocaml -vnum)" != "$ocaml_version" ]; then
-    opam install --unlock-base ocaml-base-compiler.$ocaml_version
+    opam install --unlock-base $OCAML_COMPILER_VARIANT
+fi
+
+if [ "$(ocamlc -config | grep flambda | awk '{ print $2 }')" != "true" ]; then
+    opam install --unlock-base $OCAML_COMPILER_VARIANT
 fi
 
 # Must be done before install_build_deps.raw.sh because install_build_deps.raw.sh installs
