@@ -175,32 +175,51 @@ let finally :
     }
   in
   let context = get_next_context b in
-  let (context, script) =
-    Alpha_context.Contract.get_script context transfer.recipient |> force_lwt
-  in
-  let script = script |> Option.get in
-  let ( Ex_script {code; arg_type; storage; storage_type; root_name = _},
-        context ) =
-    type_script context script
-  in
-  let (Lam (code, _)) = code in
-  let (arg, context) =
-    Script_ir_translator.parse_data
-      context
-      ~legacy:false
-      ~allow_forged:false
-      arg_type
-      (Micheline.root (Expr.from_string transfer.parameters))
-    |> force_lwt
-  in
-  let stack = ((arg, storage), ()) in
+  let run_script () = 
+    let (context, script) =
+      Alpha_context.Contract.get_script context transfer.recipient |> force_lwt
+    in
+    let script = script |> Option.get in
+    let ( Ex_script {code; arg_type; storage; storage_type = _; root_name = _},
+          context ) =
+      type_script context script
+    in
+    let (Lam (code, _)) = code in
+    let (arg, context) =
+      Script_ir_translator.parse_data
+        context
+        ~legacy:false
+        ~allow_forged:false
+        arg_type
+        (Micheline.root (Expr.from_string transfer.parameters))
+      |> force_lwt
+    in
+    let stack = ((arg, storage), ()) in
+
+    Script_interpreter.step logger context step_constants code stack |> Lwt.map (fun _ -> ()) in
   let eval_script () =
-    Script_interpreter.step logger context step_constants code stack
-  in
-  let run_script () = eval_script () |> Lwt.map (fun _ -> ()) in
-  let eval_script () =
+    let (context, script) =
+      Alpha_context.Contract.get_script context transfer.recipient |> force_lwt
+    in
+    let script = script |> Option.get in
+    let ( Ex_script {code; arg_type; storage; storage_type; root_name = _},
+          context ) =
+      type_script context script
+    in
+    let (Lam (code, _)) = code in
+    let (arg, context) =
+      Script_ir_translator.parse_data
+        context
+        ~legacy:false
+        ~allow_forged:false
+        arg_type
+        (Micheline.root (Expr.from_string transfer.parameters))
+      |> force_lwt
+    in
+    let stack = ((arg, storage), ()) in
+
     let output =
-      eval_script ()
+      Script_interpreter.step logger context step_constants code stack
       >>=? fun (((_, storage), ()), ctx) ->
       Script_ir_translator.unparse_data ctx Readable storage_type storage
       >>=? fun (micheline, _) ->
