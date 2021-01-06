@@ -9,8 +9,8 @@ let set_up_fa12 :
     =
  fun () ->
   let (b, contracts) = Context.init 2 |> force_global_lwt in
-  let alice = List.nth contracts 0 in
-  let bob = List.nth contracts 1 in
+  let alice = List.nth contracts 0 |> Option.get in
+  let bob = List.nth contracts 1 |> Option.get in
   let initial_storage =
     sprintf {|Pair {Elt "%s" (Pair {} 100000000000000)} 100000000000000|} (contract_to_pkh alice)
   in
