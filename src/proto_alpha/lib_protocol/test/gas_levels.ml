@@ -43,6 +43,7 @@ let dummy_context () =
     ~predecessor_timestamp:Time.Protocol.epoch
     ~timestamp:Time.Protocol.epoch
     ~fitness:[]
+    ~predecessor_cache:Raw_context.Cache.empty
     (block.context : Environment_context.Context.t)
   >|= Environment.wrap_error
 

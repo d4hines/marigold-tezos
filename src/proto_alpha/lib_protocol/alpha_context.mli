@@ -1542,6 +1542,7 @@ val prepare :
   predecessor_timestamp:Time.t ->
   timestamp:Time.t ->
   fitness:Fitness.t ->
+  predecessor_cache:Raw_context.Cache.t ->
   context tzresult Lwt.t
 
 val finalize : ?commit_message:string -> context -> Updater.validation_result
@@ -1577,6 +1578,8 @@ val add_rewards : context -> Tez.t -> context tzresult
 
 val add_deposit :
   context -> Signature.Public_key_hash.t -> Tez.t -> context tzresult
+
+val get_cache : context -> Raw_context.Cache.t
 
 val get_fees : context -> Tez.t
 

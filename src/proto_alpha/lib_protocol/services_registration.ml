@@ -40,6 +40,7 @@ let rpc_init ({block_hash; block_header; context} : Updater.rpc_context) =
     ~predecessor_timestamp:timestamp
     ~timestamp
     ~fitness
+    ~predecessor_cache:Raw_context.Cache.empty
     context
   >|=? fun context -> {block_hash; block_header; context}
 

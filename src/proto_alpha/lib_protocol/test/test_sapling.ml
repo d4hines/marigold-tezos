@@ -40,6 +40,7 @@ module Raw_context_tests = struct
       ~predecessor_timestamp:b.header.shell.timestamp
       ~timestamp:b.header.shell.timestamp
       ~fitness:b.header.shell.fitness
+      ~predecessor_cache:Raw_context.Cache.empty
     >>= wrap
     >>=? fun ctx ->
     let module H = Sapling.Core.Client.Hash in
@@ -88,6 +89,7 @@ module Raw_context_tests = struct
       ~predecessor_timestamp:b.header.shell.timestamp
       ~timestamp:b.header.shell.timestamp
       ~fitness:b.header.shell.fitness
+      ~predecessor_cache:Raw_context.Cache.empty
     >>= wrap
     >>=? fun ctx ->
     Lazy_storage_diff.fresh
@@ -126,6 +128,7 @@ module Raw_context_tests = struct
       ~predecessor_timestamp:b.header.shell.timestamp
       ~timestamp:b.header.shell.timestamp
       ~fitness:b.header.shell.fitness
+      ~predecessor_cache:Raw_context.Cache.empty
     >>= wrap
     >>=? fun ctx ->
     Lazy_storage_diff.fresh
@@ -201,6 +204,7 @@ module Raw_context_tests = struct
       ~predecessor_timestamp:b.header.shell.timestamp
       ~timestamp:b.header.shell.timestamp
       ~fitness:b.header.shell.fitness
+      ~predecessor_cache:Raw_context.Cache.empty
     >>= wrap
     >>=? fun ctx ->
     Lazy_storage_diff.fresh
@@ -255,6 +259,7 @@ module Raw_context_tests = struct
       ~predecessor_timestamp:b.header.shell.timestamp
       ~timestamp:b.header.shell.timestamp
       ~fitness:b.header.shell.fitness
+      ~predecessor_cache:Raw_context.Cache.empty
     >>= wrap
     >>=? fun ctx ->
     Lazy_storage_diff.fresh
@@ -341,6 +346,7 @@ module Raw_context_tests = struct
       ~predecessor_timestamp:b.header.shell.timestamp
       ~timestamp:b.header.shell.timestamp
       ~fitness:b.header.shell.fitness
+      ~predecessor_cache:Raw_context.Cache.empty
     >>= wrap
     >>=? fun ctx ->
     Lazy_storage_diff.fresh
@@ -365,6 +371,7 @@ module Raw_context_tests = struct
           ~predecessor_timestamp:b.header.shell.timestamp
           ~timestamp:b.header.shell.timestamp
           ~fitness:b.header.shell.fitness
+          ~predecessor_cache:Raw_context.Cache.empty
           (Raw_context.recover ctx)
         >>= wrap
         >|=? fun ctx -> (ctx, Int32.succ cnt))
@@ -420,6 +427,7 @@ module Raw_context_tests = struct
       ~predecessor_timestamp:b.header.shell.timestamp
       ~timestamp:b.header.shell.timestamp
       ~fitness:b.header.shell.fitness
+      ~predecessor_cache:Raw_context.Cache.empty
     >>= wrap
     >>=? fun ctx ->
     Lazy_storage_diff.fresh
@@ -1015,6 +1023,7 @@ module Interpreter_tests = struct
         ~predecessor_timestamp:block.header.shell.timestamp
         ~timestamp:block.header.shell.timestamp
         ~fitness:block.header.shell.fitness
+        ~predecessor_cache:Raw_context.Cache.empty
       >>= wrap
       >>=? fun raw_ctx -> Sapling_storage.Roots.mem raw_ctx id root >>= wrap
     in

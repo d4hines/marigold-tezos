@@ -116,13 +116,20 @@ type validation_state = {
 
 let current_context {ctxt; _} = return (Alpha_context.finalize ctxt).context
 
+(* TODO add predecessor_cache *)
 let begin_partial_application ~chain_id ~ancestor_context:ctxt
     ~predecessor_timestamp ~predecessor_fitness
     (block_header : Alpha_context.Block_header.t) =
   let level = block_header.shell.level in
   let fitness = predecessor_fitness in
   let timestamp = block_header.shell.timestamp in
-  Alpha_context.prepare ~level ~predecessor_timestamp ~timestamp ~fitness ctxt
+  Alpha_context.prepare
+    ~level
+    ~predecessor_timestamp
+    ~timestamp
+    ~fitness
+    ~predecessor_cache:Raw_context.Cache.empty
+    ctxt
   >>=? fun ctxt ->
   Apply.begin_application ctxt chain_id block_header predecessor_timestamp
   >|=? fun (ctxt, baker, block_delay) ->
@@ -132,13 +139,20 @@ let begin_partial_application ~chain_id ~ancestor_context:ctxt
   in
   {mode; chain_id; ctxt; op_count = 0}
 
+(* TODO add predecessor_cache *)
 let begin_application ~chain_id ~predecessor_context:ctxt
     ~predecessor_timestamp ~predecessor_fitness
     (block_header : Alpha_context.Block_header.t) =
   let level = block_header.shell.level in
   let fitness = predecessor_fitness in
   let timestamp = block_header.shell.timestamp in
-  Alpha_context.prepare ~level ~predecessor_timestamp ~timestamp ~fitness ctxt
+  Alpha_context.prepare
+    ~level
+    ~predecessor_timestamp
+    ~timestamp
+    ~fitness
+    ~predecessor_cache:Raw_context.Cache.empty
+    ctxt
   >>=? fun ctxt ->
   Apply.begin_application ctxt chain_id block_header predecessor_timestamp
   >|=? fun (ctxt, baker, block_delay) ->
@@ -148,13 +162,20 @@ let begin_application ~chain_id ~predecessor_context:ctxt
   in
   {mode; chain_id; ctxt; op_count = 0}
 
+(* TODO add predecessor_cache *)
 let begin_construction ~chain_id ~predecessor_context:ctxt
     ~predecessor_timestamp ~predecessor_level:pred_level
     ~predecessor_fitness:pred_fitness ~predecessor ~timestamp
     ?(protocol_data : block_header_data option) () =
   let level = Int32.succ pred_level in
   let fitness = pred_fitness in
-  Alpha_context.prepare ~level ~predecessor_timestamp ~timestamp ~fitness ctxt
+  Alpha_context.prepare
+    ~level
+    ~predecessor_timestamp
+    ~timestamp
+    ~fitness
+    ~predecessor_cache:Raw_context.Cache.empty
+    ctxt
   >>=? fun ctxt ->
   ( match protocol_data with
   | None ->

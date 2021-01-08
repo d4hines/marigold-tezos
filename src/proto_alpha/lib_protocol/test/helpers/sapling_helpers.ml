@@ -155,6 +155,7 @@ module Alpha_context_helpers = struct
       ~predecessor_timestamp:b.header.shell.timestamp
       ~timestamp:b.header.shell.timestamp
       ~fitness:b.header.shell.fitness
+      ~predecessor_cache:Raw_context.Cache.empty
     >>= wrap
 
   (* takes a state obtained from Sapling.empty_state or Sapling.state_from_id and
@@ -227,6 +228,7 @@ module Alpha_context_helpers = struct
           ~predecessor_timestamp:(Time.Protocol.of_seconds Int64.zero)
           ~timestamp:(Time.Protocol.of_seconds Int64.zero)
           ~fitness:(Fitness_repr.from_int64 Int64.zero)
+          ~predecessor_cache:Raw_context.Cache.empty
         >>= wrap
         >|=? fun ctx -> Some (ctx, id)
 
