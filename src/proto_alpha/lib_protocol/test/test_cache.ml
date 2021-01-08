@@ -468,7 +468,7 @@ end
 module Limitation = struct
   let roughly3KBstring (i : int) : string =
     let c = Char.chr i in
-    Bytes.to_string (Bytes.make (300_000) c)
+    Bytes.to_string (Bytes.make 300_000 c)
 
   let mock_bigdata (i : int) =
     let str_i = string_of_int i in
@@ -537,27 +537,38 @@ module Limitation = struct
     let klist = Raw_context.Cache.get_keys_list cache in
     (* the head of queue must be k5 *)
     match List.nth klist 0 with
-    | None -> failwith "List.nth klist 0 doesn't exist"
-    | Some kn ->
-      let k5_prefix = "big_mapsindex03170a2e75970contents" in
-      let k5_str = String.concat "" (Script_expr_hash.to_path k5 ["data"]) in
-      Assert.equal ~loc:__LOC__ String.equal "aren't equal"
-        Format.pp_print_string
+    | None ->
+        failwith "List.nth klist 0 doesn't exist"
+    | Some kn -> (
+        let k5_prefix = "big_mapsindex03170a2e75970contents" in
+        let k5_str = String.concat "" (Script_expr_hash.to_path k5 ["data"]) in
+        Assert.equal
+          ~loc:__LOC__
+          String.equal
+          "aren't equal"
+          Format.pp_print_string
           (String.concat "" kn)
           (String.concat "" [k5_prefix; k5_str])
-      >>=? fun () -> return_unit
-    >>=? fun () ->
-    (* the last of queue must be k3 *)
-    match List.nth klist 2 with
-    | None -> failwith "List.nth klist 2 doesn't exist"
-    | Some kn ->
-      let k3_prefix = "big_mapsindex03170a2e75970contents" in
-      let k3_str = String.concat "" (Script_expr_hash.to_path k3 ["data"]) in
-      Assert.equal ~loc:__LOC__ String.equal "aren't equal"
-        Format.pp_print_string
-          (String.concat "" kn)
-          (String.concat "" [k3_prefix; k3_str])
-      >>=? fun () -> return_unit
+        >>=? fun () ->
+        return_unit
+        >>=? fun () ->
+        (* the last of queue must be k3 *)
+        match List.nth klist 2 with
+        | None ->
+            failwith "List.nth klist 2 doesn't exist"
+        | Some kn ->
+            let k3_prefix = "big_mapsindex03170a2e75970contents" in
+            let k3_str =
+              String.concat "" (Script_expr_hash.to_path k3 ["data"])
+            in
+            Assert.equal
+              ~loc:__LOC__
+              String.equal
+              "aren't equal"
+              Format.pp_print_string
+              (String.concat "" kn)
+              (String.concat "" [k3_prefix; k3_str])
+            >>=? fun () -> return_unit )
 end
 
 (*****************************************************************************)

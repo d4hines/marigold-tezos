@@ -225,6 +225,7 @@ let test_rewards_formulas_equivalence () =
     ~predecessor_timestamp:b.header.shell.timestamp
     ~timestamp:b.header.shell.timestamp
     ~fitness:b.header.shell.fitness
+    ~predecessor_cache:Raw_context.Cache.empty
   >>= wrap
   >>=? fun ctxt ->
   let block_priorities = 0 -- 64 in

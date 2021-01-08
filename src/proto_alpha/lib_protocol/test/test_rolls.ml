@@ -81,6 +81,7 @@ let check_rolls (b : Block.t) (account : Account.t) =
     ~predecessor_timestamp:b.header.shell.timestamp
     ~timestamp:b.header.shell.timestamp
     ~fitness:b.header.shell.fitness
+    ~predecessor_cache:Raw_context.Cache.empty
   >>= wrap
   >>=? fun ctxt ->
   get_rolls ctxt account.pkh
@@ -97,6 +98,7 @@ let check_no_rolls (b : Block.t) (account : Account.t) =
     ~predecessor_timestamp:b.header.shell.timestamp
     ~timestamp:b.header.shell.timestamp
     ~fitness:b.header.shell.fitness
+    ~predecessor_cache:Raw_context.Cache.empty
   >>= wrap
   >>=? fun ctxt ->
   get_rolls ctxt account.pkh

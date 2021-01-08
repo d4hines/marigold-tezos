@@ -102,6 +102,7 @@ val prepare :
   predecessor_timestamp:Time.t ->
   timestamp:Time.t ->
   fitness:Fitness.t ->
+  predecessor_cache:Cache.t ->
   Context.t ->
   context tzresult Lwt.t
 
@@ -160,7 +161,7 @@ val get_rewards : context -> Tez_repr.t
 
 val get_deposits : context -> Tez_repr.t Signature.Public_key_hash.Map.t
 
-val get_carbonated_cache : context -> Cache.t
+val get_carbonated_cache : t -> Cache.t
 
 type error += Gas_limit_too_high (* `Permanent *)
 
