@@ -295,4 +295,6 @@ let get_fees = Raw_context.get_fees
 
 let get_rewards = Raw_context.get_rewards
 
+let get_cache = Raw_context.get_carbonated_cache
+
 let description = Raw_context.description

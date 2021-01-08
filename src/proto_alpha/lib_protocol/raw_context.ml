@@ -60,14 +60,16 @@ module Cache = struct
 
   let empty : t =
     let size = 2_000_000_000 in
-    { max_size = size;
+    {
+      max_size = size;
       remnant = size;
       content = Map.empty;
-      kqueue = FQueue.empty; }
+      kqueue = FQueue.empty;
+    }
 
   let testing_empty : t =
     let size = 1_000_000 in
-    { empty with max_size = size; remnant = size }
+    {empty with max_size = size; remnant = size}
 
   let is_empty t : bool = FQueue.is_empty t.kqueue
 
@@ -78,24 +80,24 @@ module Cache = struct
     (* { P2 := remnant < required_size } *)
     match FQueue.take_back t.kqueue with
     | None ->
-      (* { empty cache → remnant == max_size } *)
-      (* { Q1 := remnant == max_size } *)
-      (* { P1 ∧ P2 ∧ Q1 → ⊥ } *)
-      { empty with max_size = t.max_size }
+        (* { empty cache → remnant == max_size } *)
+        (* { Q1 := remnant == max_size } *)
+        (* { P1 ∧ P2 ∧ Q1 → ⊥ } *)
+        {empty with max_size = t.max_size}
     | Some (kqueue, k) ->
-      let (remnant, content) =
-        match Map.find_opt k t.content with
-        | None ->
-          (* { ∃ k . k ∈ queue ∧ k ∉ map } *)
-          (t.max_size, Map.empty)
-        | Some v ->
-          let r = t.remnant + (Bytes.length v) in
-          let c = Map.remove k t.content in (r, c) in
-      if Compare.Int.(remnant >= required_size)
-      (* { P1 ∧ ¬P2 } *)
-      then {t with remnant; content; kqueue}
-      (* { P1 ∧ P2 } *)
-      else trim required_size {t with remnant; content; kqueue}
+        let (remnant, content) =
+          match Map.find_opt k t.content with
+          | None ->
+              (* { ∃ k . k ∈ queue ∧ k ∉ map } *)
+              (t.max_size, Map.empty)
+          | Some v ->
+              let r = t.remnant + Bytes.length v in
+              let c = Map.remove k t.content in
+              (r, c)
+        in
+        if Compare.Int.(remnant >= required_size) (* { P1 ∧ ¬P2 } *) then
+          {t with remnant; content; kqueue} (* { P1 ∧ P2 } *)
+        else trim required_size {t with remnant; content; kqueue}
 
   let add_unsafe (k : key) (v : value) t : t =
     let required_size = Bytes.length v in
@@ -115,8 +117,11 @@ module Cache = struct
   let remove (k : key) t : t =
     let remnant =
       match Map.find_opt k t.content with
-      | None -> t.remnant
-      | Some v -> t.remnant + (Bytes.length v) in
+      | None ->
+          t.remnant
+      | Some v ->
+          t.remnant + Bytes.length v
+    in
     let content = Map.remove k t.content in
     let keys = FQueue.to_list t.kqueue in
     let keys' = List.filter (fun k' -> not (key_equal k k')) keys in
@@ -533,8 +538,7 @@ let set_gas_unlimited ctxt =
   let ctxt = {ctxt with gas_counter = block_gas} in
   update_gas_counter_status ctxt Unlimited_operation_gas
 
-let set_testing_cache ctxt =
-  update_carbonated_cache ctxt Cache.testing_empty
+let set_testing_cache ctxt = update_carbonated_cache ctxt Cache.testing_empty
 
 let is_gas_unlimited ctxt =
   match ctxt.back.gas_counter_status with
@@ -822,7 +826,8 @@ let check_inited ctxt =
       if Compare.String.(s = version_value) then ok_unit
       else storage_error (Incompatible_protocol_version s)
 
-let prepare ~level ~predecessor_timestamp ~timestamp ~fitness ctxt =
+let prepare ~level ~predecessor_timestamp ~timestamp ~fitness
+    ~predecessor_cache ctxt =
   Raw_level_repr.of_int32 level
   >>?= fun level ->
   Fitness_repr.to_int64 fitness
@@ -864,7 +869,7 @@ let prepare ~level ~predecessor_timestamp ~timestamp ~fitness ctxt =
         internal_nonce = 0;
         internal_nonces_used = Int_set.empty;
         gas_counter_status = Unlimited_operation_gas;
-        carbonated_cache = Cache.empty;
+        carbonated_cache = predecessor_cache;
       };
   }
 
@@ -901,7 +906,13 @@ let prepare_first_block ~level ~timestamp ~fitness ctxt =
   | Edo_008 ->
       return ctxt )
   >>=? fun ctxt ->
-  prepare ctxt ~level ~predecessor_timestamp:timestamp ~timestamp ~fitness
+  prepare
+    ctxt
+    ~level
+    ~predecessor_timestamp:timestamp
+    ~timestamp
+    ~fitness
+    ~predecessor_cache:Cache.empty
   >|=? fun ctxt -> (previous_proto, ctxt)
 
 let activate ctxt h = Updater.activate (context ctxt) h >|= update_context ctxt
