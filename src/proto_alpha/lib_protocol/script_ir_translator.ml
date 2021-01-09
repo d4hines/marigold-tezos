@@ -457,6 +457,8 @@ let number_of_generated_growing_types : type b a. (b, a) instr -> int =
       0
   | Amount ->
       0
+  | Is_tx_included ->
+      0
   | Self_address ->
       0
   | Sapling_empty_state _ ->
@@ -5525,6 +5527,12 @@ and parse_instr :
             (Item_t (Option_t (ty, None), rest, annot))
       | _ ->
           (* TODO: fix injectivity of types *) assert false )
+  (* Check transactions *)
+  | ( Prim (loc, I_IS_TX_INCLUDED, [], annot),
+      Item_t (Operation_hash_t _hash, rest, _) ) ->
+      parse_var_annot loc annot
+      >>?= fun annot ->
+      typed ctxt loc Is_tx_included (Item_t (Bool_t None, rest, annot))
   (* Primitive parsing errors *)
   | ( Prim
         ( loc,
@@ -5851,6 +5859,7 @@ and parse_instr :
              I_SENDER;
              I_SELF;
              I_SELF_ADDRESS;
+             I_IS_TX_INCLUDED;
              I_LAMBDA;
              I_NEVER;
              I_VOTING_POWER;

@@ -1,0 +1,3 @@
+parameter (operation_hash);
+storage (option bool);
+code { CAR; IS_TX_INCLUDED; SOME; NIL operation; PAIR }

@@ -51,6 +51,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    commitment_repr.mli commitment_repr.ml
    parameters_repr.mli parameters_repr.ml
    sapling_repr.ml
+   block_operation_hashes_repr.mli block_operation_hashes_repr.ml
    lazy_storage_kind.mli lazy_storage_kind.ml
    raw_context.mli raw_context.ml
    storage_costs.mli storage_costs.ml
@@ -73,6 +74,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    commitment_storage.mli commitment_storage.ml
    init_storage.ml
    fees_storage.mli fees_storage.ml
+   block_operation_hashes_storage.ml
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
    script_typed_ir.ml
@@ -135,6 +137,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    commitment_repr.mli commitment_repr.ml
    parameters_repr.mli parameters_repr.ml
    sapling_repr.ml
+   block_operation_hashes_repr.mli block_operation_hashes_repr.ml
    lazy_storage_kind.mli lazy_storage_kind.ml
    raw_context.mli raw_context.ml
    storage_costs.mli storage_costs.ml
@@ -157,6 +160,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    commitment_storage.mli commitment_storage.ml
    init_storage.ml
    fees_storage.mli fees_storage.ml
+   block_operation_hashes_storage.ml
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
    script_typed_ir.ml
@@ -219,6 +223,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    commitment_repr.mli commitment_repr.ml
    parameters_repr.mli parameters_repr.ml
    sapling_repr.ml
+   block_operation_hashes_repr.mli block_operation_hashes_repr.ml
    lazy_storage_kind.mli lazy_storage_kind.ml
    raw_context.mli raw_context.ml
    storage_costs.mli storage_costs.ml
@@ -241,6 +246,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    commitment_storage.mli commitment_storage.ml
    init_storage.ml
    fees_storage.mli fees_storage.ml
+   block_operation_hashes_storage.ml
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
    script_typed_ir.ml
@@ -323,6 +329,7 @@ include Tezos_raw_protocol_alpha.Main
    Commitment_repr
    Parameters_repr
    Sapling_repr
+   Block_operation_hashes_repr
    Lazy_storage_kind
    Raw_context
    Storage_costs
@@ -345,6 +352,7 @@ include Tezos_raw_protocol_alpha.Main
    Commitment_storage
    Init_storage
    Fees_storage
+   Block_operation_hashes_storage
    Sapling_validator
    Alpha_context
    Script_typed_ir
@@ -443,6 +451,7 @@ include Tezos_raw_protocol_alpha.Main
    commitment_repr.mli commitment_repr.ml
    parameters_repr.mli parameters_repr.ml
    sapling_repr.ml
+   block_operation_hashes_repr.mli block_operation_hashes_repr.ml
    lazy_storage_kind.mli lazy_storage_kind.ml
    raw_context.mli raw_context.ml
    storage_costs.mli storage_costs.ml
@@ -465,6 +474,7 @@ include Tezos_raw_protocol_alpha.Main
    commitment_storage.mli commitment_storage.ml
    init_storage.ml
    fees_storage.mli fees_storage.ml
+   block_operation_hashes_storage.ml
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
    script_typed_ir.ml

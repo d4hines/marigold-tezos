@@ -220,7 +220,9 @@ module Alpha_context_helpers = struct
     | Some (_balance, vs) ->
         finalize ctx vs
         >>=? fun (ctx, id) ->
-        let ectx = (Alpha_context.finalize ctx).context in
+        Alpha_context.finalize ctx
+        >>= fun validation_result ->
+        let ectx = validation_result.context in
         (* bump the level *)
         Alpha_context.prepare
           ectx

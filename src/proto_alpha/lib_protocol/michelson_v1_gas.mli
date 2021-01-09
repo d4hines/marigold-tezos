@@ -281,6 +281,8 @@ module Cost_of : sig
 
     val self_address : Gas.cost
 
+    val is_tx_included : Gas.cost
+
     val amount : Gas.cost
 
     val chain_id : Gas.cost

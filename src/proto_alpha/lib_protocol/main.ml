@@ -114,7 +114,8 @@ type validation_state = {
   op_count : int;
 }
 
-let current_context {ctxt; _} = return (Alpha_context.finalize ctxt).context
+let current_context {ctxt; _} =
+  Alpha_context.finalize ctxt >|= fun {context; _} -> Ok context
 
 let begin_partial_application ~chain_id ~ancestor_context:ctxt
     ~predecessor_timestamp ~predecessor_fitness
@@ -227,25 +228,27 @@ let finalize_block {mode; ctxt; op_count} =
           Alpha_context.Delegate.freeze_deposit ctxt delegate deposit)
         (Alpha_context.get_deposits ctxt)
         (return ctxt)
-      >|=? fun ctxt ->
-      let ctxt = Alpha_context.finalize ctxt in
-      ( ctxt,
-        Apply_results.
-          {
-            baker;
-            level =
-              Alpha_context.Level.to_deprecated_type
-                level_info
-                ~voting_period_index:voting_period.index
-                ~voting_period_position:position;
-            level_info;
-            voting_period_kind = kind;
-            voting_period_info;
-            nonce_hash = None;
-            consumed_gas = Alpha_context.Gas.Arith.zero;
-            deactivated = [];
-            balance_updates = [];
-          } )
+      >>=? fun ctxt ->
+      Alpha_context.finalize ctxt
+      >|= fun ctxt ->
+      Ok
+        ( ctxt,
+          Apply_results.
+            {
+              baker;
+              level =
+                Alpha_context.Level.to_deprecated_type
+                  level_info
+                  ~voting_period_index:voting_period.index
+                  ~voting_period_position:position;
+              level_info;
+              voting_period_kind = kind;
+              voting_period_info;
+              nonce_hash = None;
+              consumed_gas = Alpha_context.Gas.Arith.zero;
+              deactivated = [];
+              balance_updates = [];
+            } )
   | Partial_application {block_header; baker; block_delay} ->
       let included_endorsements = Alpha_context.included_endorsements ctxt in
       Apply.check_minimum_endorsements
@@ -257,33 +260,35 @@ let finalize_block {mode; ctxt; op_count} =
       Alpha_context.Voting_period.get_current_info ctxt
       >>=? fun {voting_period = {kind; _}; _} ->
       Alpha_context.Voting_period.get_rpc_fixed_current_info ctxt
-      >|=? fun ({voting_period; position; _} as voting_period_info) ->
+      >>=? fun ({voting_period; position; _} as voting_period_info) ->
       let level_info = Alpha_context.Level.current ctxt in
-      let ctxt = Alpha_context.finalize ctxt in
-      ( ctxt,
-        Apply_results.
-          {
-            baker;
-            level =
-              Alpha_context.Level.to_deprecated_type
-                level_info
-                ~voting_period_index:voting_period.index
-                ~voting_period_position:position;
-            level_info;
-            voting_period_kind = kind;
-            voting_period_info;
-            nonce_hash = None;
-            consumed_gas = Alpha_context.Gas.Arith.zero;
-            deactivated = [];
-            balance_updates = [];
-          } )
+      Alpha_context.finalize ctxt
+      >|= fun ctxt ->
+      Ok
+        ( ctxt,
+          Apply_results.
+            {
+              baker;
+              level =
+                Alpha_context.Level.to_deprecated_type
+                  level_info
+                  ~voting_period_index:voting_period.index
+                  ~voting_period_position:position;
+              level_info;
+              voting_period_kind = kind;
+              voting_period_info;
+              nonce_hash = None;
+              consumed_gas = Alpha_context.Gas.Arith.zero;
+              deactivated = [];
+              balance_updates = [];
+            } )
   | Application
       { baker;
         block_delay;
         block_header = {protocol_data = {contents = protocol_data; _}; _} }
   | Full_construction {protocol_data; baker; block_delay; _} ->
       Apply.finalize_application ctxt protocol_data baker ~block_delay
-      >|=? fun (ctxt, receipt) ->
+      >>=? fun (ctxt, receipt) ->
       let level = Alpha_context.Level.current ctxt in
       let priority = protocol_data.priority in
       let raw_level = Alpha_context.Raw_level.to_int32 level.level in
@@ -296,8 +301,8 @@ let finalize_block {mode; ctxt; op_count} =
           priority
           op_count
       in
-      let ctxt = Alpha_context.finalize ~commit_message ctxt in
-      (ctxt, receipt)
+      Alpha_context.finalize ~commit_message ctxt
+      >|= fun v_result -> Ok (v_result, receipt)
 
 let compare_operations op1 op2 =
   let open Alpha_context in
@@ -394,4 +399,4 @@ let init ctxt block_header =
     (({script with storage}, lazy_storage_diff), ctxt)
   in
   Alpha_context.prepare_first_block ~typecheck ~level ~timestamp ~fitness ctxt
-  >|=? fun ctxt -> Alpha_context.finalize ctxt
+  >>=? fun ctxt -> Alpha_context.finalize ctxt >|= fun ctxt -> Ok ctxt

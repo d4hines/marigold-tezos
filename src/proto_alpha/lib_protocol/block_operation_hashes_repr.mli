@@ -2,6 +2,7 @@
 (*                                                                           *)
 (* Open Source License                                                       *)
 (* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
+(* Copyright (c) 2020-2021 Marigold <contact@marigold.dev>                   *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,39 +24,22 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** Testing
-    -------
-    Component:    Protocol
-    Invocation:   dune build @src/proto_alpha/lib_protocol/runtest
-    Subject:      Entrypoint
-*)
+type t
 
-let () =
-  Alcotest_lwt.run
-    "protocol_alpha"
-    [ ("transfer", Test_transfer.tests);
-      ("origination", Test_origination.tests);
-      ("activation", Test_activation.tests);
-      ("revelation", Test_reveal.tests);
-      ("endorsement", Test_endorsement.tests);
-      ("double endorsement", Test_double_endorsement.tests);
-      ("double baking", Test_double_baking.tests);
-      ("seed", Test_seed.tests);
-      ("baking", Test_baking.tests);
-      ("delegation", Test_delegation.tests);
-      ("rolls", Test_rolls.tests);
-      ("combined", Test_combined_operations.tests);
-      ("qty", Test_qty.tests);
-      ("voting", Test_voting.tests);
-      ("interpretation", Test_interpretation.tests);
-      ("typechecking", Test_typechecking.tests);
-      ("gas properties", Test_gas_properties.tests);
-      ("fixed point computation", Test_fixed_point.tests);
-      ("gas levels", Test_gas_levels.tests);
-      ("gas cost functions", Test_gas_costs.tests);
-      ("lazy storage diff", Test_lazy_storage_diff.tests);
-      ("sapling", Test_sapling.tests);
-      ("helpers rpcs", Test_helpers_rpcs.tests);
-      ("script deserialize gas", Test_script_gas.tests);
-      ("Lookup transaction hashes in blocks", Test_check_transactions.tests) ]
-  |> Lwt_main.run
+val encoding : t Data_encoding.t
+
+val rpc_arg : t RPC_arg.t
+
+val path_length : int
+
+val compare : t -> t -> int
+
+val to_path : t -> string list -> string list
+
+val of_path : string list -> t option
+
+val get_level : t -> Raw_level_repr.t
+
+val get_operation_hashes : t -> Operation_hash.t list
+
+val make : level:Raw_level_repr.t -> hashes:Operation_hash.t list -> t

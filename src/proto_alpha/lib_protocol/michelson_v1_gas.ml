@@ -1206,6 +1206,10 @@ module Cost_of = struct
     (* Same as cost_source *)
     let self_address = source
 
+    (* TODO benchmark *)
+    (* FIXME *)
+    let is_tx_included = atomic_step_cost (Z.of_int 0)
+
     (* Same as cost_source *)
     let amount = source
 

@@ -332,6 +332,7 @@ module Script : sig
     | I_SOURCE
     | I_SENDER
     | I_SELF
+    | I_IS_TX_INCLUDED
     | I_SELF_ADDRESS
     | I_SLICE
     | I_STEPS_TO_QUOTA
@@ -678,6 +679,12 @@ module Seed : sig
     context -> Cycle.t -> (context * Nonce.unrevealed list) tzresult Lwt.t
 
   val seed_encoding : seed Data_encoding.t
+end
+
+module Operation_hashes : sig
+  val add : context -> Operation_list_hash.elt -> context Lwt.t
+
+  val mem : context -> Operation_list_hash.elt -> bool Lwt.t
 end
 
 module Big_map : sig
@@ -1545,7 +1552,8 @@ val prepare :
   fitness:Fitness.t ->
   context tzresult Lwt.t
 
-val finalize : ?commit_message:string -> context -> Updater.validation_result
+val finalize :
+  ?commit_message:string -> context -> Updater.validation_result Lwt.t
 
 val activate : context -> Protocol_hash.t -> context Lwt.t
 

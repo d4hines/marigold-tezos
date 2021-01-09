@@ -48,15 +48,13 @@ let validation_state {state; _} = state
 let level st = st.header.shell.level
 
 let rpc_context st =
-  let result = Alpha_context.finalize st.state.ctxt in
+  Alpha_context.finalize st.state.ctxt
+  >|= fun result ->
   {
     Environment.Updater.block_hash = Block_hash.zero;
     block_header = {st.header.shell with fitness = result.fitness};
     context = result.context;
   }
-
-let rpc_ctxt =
-  new Environment.proto_rpc_context_of_directory rpc_context rpc_services
 
 let alpha_ctxt st = st.state.ctxt
 
@@ -213,3 +211,5 @@ let finalize_block st =
   in
   let hash = Block_header.hash header in
   {Block.hash; header; operations; context = result.context}
+
+let rpc_ctxt = new Rpc.proto_rpc_context_of_directory rpc_context rpc_services

@@ -474,6 +474,8 @@ let cost_of_instr : type b a. (b, a) descr -> b -> Gas.cost =
       Interp_costs.source
   | (Self _, _) ->
       Interp_costs.self
+  | (Is_tx_included, _) ->
+      Interp_costs.is_tx_included
   | (Self_address, _) ->
       Interp_costs.self
   | (Amount, _) ->
@@ -1234,6 +1236,9 @@ let rec step_bounded :
       logged_return (((step_constants.source, "default"), rest), ctxt)
   | (Self (t, entrypoint), rest) ->
       logged_return (((t, (step_constants.self, entrypoint)), rest), ctxt)
+  | (Is_tx_included, (tx_hash, rest)) ->
+      Operation_hashes.mem ctxt tx_hash
+      >>= fun is_included -> logged_return ((is_included, rest), ctxt)
   | (Self_address, rest) ->
       logged_return (((step_constants.self, "default"), rest), ctxt)
   | (Amount, rest) ->

@@ -40,14 +40,12 @@ type t = {
 type block = t
 
 let rpc_context block =
-  {
-    Environment.Updater.block_hash = block.hash;
-    block_header = block.header.shell;
-    context = block.context;
-  }
-
-let rpc_ctxt =
-  new Environment.proto_rpc_context_of_directory rpc_context rpc_services
+  Lwt.return
+  @@ {
+       Environment.Updater.block_hash = block.hash;
+       block_header = block.header.shell;
+       context = block.context;
+     }
 
 (******** Policies ***********)
 
@@ -59,6 +57,8 @@ type baker_policy =
   | By_priority of int
   | By_account of public_key_hash
   | Excluding of public_key_hash list
+
+let rpc_ctxt = new Rpc.proto_rpc_context_of_directory rpc_context rpc_services
 
 let get_next_baker_by_priority priority block =
   Alpha_services.Delegate.Baking_rights.get

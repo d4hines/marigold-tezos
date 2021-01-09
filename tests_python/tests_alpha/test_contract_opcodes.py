@@ -923,6 +923,13 @@ class TestContractOpcodes:
                 '"oomTc6iifGUafAGriqHwsqcKre8fty6Y9hRbseCzWk74syy9rPd"',
                 'Unit',
             ),
+            # Test `IS_TX_INCLUDED`
+            (
+                'check_transaction.tz',
+                'None',
+                '"oomTc6iifGUafAGriqHwsqcKre8fty6Y9hRbseCzWk74syy9rPd"',
+                '(Some False)',
+            ),
             # Test (CONTRACT unit)
             (
                 'contract.tz',

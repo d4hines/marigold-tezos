@@ -35,6 +35,7 @@
         "Commitment_repr",
         "Parameters_repr",
         "Sapling_repr",
+        "Block_operation_hashes_repr",
         "Lazy_storage_kind",
 
         "Raw_context",
@@ -59,6 +60,7 @@
         "Commitment_storage",
         "Init_storage",
         "Fees_storage",
+        "Block_operation_hashes_storage",
         "Sapling_validator",
 
         "Alpha_context",

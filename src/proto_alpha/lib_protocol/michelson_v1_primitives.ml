@@ -115,6 +115,7 @@ type prim =
   | I_SOURCE
   | I_SENDER
   | I_SELF
+  | I_IS_TX_INCLUDED
   | I_SELF_ADDRESS
   | I_SLICE
   | I_STEPS_TO_QUOTA
@@ -275,6 +276,7 @@ let namespace = function
   | I_SAPLING_EMPTY_STATE
   | I_SAPLING_VERIFY_UPDATE
   | I_SELF
+  | I_IS_TX_INCLUDED
   | I_SELF_ADDRESS
   | I_SENDER
   | I_SET_DELEGATE
@@ -505,6 +507,8 @@ let string_of_prim = function
       "SENDER"
   | I_SELF ->
       "SELF"
+  | I_IS_TX_INCLUDED ->
+      "IS_TX_INCLUDED"
   | I_SELF_ADDRESS ->
       "SELF_ADDRESS"
   | I_SLICE ->
@@ -799,6 +803,8 @@ let prim_of_string = function
       ok I_SENDER
   | "SELF" ->
       ok I_SELF
+  | "IS_TX_INCLUDED" ->
+      ok I_IS_TX_INCLUDED
   | "SELF_ADDRESS" ->
       ok I_SELF_ADDRESS
   | "SLICE" ->
@@ -1118,7 +1124,8 @@ let prim_encoding =
          ("SPLIT_TICKET", I_SPLIT_TICKET);
          ("JOIN_TICKETS", I_JOIN_TICKETS);
          ("GET_AND_UPDATE", I_GET_AND_UPDATE);
-         ("operation_hash", T_operation_hash)
+         ("operation_hash", T_operation_hash);
+         ("IS_TX_INCLUDED", I_IS_TX_INCLUDED)
          (* New instructions must be added here, for backward compatibility of the encoding. *)
          (* Keep the comment above at the end of the list *)
         ]

@@ -180,6 +180,54 @@ module Contract = struct
   let unset_origination_nonce = Raw_context.unset_origination_nonce
 end
 
+module Operation_hashes = struct
+  let add ctxt operation_hash =
+    let pred_operation_hashes = Raw_context.operation_hashes_get_pred ctxt in
+    let current = Raw_context.operation_hashes_get_current ctxt in
+    let operation_hashes =
+      Raw_context.create_operation_hashes
+        ~current:(operation_hash :: current)
+        ~pred_operation_hashes
+    in
+    Lwt.return @@ Raw_context.set_operation_hashes ctxt operation_hashes
+
+  let mem ctxt operation_hash =
+    Lwt.return
+    @@ List.exists
+         (Operation_hash.equal operation_hash)
+         ( Raw_context.operation_hashes_get_current ctxt
+         @ ( ctxt |> Raw_context.operation_hashes_get_pred
+           |> List.map Block_operation_hashes_repr.get_operation_hashes
+           |> List.flatten ) )
+
+  let finalize ctxt =
+    let current_pred_operation_hashes =
+      Raw_context.operation_hashes_get_pred ctxt
+    in
+    let rec take_n n xs =
+      match xs with
+      | [] ->
+          []
+      | x :: xs ->
+          if Z.(equal n (Z.of_int 1)) then [x] else x :: take_n Z.(pred n) xs
+    in
+    let next_pred_operation_hashes =
+      Block_operation_hashes_repr.make
+        ~level:(Raw_context.current_level ctxt).Level_repr.level
+        ~hashes:(Raw_context.operation_hashes_get_current ctxt)
+      :: take_n
+           (Z.of_int Constants_repr.number_of_blocks_of_operation_hashes)
+           current_pred_operation_hashes
+    in
+    let operation_hashes =
+      Raw_context.create_operation_hashes
+        ~current:[]
+        ~pred_operation_hashes:next_pred_operation_hashes
+    in
+    Block_operation_hashes_storage.persist ctxt next_pred_operation_hashes
+    >|= fun ctxt -> Raw_context.set_operation_hashes ctxt operation_hashes
+end
+
 module Big_map = struct
   include Lazy_storage_kind.Big_map
 
@@ -251,6 +299,8 @@ let prepare_first_block = Init_storage.prepare_first_block
 let prepare = Init_storage.prepare
 
 let finalize ?commit_message:message c =
+  Operation_hashes.finalize c
+  >|= fun c ->
   let fitness = Fitness.from_int64 (Fitness.current c) in
   let context = Raw_context.recover c in
   {

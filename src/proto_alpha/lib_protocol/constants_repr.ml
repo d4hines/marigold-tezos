@@ -37,6 +37,8 @@ let max_proposals_per_delegate = 20
 
 let max_operation_data_length = 16 * 1024 (* 16kB *)
 
+let number_of_blocks_of_operation_hashes = 5
+
 type fixed = {
   proof_of_work_nonce_size : int;
   nonce_length : int;

@@ -44,6 +44,13 @@ type error += Failed_to_decode_parameter of Data_encoding.json * string
 
 val storage_error : storage_error -> 'a tzresult
 
+type operation_hashes
+
+val create_operation_hashes :
+  current:Operation_hash.t list ->
+  pred_operation_hashes:Block_operation_hashes_repr.t list ->
+  operation_hashes
+
 (** {1 Abstract Context} *)
 
 (** Abstract view of the context.
@@ -54,6 +61,14 @@ type t
 type context = t
 
 type root_context = t
+
+val set_operation_hashes : t -> operation_hashes -> t
+
+val get_operation_hashes : t -> operation_hashes
+
+val operation_hashes_get_current : t -> Operation_hash.t list
+
+val operation_hashes_get_pred : t -> Block_operation_hashes_repr.t list
 
 (** Retrieves the state of the database and gives its abstract view.
     It also returns wether this is the first block validated
