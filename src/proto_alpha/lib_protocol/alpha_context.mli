@@ -969,6 +969,19 @@ module Contract : sig
   val originated_contract : origination_nonce -> contract
 end
 
+module Event : sig
+  type event = {
+    source : Contract.t;
+    topic : string;
+    ty : Script.expr;
+    data : Script.expr;
+  }
+
+  type t = event
+
+  val encoding : t Data_encoding.t
+end
+
 module Delegate : sig
   type balance =
     | Contract of Contract.t

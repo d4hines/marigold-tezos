@@ -121,6 +121,8 @@ module Voting_period = struct
   include Voting_period_storage
 end
 
+module Event = Event_repr
+
 module Gas = struct
   include Gas_limit_repr
 
