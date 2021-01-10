@@ -1,0 +1,7 @@
+{ parameter int ;
+  storage int ;
+  code { TRACE "input" { CAR };
+         TRACE "fail" { PUSH bool True; IF { CAR; FAILWITH } { } };
+         CDR ;
+         NIL operation ;
+         PAIR } }
