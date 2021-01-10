@@ -1,0 +1,8 @@
+parameter unit;
+storage unit;
+code { DROP;
+
+       # Trace a non-packable type
+       TRACE "op" { NIL operation; };
+
+       UNIT; NIL @noop operation; PAIR; };
