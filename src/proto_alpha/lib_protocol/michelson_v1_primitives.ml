@@ -146,6 +146,7 @@ type prim =
   | I_READ_TICKET
   | I_SPLIT_TICKET
   | I_JOIN_TICKETS
+  | I_TRACE
   | T_bool
   | T_contract
   | T_int
@@ -296,7 +297,8 @@ let namespace = function
   | I_UNPAIR
   | I_UPDATE
   | I_VOTING_POWER
-  | I_XOR ->
+  | I_XOR
+  | I_TRACE ->
       Instr_namespace
   | T_address
   | T_big_map
@@ -567,6 +569,8 @@ let string_of_prim = function
       "SPLIT_TICKET"
   | I_JOIN_TICKETS ->
       "JOIN_TICKETS"
+  | I_TRACE ->
+      "TRACE"
   | T_bool ->
       "bool"
   | T_contract ->
@@ -851,6 +855,8 @@ let prim_of_string = function
       ok I_SPLIT_TICKET
   | "JOIN_TICKETS" ->
       ok I_JOIN_TICKETS
+  | "TRACE" ->
+      ok I_TRACE
   | "bool" ->
       ok T_bool
   | "contract" ->
@@ -1111,7 +1117,9 @@ let prim_encoding =
          ("READ_TICKET", I_READ_TICKET);
          ("SPLIT_TICKET", I_SPLIT_TICKET);
          ("JOIN_TICKETS", I_JOIN_TICKETS);
-         ("GET_AND_UPDATE", I_GET_AND_UPDATE)
+         ("GET_AND_UPDATE", I_GET_AND_UPDATE);
+         (* Alpha_009 addition *)
+         ("TRACE", I_TRACE)
          (* New instructions must be added here, for backward compatibility of the encoding. *)
          (* Keep the comment above at the end of the list *)
         ]

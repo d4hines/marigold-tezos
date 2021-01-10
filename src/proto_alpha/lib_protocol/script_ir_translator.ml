@@ -523,6 +523,8 @@ let number_of_generated_growing_types : type b a. (b, a) instr -> int =
       0
   | Join_tickets _ ->
       0
+  | Trace _ ->
+      0
 
 (* ---- Error helpers -------------------------------------------------------*)
 
@@ -5481,6 +5483,22 @@ and parse_instr :
             (Item_t (Option_t (ty, None), rest, annot))
       | _ ->
           (* TODO: fix injectivity of types *) assert false )
+  (* Events *)
+  | (Prim (loc, I_TRACE, [String (_, topic); code], _annot), stack_ty) -> (
+      check_kind [Seq_kind] code
+      >>?= fun () ->
+      non_terminal_recursion ?type_logger tc_context ctxt ~legacy code stack_ty
+      >>=? fun (judgement, ctxt) ->
+      match judgement with
+      | Typed ({aft = Item_t (ty, _, _); _} as descr) ->
+          (* TODO: handle annotations *)
+          check_packable
+            ~legacy:true
+            (* allow to pack contracts for hash/signature checks *) loc
+            ty
+          >>?= fun () -> typed ctxt loc (Trace (topic, descr)) stack_ty
+      | Typed _ | Failed _ ->
+          fail Bad_stack_length )
   (* Primitive parsing errors *)
   | ( Prim
         ( loc,
