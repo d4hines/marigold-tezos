@@ -73,11 +73,10 @@ type 'bef judgement =
 
 type unparsing_mode = Optimized | Readable | Optimized_legacy
 
-type type_logger =
-  int ->
-  (Script.expr * Script.annot) list ->
-  (Script.expr * Script.annot) list ->
-  unit
+type ex_descr = Ex_descr : ('b, 'a) Script_typed_ir.descr -> ex_descr
+[@@unboxed]
+
+type type_logger = context -> Script.node -> ex_descr -> unit tzresult
 
 (* ---- Lists, Sets and Maps ----------------------------------------------- *)
 
@@ -238,7 +237,10 @@ val add_field_annot :
   Script.node
 
 val typecheck_code :
-  legacy:bool -> context -> Script.expr -> (type_map * context) tzresult Lwt.t
+  legacy:bool ->
+  context ->
+  Script.expr ->
+  (type_map * events_map * context) tzresult Lwt.t
 
 val serialize_ty_for_error :
   context -> 'a Script_typed_ir.ty -> (Script.expr * context) tzresult

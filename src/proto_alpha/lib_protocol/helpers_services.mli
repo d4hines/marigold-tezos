@@ -87,7 +87,9 @@ module Scripts : sig
     ?gas:Gas.Arith.integral ->
     ?legacy:bool ->
     script:Script.expr ->
-    (Script_tc_errors.type_map * Gas.t) shell_tzresult Lwt.t
+    (Script_tc_errors.type_map * Gas.t * Script_tc_errors.events_map)
+    shell_tzresult
+    Lwt.t
 
   val typecheck_data :
     'a #RPC_context.simple ->
