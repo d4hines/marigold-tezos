@@ -147,12 +147,20 @@ let () =
 
 module Interp_costs = Michelson_v1_gas.Cost_of.Interpreter
 
+type events = Event.t list
+
+let strip_locations ctxt data =
+  Gas.consume ctxt (Script.strip_locations_cost data)
+  >|? fun ctxt -> (Micheline.strip_locations data, ctxt)
+
+type 'a step_result = ('a * context * events, error trace) result
+
 let rec interp_stack_prefix_preserving_operation :
     type fbef bef faft aft result.
-    (fbef -> (faft * result) tzresult Lwt.t) ->
+    (fbef -> (faft * result) step_result Lwt.t) ->
     (fbef, faft, bef, aft) stack_prefix_preservation_witness ->
     bef ->
-    (aft * result) tzresult Lwt.t =
+    (aft * result) step_result Lwt.t =
  fun f n stk ->
   match (n, stk) with
   | ( Prefix
@@ -177,24 +185,28 @@ let rec interp_stack_prefix_preserving_operation :
                     (v7, (v8, (v9, (va, (vb, (vc, (vd, (ve, (vf, rest)))))))))
                   ) ) ) ) ) ) ) ) ->
       interp_stack_prefix_preserving_operation f n rest
-      >|=? fun (rest', result) ->
-      ( ( v0,
-          ( v1,
-            ( v2,
-              ( v3,
-                ( v4,
-                  ( v5,
-                    ( v6,
-                      ( v7,
-                        (v8, (v9, (va, (vb, (vc, (vd, (ve, (vf, rest'))))))))
-                      ) ) ) ) ) ) ) ),
-        result )
+      >|=? fun ((rest', result), ctxt, events) ->
+      ( ( ( v0,
+            ( v1,
+              ( v2,
+                ( v3,
+                  ( v4,
+                    ( v5,
+                      ( v6,
+                        ( v7,
+                          (v8, (v9, (va, (vb, (vc, (vd, (ve, (vf, rest'))))))))
+                        ) ) ) ) ) ) ) ),
+          result ),
+        ctxt,
+        events )
   | (Prefix (Prefix (Prefix (Prefix n))), (v0, (v1, (v2, (v3, rest))))) ->
       interp_stack_prefix_preserving_operation f n rest
-      >|=? fun (rest', result) -> ((v0, (v1, (v2, (v3, rest')))), result)
+      >|=? fun ((rest', result), ctxt, events) ->
+      (((v0, (v1, (v2, (v3, rest')))), result), ctxt, events)
   | (Prefix n, (v, rest)) ->
       interp_stack_prefix_preserving_operation f n rest
-      >|=? fun (rest', result) -> ((v, rest'), result)
+      >|=? fun ((rest', result), ctxt, events) ->
+      (((v, rest'), result), ctxt, events)
   | (Rest, v) ->
       f v
 
@@ -550,6 +562,8 @@ let cost_of_instr : type b a. (b, a) descr -> b -> Gas.cost =
       Interp_costs.split_ticket ticket.amount amount_a amount_b
   | (Join_tickets ty, ((ticket_a, ticket_b), _)) ->
       Interp_costs.join_tickets ty ticket_a ticket_b
+  | (Trace _, _) ->
+      Interp_costs.trace
 
 let unpack ctxt ~ty ~bytes =
   Gas.check_enough ctxt (Script.serialized_cost bytes)
@@ -589,23 +603,32 @@ let rec step_bounded :
     step_constants ->
     (b, a) descr ->
     b ->
-    (a * context) tzresult Lwt.t =
- fun logger ~stack_depth ctxt step_constants ({instr; loc; _} as descr) stack ->
+    events ->
+    a step_result Lwt.t =
+ fun logger
+     ~stack_depth
+     ctxt
+     step_constants
+     ({instr; loc; _} as descr)
+     stack
+     events ->
+  let return (ctxt : context) (events : events) v = return (v, ctxt, events) in
   let gas = cost_of_instr descr stack in
   Gas.consume ctxt gas
   >>?= fun ctxt ->
   let module Log = (val logger) in
   Log.log_entry ctxt descr stack ;
-  let logged_return : a * context -> (a * context) tzresult Lwt.t =
-   fun (ret, ctxt) ->
+  let logged_return : ?events:events -> a * context -> a step_result Lwt.t =
+   fun ?(events = events) (ret, ctxt) ->
     Log.log_exit ctxt descr ret ;
-    return (ret, ctxt)
+    return ctxt events ret
   in
-  let non_terminal_recursion ~ctxt ?(stack_depth = stack_depth + 1) descr stack
-      =
+  let non_terminal_recursion ~ctxt ?(events = events)
+      ?(stack_depth = stack_depth + 1) descr stack =
     if Compare.Int.(stack_depth >= 10_000) then
       fail Michelson_too_many_recursive_calls
-    else step_bounded logger ~stack_depth ctxt step_constants descr stack
+    else
+      step_bounded logger ~stack_depth ctxt step_constants descr stack events
   in
   match (instr, stack) with
   (* stack ops *)
@@ -623,9 +646,9 @@ let rec step_bounded :
   | (Cons_none _, rest) ->
       logged_return ((None, rest), ctxt)
   | (If_none (bt, _), (None, rest)) ->
-      step_bounded logger ~stack_depth ctxt step_constants bt rest
+      step_bounded logger ~stack_depth ctxt step_constants bt rest events
   | (If_none (_, bf), (Some v, rest)) ->
-      step_bounded logger ~stack_depth ctxt step_constants bf (v, rest)
+      step_bounded logger ~stack_depth ctxt step_constants bf (v, rest) events
   (* pairs *)
   | (Cons_pair, (a, (b, rest))) ->
       logged_return (((a, b), rest), ctxt)
@@ -641,58 +664,67 @@ let rec step_bounded :
   | (Cons_right, (v, rest)) ->
       logged_return ((R v, rest), ctxt)
   | (If_left (bt, _), (L v, rest)) ->
-      step_bounded logger ~stack_depth ctxt step_constants bt (v, rest)
+      step_bounded logger ~stack_depth ctxt step_constants bt (v, rest) events
   | (If_left (_, bf), (R v, rest)) ->
-      step_bounded logger ~stack_depth ctxt step_constants bf (v, rest)
+      step_bounded logger ~stack_depth ctxt step_constants bf (v, rest) events
   (* lists *)
   | (Cons_list, (hd, (tl, rest))) ->
       logged_return ((list_cons hd tl, rest), ctxt)
   | (Nil, rest) ->
       logged_return ((list_empty, rest), ctxt)
   | (If_cons (_, bf), ({elements = []; _}, rest)) ->
-      step_bounded logger ~stack_depth ctxt step_constants bf rest
+      step_bounded logger ~stack_depth ctxt step_constants bf rest events
   | (If_cons (bt, _), ({elements = hd :: tl; length}, rest)) ->
       let tl = {elements = tl; length = length - 1} in
-      step_bounded logger ~stack_depth ctxt step_constants bt (hd, (tl, rest))
+      step_bounded
+        logger
+        ~stack_depth
+        ctxt
+        step_constants
+        bt
+        (hd, (tl, rest))
+        events
   | (List_map body, (list, rest)) ->
-      let rec loop rest ctxt l acc =
+      let rec loop rest ctxt l acc events =
         match l with
         | [] ->
             let result = {elements = List.rev acc; length = list.length} in
-            return ((result, rest), ctxt)
+            return ctxt events (result, rest)
         | hd :: tl ->
             non_terminal_recursion ~ctxt body (hd, rest)
-            >>=? fun ((hd, rest), ctxt) -> loop rest ctxt tl (hd :: acc)
+            >>=? fun ((hd, rest), ctxt, events) ->
+            loop rest ctxt tl (hd :: acc) events
       in
-      loop rest ctxt list.elements []
-      >>=? fun (res, ctxt) -> logged_return (res, ctxt)
+      loop rest ctxt list.elements [] events
+      >>=? fun (res, ctxt, events) -> logged_return ~events (res, ctxt)
   | (List_size, (list, rest)) ->
       logged_return ((Script_int.(abs (of_int list.length)), rest), ctxt)
   | (List_iter body, (l, init)) ->
-      let rec loop ctxt l stack =
+      let rec loop ctxt l stack events =
         match l with
         | [] ->
-            return (stack, ctxt)
+            return ctxt events stack
         | hd :: tl ->
             non_terminal_recursion ~ctxt body (hd, stack)
-            >>=? fun (stack, ctxt) -> loop ctxt tl stack
+            >>=? fun (stack, ctxt, events) -> loop ctxt tl stack events
       in
-      loop ctxt l.elements init
-      >>=? fun (res, ctxt) -> logged_return (res, ctxt)
+      loop ctxt l.elements init events
+      >>=? fun (res, ctxt, events) -> logged_return ~events (res, ctxt)
   (* sets *)
   | (Empty_set t, rest) ->
       logged_return ((empty_set t, rest), ctxt)
   | (Set_iter body, (set, init)) ->
       let l = List.rev (set_fold (fun e acc -> e :: acc) set []) in
-      let rec loop ctxt l stack =
+      let rec loop ctxt l stack events =
         match l with
         | [] ->
-            return (stack, ctxt)
+            return ctxt events stack
         | hd :: tl ->
             non_terminal_recursion ~ctxt body (hd, stack)
-            >>=? fun (stack, ctxt) -> loop ctxt tl stack
+            >>=? fun (stack, ctxt, events) -> loop ctxt tl stack events
       in
-      loop ctxt l init >>=? fun (res, ctxt) -> logged_return (res, ctxt)
+      loop ctxt l init events
+      >>=? fun (res, ctxt, events) -> logged_return ~events (res, ctxt)
   | (Set_mem, (v, (set, rest))) ->
       logged_return ((set_mem v set, rest), ctxt)
   | (Set_update, (v, (presence, (set, rest)))) ->
@@ -704,28 +736,29 @@ let rec step_bounded :
       logged_return ((empty_map t, rest), ctxt)
   | (Map_map body, (map, rest)) ->
       let l = List.rev (map_fold (fun k v acc -> (k, v) :: acc) map []) in
-      let rec loop rest ctxt l acc =
+      let rec loop rest ctxt l acc events =
         match l with
         | [] ->
-            return ((acc, rest), ctxt)
+            return ctxt events (acc, rest)
         | ((k, _) as hd) :: tl ->
             non_terminal_recursion ~ctxt body (hd, rest)
-            >>=? fun ((hd, rest), ctxt) ->
-            loop rest ctxt tl (map_update k (Some hd) acc)
+            >>=? fun ((hd, rest), ctxt, events) ->
+            loop rest ctxt tl (map_update k (Some hd) acc) events
       in
-      loop rest ctxt l (empty_map (map_key_ty map))
-      >>=? fun (res, ctxt) -> logged_return (res, ctxt)
+      loop rest ctxt l (empty_map (map_key_ty map)) events
+      >>=? fun (res, ctxt, events) -> logged_return ~events (res, ctxt)
   | (Map_iter body, (map, init)) ->
       let l = List.rev (map_fold (fun k v acc -> (k, v) :: acc) map []) in
-      let rec loop ctxt l stack =
+      let rec loop ctxt l stack events =
         match l with
         | [] ->
-            return (stack, ctxt)
+            return ctxt events stack
         | hd :: tl ->
             non_terminal_recursion ~ctxt body (hd, stack)
-            >>=? fun (stack, ctxt) -> loop ctxt tl stack
+            >>=? fun (stack, ctxt, events) -> loop ctxt tl stack events
       in
-      loop ctxt l init >>=? fun (res, ctxt) -> logged_return (res, ctxt)
+      loop ctxt l init events
+      >>=? fun (res, ctxt, events) -> logged_return ~events (res, ctxt)
   | (Map_mem, (v, (map, rest))) ->
       logged_return ((map_mem v map, rest), ctxt)
   | (Map_get, (v, (map, rest))) ->
@@ -949,31 +982,32 @@ let rec step_bounded :
   (* control *)
   | (Seq (hd, tl), stack) ->
       non_terminal_recursion ~ctxt hd stack
-      >>=? fun (trans, ctxt) ->
-      step_bounded logger ~stack_depth ctxt step_constants tl trans
+      >>=? fun (trans, ctxt, events) ->
+      step_bounded logger ~stack_depth ctxt step_constants tl trans events
   | (If (bt, _), (true, rest)) ->
-      step_bounded logger ~stack_depth ctxt step_constants bt rest
+      step_bounded logger ~stack_depth ctxt step_constants bt rest events
   | (If (_, bf), (false, rest)) ->
-      step_bounded logger ~stack_depth ctxt step_constants bf rest
+      step_bounded logger ~stack_depth ctxt step_constants bf rest events
   | (Loop body, (true, rest)) ->
       non_terminal_recursion ~ctxt body rest
-      >>=? fun (trans, ctxt) ->
-      step_bounded logger ~stack_depth ctxt step_constants descr trans
+      >>=? fun (trans, ctxt, events) ->
+      step_bounded logger ~stack_depth ctxt step_constants descr trans events
   | (Loop _, (false, rest)) ->
       logged_return (rest, ctxt)
   | (Loop_left body, (L v, rest)) ->
       non_terminal_recursion ~ctxt body (v, rest)
-      >>=? fun (trans, ctxt) ->
-      step_bounded logger ~stack_depth ctxt step_constants descr trans
+      >>=? fun (trans, ctxt, events) ->
+      step_bounded logger ~stack_depth ctxt step_constants descr trans events
   | (Loop_left _, (R v, rest)) ->
       logged_return ((v, rest), ctxt)
   | (Dip b, (ign, rest)) ->
       non_terminal_recursion ~ctxt b rest
-      >>=? fun (res, ctxt) -> logged_return ((ign, res), ctxt)
+      >>=? fun (res, ctxt, events) -> logged_return ~events ((ign, res), ctxt)
   | (Exec, (arg, (Lam (code, _), rest))) ->
       Log.log_interp ctxt code (arg, ()) ;
       non_terminal_recursion ~ctxt code (arg, ())
-      >>=? fun ((res, ()), ctxt) -> logged_return ((res, rest), ctxt)
+      >>=? fun ((res, ()), ctxt, events) ->
+      logged_return ~events ((res, rest), ctxt)
   | (Apply capture_ty, (capture, (lam, rest))) -> (
       let (Lam (descr, expr)) = lam in
       let (Item_t (full_arg_ty, _, _)) = descr.bef in
@@ -1112,16 +1146,11 @@ let rec step_bounded :
       >>=? fun (p, lazy_storage_diff, ctxt) ->
       unparse_data ctxt Optimized tp p
       >>=? fun (p, ctxt) ->
-      Gas.consume ctxt (Script.strip_locations_cost p)
-      >>?= fun ctxt ->
+      strip_locations ctxt p
+      >>?= fun (p, ctxt) ->
       let operation =
         Transaction
-          {
-            amount;
-            destination;
-            entrypoint;
-            parameters = Script.lazy_expr (Micheline.strip_locations p);
-          }
+          {amount; destination; entrypoint; parameters = Script.lazy_expr p}
       in
       fresh_internal_nonce ctxt
       >>?= fun (ctxt, nonce) ->
@@ -1166,9 +1195,8 @@ let rec step_bounded :
       >>=? fun (init, lazy_storage_diff, ctxt) ->
       unparse_data ctxt Optimized storage_type init
       >>=? fun (storage, ctxt) ->
-      Gas.consume ctxt (Script.strip_locations_cost storage)
-      >>?= fun ctxt ->
-      let storage = Micheline.strip_locations storage in
+      Lwt.return @@ strip_locations ctxt storage
+      >>=? fun (storage, ctxt) ->
       Contract.fresh_contract_from_current_nonce ctxt
       >>?= fun (ctxt, contract) ->
       let operation =
@@ -1240,16 +1268,17 @@ let rec step_bounded :
       logged_return ((step_constants.amount, rest), ctxt)
   | (Dig (_n, n'), stack) ->
       interp_stack_prefix_preserving_operation
-        (fun (v, rest) -> return (rest, v))
+        (fun (v, rest) -> return ctxt events (rest, v))
         n'
         stack
-      >>=? fun (aft, x) -> logged_return ((x, aft), ctxt)
+      >>=? fun ((aft, x), ctxt, events) ->
+      logged_return ~events ((x, aft), ctxt)
   | (Dug (_n, n'), (v, rest)) ->
       interp_stack_prefix_preserving_operation
-        (fun stk -> return ((v, stk), ()))
+        (fun stk -> return ctxt events ((v, stk), ()))
         n'
         rest
-      >>=? fun (aft, ()) -> logged_return (aft, ctxt)
+      >>=? fun ((aft, ()), ctxt, events) -> logged_return ~events (aft, ctxt)
   | (Dipn (n, n', b), stack) ->
       interp_stack_prefix_preserving_operation
         (fun stk ->
@@ -1260,16 +1289,17 @@ let rec step_bounded :
             (* This is a cheap upper bound of the number recursive calls to
                `interp_stack_prefix_preserving_operation`, which does
                ((n / 16) + log2 (n % 16)) iterations *)
-            ~stack_depth:(stack_depth + 4 + (n / 16)))
+            ~stack_depth:(stack_depth + 4 + (n / 16))
+          >|=? fun (stk, ctxt, events) -> ((stk, ()), ctxt, events))
         n'
         stack
-      >>=? fun (aft, ctxt') -> logged_return (aft, ctxt')
+      >>=? fun ((aft, ()), ctxt, events) -> logged_return ~events (aft, ctxt)
   | (Dropn (_n, n'), stack) ->
       interp_stack_prefix_preserving_operation
-        (fun stk -> return (stk, stk))
+        (fun stk -> return ctxt events (stk, stk))
         n'
         stack
-      >>=? fun (_, rest) -> logged_return (rest, ctxt)
+      >>=? fun ((_, rest), ctxt, events) -> logged_return ~events (rest, ctxt)
   | (Sapling_empty_state {memo_size}, stack) ->
       logged_return ((Sapling.empty_state ~memo_size (), stack), ctxt)
   | (Sapling_verify_update, (transaction, (state, rest))) -> (
@@ -1447,6 +1477,25 @@ let rec step_bounded :
         else None
       in
       logged_return ((result, rest), ctxt)
+  | (Trace (topic, block), stack) ->
+      let ty = match block.aft with Item_t (ty, _, _) -> ty in
+      step_bounded logger ~stack_depth ctxt step_constants block stack events
+      >>=? fun ((data, _), ctxt, internal_events) ->
+      unparse_data ctxt Readable ty data
+      >>=? fun (data, ctxt) ->
+      Lwt.return
+      @@ ( unparse_ty ctxt ty
+         >>? fun (ty, ctxt) ->
+         strip_locations ctxt data
+         >>? fun (data, ctxt) ->
+         strip_locations ctxt ty
+         >|? fun (ty, ctxt) ->
+         let events = List.append internal_events events in
+         let events =
+           Event.{source = step_constants.self; topic; ty; data} :: events
+         in
+         (ctxt, events) )
+      >>=? fun (ctxt, events) -> logged_return ~events (stack, ctxt)
 
 let step :
     type b a.
@@ -1455,8 +1504,9 @@ let step :
     step_constants ->
     (b, a) descr ->
     b ->
-    (a * context) tzresult Lwt.t =
-  step_bounded ~stack_depth:0
+    (a * context * events) tzresult Lwt.t =
+ fun logger ctxt step_constants descr stack ->
+  step_bounded ~stack_depth:0 logger ctxt step_constants descr stack []
 
 let interp :
     type p r.
@@ -1465,13 +1515,13 @@ let interp :
     step_constants ->
     (p, r) lambda ->
     p ->
-    (r * context) tzresult Lwt.t =
+    (r * context * events) tzresult Lwt.t =
  fun logger ctxt step_constants (Lam (code, _)) arg ->
   let stack = (arg, ()) in
   let module Log = (val logger) in
   Log.log_interp ctxt code stack ;
   step logger ctxt step_constants code stack
-  >|=? fun ((ret, ()), ctxt) -> (ret, ctxt)
+  >|=? fun ((ret, ()), ctxt, events) -> (ret, ctxt, events)
 
 (* ---- contract handling ---------------------------------------------------*)
 let execute logger ctxt mode step_constants ~entrypoint ~internal
@@ -1479,7 +1529,8 @@ let execute logger ctxt mode step_constants ~entrypoint ~internal
     ( Script.expr
     * packed_internal_operation list
     * context
-    * Lazy_storage.diffs option )
+    * Lazy_storage.diffs option
+    * events )
     tzresult
     Lwt.t =
   parse_script ctxt unparsed_script ~legacy:true ~allow_forged_in_storage:true
@@ -1501,7 +1552,7 @@ let execute logger ctxt mode step_constants ~entrypoint ~internal
   trace
     (Runtime_contract_error (step_constants.self, script_code))
     (interp logger ctxt step_constants code (arg, storage))
-  >>=? fun ((ops, storage), ctxt) ->
+  >>=? fun ((ops, storage), ctxt, events) ->
   Script_ir_translator.extract_lazy_storage_diff
     ctxt
     mode
@@ -1514,10 +1565,7 @@ let execute logger ctxt mode step_constants ~entrypoint ~internal
   trace
     Cannot_serialize_storage
     ( unparse_data ctxt mode storage_type storage
-    >>=? fun (storage, ctxt) ->
-    Lwt.return
-      ( Gas.consume ctxt (Script.strip_locations_cost storage)
-      >>? fun ctxt -> ok (Micheline.strip_locations storage, ctxt) ) )
+    >>=? fun (storage, ctxt) -> Lwt.return @@ strip_locations ctxt storage )
   >|=? fun (storage, ctxt) ->
   let (ops, op_diffs) = List.split ops.elements in
   let lazy_storage_diff =
@@ -1530,13 +1578,14 @@ let execute logger ctxt mode step_constants ~entrypoint ~internal
     | diff ->
         Some diff
   in
-  (storage, ops, ctxt, lazy_storage_diff)
+  (storage, ops, ctxt, lazy_storage_diff, events)
 
 type execution_result = {
   ctxt : context;
   storage : Script.expr;
   lazy_storage_diff : Lazy_storage.diffs option;
   operations : packed_internal_operation list;
+  events : events;
 }
 
 let execute ?(logger = (module No_trace : STEP_LOGGER)) ctxt mode
@@ -1550,5 +1599,5 @@ let execute ?(logger = (module No_trace : STEP_LOGGER)) ctxt mode
     ~internal
     script
     (Micheline.root parameter)
-  >|=? fun (storage, operations, ctxt, lazy_storage_diff) ->
-  {ctxt; storage; lazy_storage_diff; operations}
+  >|=? fun (storage, operations, ctxt, lazy_storage_diff, events) ->
+  {ctxt; storage; lazy_storage_diff; operations; events}

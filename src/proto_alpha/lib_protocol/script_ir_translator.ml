@@ -5485,7 +5485,6 @@ and parse_instr :
       >>=? fun (judgement, ctxt) ->
       match judgement with
       | Typed ({aft = Item_t (ty, _, _); _} as descr) ->
-          (* TODO: handle annotations *)
           check_packable
             ~legacy:true
             (* allow to pack contracts for hash/signature checks *) loc
@@ -6222,7 +6221,6 @@ let typecheck_code :
         None )
   in
   let type_logger ctxt (script_instr : Script.node) (Ex_descr descr) =
-    (* TODO: asserts it's in RPC mode *)
     (* Unparsing for logging done in an unlimited context as this
          is used only by the client and not the protocol *)
     let ctxt = Gas.set_unlimited ctxt in
