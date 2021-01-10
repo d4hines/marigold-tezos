@@ -139,6 +139,8 @@ module Gas = struct
 
   let set_unlimited = Raw_context.set_gas_unlimited
 
+  let copy_counter = Raw_context.copy_gas_counter
+
   let consume = Raw_context.consume_gas
 
   let check_enough = Raw_context.check_enough_gas

@@ -420,6 +420,8 @@ let set_gas_limit ctxt (remaining : 'a Gas_limit_repr.Arith.t) =
   let ctxt = update_gas_counter_status ctxt gas_counter_status in
   {ctxt with gas_counter}
 
+let copy_gas_counter ~from ~to_ = update_gas_counter to_ (gas_counter from)
+
 let set_gas_unlimited ctxt =
   let block_gas = block_gas_level ctxt in
   let ctxt = {ctxt with gas_counter = block_gas} in

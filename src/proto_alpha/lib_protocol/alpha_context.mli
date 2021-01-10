@@ -207,6 +207,8 @@ module Gas : sig
 
   val set_unlimited : context -> context
 
+  val copy_counter : from:context -> to_:context -> context
+
   val consume : context -> cost -> context tzresult
 
   val check_enough : context -> cost -> unit tzresult

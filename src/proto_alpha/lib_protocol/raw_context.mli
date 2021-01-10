@@ -129,6 +129,8 @@ val set_gas_limit : t -> 'a Gas_limit_repr.Arith.t -> t
 
 val set_gas_unlimited : t -> t
 
+val copy_gas_counter : from:t -> to_:t -> t
+
 val gas_level : t -> Gas_limit_repr.t
 
 val gas_consumed : since:t -> until:t -> Gas_limit_repr.Arith.fp

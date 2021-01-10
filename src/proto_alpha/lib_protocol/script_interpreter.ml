@@ -153,7 +153,7 @@ let strip_locations ctxt data =
   Gas.consume ctxt (Script.strip_locations_cost data)
   >|? fun ctxt -> (Micheline.strip_locations data, ctxt)
 
-type 'a step_result = ('a * context * events, error trace) result
+type 'a step_result = ('a * context * events, error trace * context) result
 
 let rec interp_stack_prefix_preserving_operation :
     type fbef bef faft aft result.
@@ -613,8 +613,13 @@ let rec step_bounded :
      stack
      events ->
   let return (ctxt : context) (events : events) v = return (v, ctxt, events) in
+  let fail (ctxt : context) err = Lwt.return @@ Error ([err], ctxt) in
+  let ( @? ) v ctxt =
+    match v with Ok v -> Ok v | Error err -> Error (err, ctxt)
+  in
+  let ( @ ) v ctxt = v >|= fun v -> v @? ctxt in
   let gas = cost_of_instr descr stack in
-  Gas.consume ctxt gas
+  Gas.consume ctxt gas @? ctxt
   >>?= fun ctxt ->
   let module Log = (val logger) in
   Log.log_entry ctxt descr stack ;
@@ -626,7 +631,7 @@ let rec step_bounded :
   let non_terminal_recursion ~ctxt ?(events = events)
       ?(stack_depth = stack_depth + 1) descr stack =
     if Compare.Int.(stack_depth >= 10_000) then
-      fail Michelson_too_many_recursive_calls
+      fail ctxt Michelson_too_many_recursive_calls
     else
       step_bounded logger ~stack_depth ctxt step_constants descr stack events
   in
@@ -775,17 +780,17 @@ let rec step_bounded :
   | (Empty_big_map (tk, tv), rest) ->
       logged_return ((Script_ir_translator.empty_big_map tk tv, rest), ctxt)
   | (Big_map_mem, (key, (map, rest))) ->
-      Script_ir_translator.big_map_mem ctxt key map
+      Script_ir_translator.big_map_mem ctxt key map @ ctxt
       >>=? fun (res, ctxt) -> logged_return ((res, rest), ctxt)
   | (Big_map_get, (key, (map, rest))) ->
-      Script_ir_translator.big_map_get ctxt key map
+      Script_ir_translator.big_map_get ctxt key map @ ctxt
       >>=? fun (res, ctxt) -> logged_return ((res, rest), ctxt)
   | (Big_map_update, (key, (maybe_value, (map, rest)))) ->
       let big_map = Script_ir_translator.big_map_update key maybe_value map in
       logged_return ((big_map, rest), ctxt)
   | (Big_map_get_and_update, (k, (v, (map, rest)))) ->
       let map' = Script_ir_translator.big_map_update k v map in
-      Script_ir_translator.big_map_get ctxt k map
+      Script_ir_translator.big_map_get ctxt k map @ ctxt
       >>=? fun (v', ctxt) -> logged_return ((v', (map', rest)), ctxt)
   (* timestamp operations *)
   | (Add_seconds_to_timestamp, (n, (t, rest))) ->
@@ -812,7 +817,7 @@ let rec step_bounded :
           Z.zero
           ss.elements
       in
-      Gas.consume ctxt (Interp_costs.concat_string total_length)
+      Gas.consume ctxt (Interp_costs.concat_string total_length) @? ctxt
       >>?= fun ctxt ->
       let s = String.concat "" ss.elements in
       logged_return ((s, rest), ctxt)
@@ -839,7 +844,7 @@ let rec step_bounded :
           Z.zero
           ss.elements
       in
-      Gas.consume ctxt (Interp_costs.concat_string total_length)
+      Gas.consume ctxt (Interp_costs.concat_string total_length) @? ctxt
       >>?= fun ctxt ->
       let s = Bytes.concat Bytes.empty ss.elements in
       logged_return ((s, rest), ctxt)
@@ -855,21 +860,23 @@ let rec step_bounded :
       logged_return ((Script_int.(abs (of_int (Bytes.length s))), rest), ctxt)
   (* currency operations *)
   | (Add_tez, (x, (y, rest))) ->
-      Tez.(x +? y) >>?= fun res -> logged_return ((res, rest), ctxt)
+      Tez.(x +? y) @? ctxt >>?= fun res -> logged_return ((res, rest), ctxt)
   | (Sub_tez, (x, (y, rest))) ->
-      Tez.(x -? y) >>?= fun res -> logged_return ((res, rest), ctxt)
+      Tez.(x -? y) @? ctxt >>?= fun res -> logged_return ((res, rest), ctxt)
   | (Mul_teznat, (x, (y, rest))) -> (
     match Script_int.to_int64 y with
     | None ->
-        Log.get_log () >>=? fun log -> fail (Overflow (loc, log))
+        Log.get_log () @ ctxt >>=? fun log -> fail ctxt (Overflow (loc, log))
     | Some y ->
-        Tez.(x *? y) >>?= fun res -> logged_return ((res, rest), ctxt) )
+        Tez.(x *? y) @? ctxt >>?= fun res -> logged_return ((res, rest), ctxt)
+    )
   | (Mul_nattez, (y, (x, rest))) -> (
     match Script_int.to_int64 y with
     | None ->
-        Log.get_log () >>=? fun log -> fail (Overflow (loc, log))
+        Log.get_log () @ ctxt >>=? fun log -> fail ctxt (Overflow (loc, log))
     | Some y ->
-        Tez.(x *? y) >>?= fun res -> logged_return ((res, rest), ctxt) )
+        Tez.(x *? y) @? ctxt >>?= fun res -> logged_return ((res, rest), ctxt)
+    )
   (* boolean operations *)
   | (Or, (x, (y, rest))) ->
       logged_return ((x || y, rest), ctxt)
@@ -958,13 +965,13 @@ let rec step_bounded :
   | (Lsl_nat, (x, (y, rest))) -> (
     match Script_int.shift_left_n x y with
     | None ->
-        Log.get_log () >>=? fun log -> fail (Overflow (loc, log))
+        Log.get_log () @ ctxt >>=? fun log -> fail ctxt (Overflow (loc, log))
     | Some x ->
         logged_return ((x, rest), ctxt) )
   | (Lsr_nat, (x, (y, rest))) -> (
     match Script_int.shift_right_n x y with
     | None ->
-        Log.get_log () >>=? fun log -> fail (Overflow (loc, log))
+        Log.get_log () @ ctxt >>=? fun log -> fail ctxt (Overflow (loc, log))
     | Some r ->
         logged_return ((r, rest), ctxt) )
   | (Or_nat, (x, (y, rest))) ->
@@ -1011,9 +1018,9 @@ let rec step_bounded :
   | (Apply capture_ty, (capture, (lam, rest))) -> (
       let (Lam (descr, expr)) = lam in
       let (Item_t (full_arg_ty, _, _)) = descr.bef in
-      unparse_data ctxt Optimized capture_ty capture
+      unparse_data ctxt Optimized capture_ty capture @ ctxt
       >>=? fun (const_expr, ctxt) ->
-      unparse_ty ctxt capture_ty
+      unparse_ty ctxt capture_ty @? ctxt
       >>?= fun (ty_expr, ctxt) ->
       match full_arg_ty with
       | Pair_t ((capture_ty, _, _), (arg_ty, _, _), _) ->
@@ -1068,10 +1075,10 @@ let rec step_bounded :
   | (Lambda lam, rest) ->
       logged_return ((lam, rest), ctxt)
   | (Failwith tv, (v, _)) ->
-      trace Cannot_serialize_failure (unparse_data ctxt Optimized tv v)
+      trace Cannot_serialize_failure (unparse_data ctxt Optimized tv v) @ ctxt
       >>=? fun (v, _ctxt) ->
       let v = Micheline.strip_locations v in
-      Log.get_log () >>=? fun log -> fail (Reject (loc, v, log))
+      Log.get_log () @ ctxt >>=? fun log -> fail ctxt (Reject (loc, v, log))
   | (Nop, stack) ->
       logged_return (stack, ctxt)
   (* comparison *)
@@ -1107,10 +1114,10 @@ let rec step_bounded :
       logged_return ((cmpres, rest), ctxt)
   (* packing *)
   | (Pack t, (value, rest)) ->
-      Script_ir_translator.pack_data ctxt t value
+      Script_ir_translator.pack_data ctxt t value @ ctxt
       >>=? fun (bytes, ctxt) -> logged_return ((bytes, rest), ctxt)
   | (Unpack ty, (bytes, rest)) ->
-      unpack ctxt ~ty ~bytes
+      unpack ctxt ~ty ~bytes @ ctxt
       >>=? fun (opt, ctxt) -> logged_return ((opt, rest), ctxt)
   (* protocol *)
   | (Address, ((_, address), rest)) ->
@@ -1126,13 +1133,14 @@ let rec step_bounded :
           t
           contract
           ~entrypoint
+        @ ctxt
         >>=? fun (ctxt, maybe_contract) ->
         logged_return ((maybe_contract, rest), ctxt)
     | _ ->
         logged_return ((None, rest), ctxt) )
   | (Transfer_tokens, (p, (amount, ((tp, (destination, entrypoint)), rest))))
     ->
-      collect_lazy_storage ctxt tp p
+      collect_lazy_storage ctxt tp p @? ctxt
       >>?= fun (to_duplicate, ctxt) ->
       let to_update = no_lazy_storage_id in
       extract_lazy_storage_diff
@@ -1143,16 +1151,17 @@ let rec step_bounded :
         ~to_duplicate
         ~to_update
         ~temporary:true
+      @ ctxt
       >>=? fun (p, lazy_storage_diff, ctxt) ->
-      unparse_data ctxt Optimized tp p
+      unparse_data ctxt Optimized tp p @ ctxt
       >>=? fun (p, ctxt) ->
-      strip_locations ctxt p
+      strip_locations ctxt p @? ctxt
       >>?= fun (p, ctxt) ->
       let operation =
         Transaction
           {amount; destination; entrypoint; parameters = Script.lazy_expr p}
       in
-      fresh_internal_nonce ctxt
+      fresh_internal_nonce ctxt @? ctxt
       >>?= fun (ctxt, nonce) ->
       logged_return
         ( ( ( Internal_operation
@@ -1166,12 +1175,12 @@ let rec step_bounded :
   | ( Create_contract (storage_type, param_type, Lam (_, code), root_name),
       (* Removed the instruction's arguments manager, spendable and delegatable *)
     (delegate, (credit, (init, rest))) ) ->
-      unparse_ty ctxt param_type
+      unparse_ty ctxt param_type @? ctxt
       >>?= fun (unparsed_param_type, ctxt) ->
       let unparsed_param_type =
         Script_ir_translator.add_field_annot root_name None unparsed_param_type
       in
-      unparse_ty ctxt storage_type
+      unparse_ty ctxt storage_type @? ctxt
       >>?= fun (unparsed_storage_type, ctxt) ->
       let code =
         Micheline.strip_locations
@@ -1181,7 +1190,7 @@ let rec step_bounded :
                  Prim (0, K_storage, [unparsed_storage_type], []);
                  Prim (0, K_code, [code], []) ] ))
       in
-      collect_lazy_storage ctxt storage_type init
+      collect_lazy_storage ctxt storage_type init @? ctxt
       >>?= fun (to_duplicate, ctxt) ->
       let to_update = no_lazy_storage_id in
       extract_lazy_storage_diff
@@ -1192,12 +1201,13 @@ let rec step_bounded :
         ~to_duplicate
         ~to_update
         ~temporary:true
+      @ ctxt
       >>=? fun (init, lazy_storage_diff, ctxt) ->
-      unparse_data ctxt Optimized storage_type init
+      unparse_data ctxt Optimized storage_type init @ ctxt
       >>=? fun (storage, ctxt) ->
-      Lwt.return @@ strip_locations ctxt storage
+      Lwt.return @@ strip_locations ctxt storage @? ctxt
       >>=? fun (storage, ctxt) ->
-      Contract.fresh_contract_from_current_nonce ctxt
+      Contract.fresh_contract_from_current_nonce ctxt @? ctxt
       >>?= fun (ctxt, contract) ->
       let operation =
         Origination
@@ -1212,7 +1222,7 @@ let rec step_bounded :
               };
           }
       in
-      fresh_internal_nonce ctxt
+      fresh_internal_nonce ctxt @? ctxt
       >>?= fun (ctxt, nonce) ->
       logged_return
         ( ( ( Internal_operation
@@ -1222,7 +1232,7 @@ let rec step_bounded :
           ctxt )
   | (Set_delegate, (delegate, rest)) ->
       let operation = Delegation delegate in
-      fresh_internal_nonce ctxt
+      fresh_internal_nonce ctxt @? ctxt
       >>?= fun (ctxt, nonce) ->
       logged_return
         ( ( ( Internal_operation
@@ -1231,7 +1241,7 @@ let rec step_bounded :
             rest ),
           ctxt )
   | (Balance, rest) ->
-      Contract.get_balance_carbonated ctxt step_constants.self
+      Contract.get_balance_carbonated ctxt step_constants.self @ ctxt
       >>=? fun (ctxt, balance) -> logged_return ((balance, rest), ctxt)
   | (Level, rest) ->
       let level =
@@ -1306,7 +1316,7 @@ let rec step_bounded :
       let address = Contract.to_b58check step_constants.self in
       let chain_id = Chain_id.to_b58check step_constants.chain_id in
       let anti_replay = address ^ chain_id in
-      Sapling.verify_update ctxt state transaction anti_replay
+      Sapling.verify_update ctxt state transaction anti_replay @ ctxt
       >>=? fun (ctxt, balance_state_opt) ->
       match balance_state_opt with
       | Some (balance, state) ->
@@ -1319,11 +1329,11 @@ let rec step_bounded :
   | (Never, (_, _)) ->
       .
   | (Voting_power, (key_hash, rest)) ->
-      Vote.get_voting_power ctxt key_hash
+      Vote.get_voting_power ctxt key_hash @ ctxt
       >>=? fun (ctxt, rolls) ->
       logged_return ((Script_int.(abs (of_int32 rolls)), rest), ctxt)
   | (Total_voting_power, rest) ->
-      Vote.get_total_voting_power ctxt
+      Vote.get_total_voting_power ctxt @ ctxt
       >>=? fun (ctxt, rolls) ->
       logged_return ((Script_int.(abs (of_int32 rolls)), rest), ctxt)
   | (Keccak, (bytes, rest)) ->
@@ -1479,23 +1489,38 @@ let rec step_bounded :
       logged_return ((result, rest), ctxt)
   | (Trace (topic, block), stack) ->
       let ty = match block.aft with Item_t (ty, _, _) -> ty in
-      step_bounded logger ~stack_depth ctxt step_constants block stack events
-      >>=? fun ((data, _), ctxt, internal_events) ->
-      unparse_data ctxt Readable ty data
-      >>=? fun (data, ctxt) ->
-      Lwt.return
-      @@ ( unparse_ty ctxt ty
-         >>? fun (ty, ctxt) ->
-         strip_locations ctxt data
-         >>? fun (data, ctxt) ->
-         strip_locations ctxt ty
-         >|? fun (ty, ctxt) ->
-         let events = List.append internal_events events in
-         let events =
-           Event.{source = step_constants.self; topic; ty; data} :: events
-         in
-         (ctxt, events) )
-      >>=? fun (ctxt, events) -> logged_return ~events (stack, ctxt)
+      let original_ctxt = ctxt in
+      let internal_block_result =
+        step_bounded logger ~stack_depth ctxt step_constants block stack events
+        >>=? fun ((data, _), ctxt, internal_events) ->
+        unparse_data ctxt Readable ty data @ ctxt
+        >>=? fun (data, ctxt) ->
+        Lwt.return
+        @@ ( unparse_ty ctxt ty
+           >>? fun (ty, ctxt) ->
+           strip_locations ctxt data
+           >>? fun (data, ctxt) ->
+           strip_locations ctxt ty
+           >|? fun (ty, ctxt) ->
+           let events = List.append internal_events events in
+           let events =
+             Event.{source = step_constants.self; topic; ty; data} :: events
+           in
+           (ctxt, events) )
+        @? ctxt
+      in
+      internal_block_result
+      >|= (function
+            | Ok (ctxt, events) ->
+                (ctxt, events)
+            | Error (_, ctxt) ->
+                (ctxt, events))
+      >>= fun (internal_block_ctxt, events) ->
+      (* this discards any change done inside of the trace block, but keep the cost *)
+      let ctxt =
+        Gas.copy_counter ~from:internal_block_ctxt ~to_:original_ctxt
+      in
+      logged_return ~events (stack, ctxt)
 
 let step :
     type b a.
@@ -1507,6 +1532,7 @@ let step :
     (a * context * events) tzresult Lwt.t =
  fun logger ctxt step_constants descr stack ->
   step_bounded ~stack_depth:0 logger ctxt step_constants descr stack []
+  >|= function Ok v -> Ok v | Error (err, _) -> Error err
 
 let interp :
     type p r.
