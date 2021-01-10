@@ -25,14 +25,14 @@
 module Unit_test : sig
   (** 
    * Example: [spec "Alpha_context.ml" Test_alpha_context.test_cases]
-   * Unit tests needs tag in log (like "[UNIT] some test description here...")
+   * Unit tests needs tag in log (like "[Unit] some test description here...")
    * This function handles such meta data *)
   val spec :
     string ->
     unit Alcotest_lwt.test_case list ->
     string * unit Alcotest_lwt.test_case list
 end = struct
-  let spec unit_name test_cases = ("[UNIT] " ^ unit_name, test_cases)
+  let spec unit_name test_cases = ("[Unit] " ^ unit_name, test_cases)
 end
 
 let () =
