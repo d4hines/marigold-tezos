@@ -12,7 +12,7 @@
  (alias unittests)
  (package tezos-protocol-environment)
  (deps main.exe)
- (action (run ./main.exe)))
+ (action (run ./main.exe test Unit)))
 
 (rule
  (alias runtest_lint)
