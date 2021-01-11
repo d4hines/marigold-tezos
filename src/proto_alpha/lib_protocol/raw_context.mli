@@ -48,7 +48,7 @@ type operation_hashes
 
 val create_operation_hashes :
   current:Operation_hash.t list ->
-  pred_operation_hashes:Block_operation_hashes_repr.t list ->
+  pred_operation_hashes:Block_operation_hashes_repr.t ->
   operation_hashes
 
 (** {1 Abstract Context} *)
@@ -68,7 +68,7 @@ val get_operation_hashes : t -> operation_hashes
 
 val operation_hashes_get_current : t -> Operation_hash.t list
 
-val operation_hashes_get_pred : t -> Block_operation_hashes_repr.t list
+val operation_hashes_get_pred : t -> Block_operation_hashes_repr.t
 
 (** Retrieves the state of the database and gives its abstract view.
     It also returns wether this is the first block validated

@@ -1553,7 +1553,7 @@ val prepare :
   context tzresult Lwt.t
 
 val finalize :
-  ?commit_message:string -> context -> Updater.validation_result Lwt.t
+  ?commit_message:string -> context -> Updater.validation_result tzresult Lwt.t
 
 val activate : context -> Protocol_hash.t -> context Lwt.t
 

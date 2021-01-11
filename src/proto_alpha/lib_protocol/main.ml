@@ -115,7 +115,7 @@ type validation_state = {
 }
 
 let current_context {ctxt; _} =
-  Alpha_context.finalize ctxt >|= fun {context; _} -> Ok context
+  Alpha_context.finalize ctxt >|=? fun {context; _} -> context
 
 let begin_partial_application ~chain_id ~ancestor_context:ctxt
     ~predecessor_timestamp ~predecessor_fitness
@@ -230,25 +230,24 @@ let finalize_block {mode; ctxt; op_count} =
         (return ctxt)
       >>=? fun ctxt ->
       Alpha_context.finalize ctxt
-      >|= fun ctxt ->
-      Ok
-        ( ctxt,
-          Apply_results.
-            {
-              baker;
-              level =
-                Alpha_context.Level.to_deprecated_type
-                  level_info
-                  ~voting_period_index:voting_period.index
-                  ~voting_period_position:position;
-              level_info;
-              voting_period_kind = kind;
-              voting_period_info;
-              nonce_hash = None;
-              consumed_gas = Alpha_context.Gas.Arith.zero;
-              deactivated = [];
-              balance_updates = [];
-            } )
+      >|=? fun ctxt ->
+      ( ctxt,
+        Apply_results.
+          {
+            baker;
+            level =
+              Alpha_context.Level.to_deprecated_type
+                level_info
+                ~voting_period_index:voting_period.index
+                ~voting_period_position:position;
+            level_info;
+            voting_period_kind = kind;
+            voting_period_info;
+            nonce_hash = None;
+            consumed_gas = Alpha_context.Gas.Arith.zero;
+            deactivated = [];
+            balance_updates = [];
+          } )
   | Partial_application {block_header; baker; block_delay} ->
       let included_endorsements = Alpha_context.included_endorsements ctxt in
       Apply.check_minimum_endorsements
@@ -263,25 +262,24 @@ let finalize_block {mode; ctxt; op_count} =
       >>=? fun ({voting_period; position; _} as voting_period_info) ->
       let level_info = Alpha_context.Level.current ctxt in
       Alpha_context.finalize ctxt
-      >|= fun ctxt ->
-      Ok
-        ( ctxt,
-          Apply_results.
-            {
-              baker;
-              level =
-                Alpha_context.Level.to_deprecated_type
-                  level_info
-                  ~voting_period_index:voting_period.index
-                  ~voting_period_position:position;
-              level_info;
-              voting_period_kind = kind;
-              voting_period_info;
-              nonce_hash = None;
-              consumed_gas = Alpha_context.Gas.Arith.zero;
-              deactivated = [];
-              balance_updates = [];
-            } )
+      >|=? fun ctxt ->
+      ( ctxt,
+        Apply_results.
+          {
+            baker;
+            level =
+              Alpha_context.Level.to_deprecated_type
+                level_info
+                ~voting_period_index:voting_period.index
+                ~voting_period_position:position;
+            level_info;
+            voting_period_kind = kind;
+            voting_period_info;
+            nonce_hash = None;
+            consumed_gas = Alpha_context.Gas.Arith.zero;
+            deactivated = [];
+            balance_updates = [];
+          } )
   | Application
       { baker;
         block_delay;
@@ -302,7 +300,7 @@ let finalize_block {mode; ctxt; op_count} =
           op_count
       in
       Alpha_context.finalize ~commit_message ctxt
-      >|= fun v_result -> Ok (v_result, receipt)
+      >|=? fun v_result -> (v_result, receipt)
 
 let compare_operations op1 op2 =
   let open Alpha_context in
@@ -399,4 +397,4 @@ let init ctxt block_header =
     (({script with storage}, lazy_storage_diff), ctxt)
   in
   Alpha_context.prepare_first_block ~typecheck ~level ~timestamp ~fitness ctxt
-  >>=? fun ctxt -> Alpha_context.finalize ctxt >|= fun ctxt -> Ok ctxt
+  >>=? fun ctxt -> Alpha_context.finalize ctxt

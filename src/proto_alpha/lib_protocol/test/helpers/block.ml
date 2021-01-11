@@ -41,11 +41,12 @@ type block = t
 
 let rpc_context block =
   Lwt.return
-  @@ {
-       Environment.Updater.block_hash = block.hash;
-       block_header = block.header.shell;
-       context = block.context;
-     }
+  @@ Ok
+       {
+         Environment.Updater.block_hash = block.hash;
+         block_header = block.header.shell;
+         context = block.context;
+       }
 
 (******** Policies ***********)
 

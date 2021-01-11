@@ -25,11 +25,10 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let init ctxt = Storage.Block_operation_hashes.elements ctxt
-
 let persist ctxt new_pred_operation_hashes =
-  Storage.Block_operation_hashes.clear ctxt
-  |> List.fold_right
-       (fun op_hash acc ->
-         acc >>= fun ctxt -> Storage.Block_operation_hashes.add ctxt op_hash)
-       new_pred_operation_hashes
+  Storage.Block_operation_hashes.set ctxt new_pred_operation_hashes
+  >>= function
+  | Ok _ as r ->
+     Lwt.return r
+  | Error _ ->
+      Storage.Block_operation_hashes.init ctxt new_pred_operation_hashes

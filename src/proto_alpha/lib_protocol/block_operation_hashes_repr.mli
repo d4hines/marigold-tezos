@@ -24,22 +24,29 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type t
+type single_block_operation_hashes = {
+  level : Raw_level_repr.t;
+  hashes : Operation_hash.t list;
+}
+
+type t = single_block_operation_hashes list
+
+val to_list : t -> single_block_operation_hashes list
+
+val of_list : single_block_operation_hashes list -> t
 
 val encoding : t Data_encoding.t
 
-val rpc_arg : t RPC_arg.t
-
 val path_length : int
 
-val compare : t -> t -> int
+val compare :
+  single_block_operation_hashes -> single_block_operation_hashes -> int
 
-val to_path : t -> string list -> string list
+val get_level : single_block_operation_hashes -> Raw_level_repr.t
 
-val of_path : string list -> t option
+val get_operation_hashes : t -> Operation_hash.t list list
 
-val get_level : t -> Raw_level_repr.t
-
-val get_operation_hashes : t -> Operation_hash.t list
-
-val make : level:Raw_level_repr.t -> hashes:Operation_hash.t list -> t
+val make :
+  level:Raw_level_repr.t ->
+  hashes:Operation_hash.t list ->
+  single_block_operation_hashes

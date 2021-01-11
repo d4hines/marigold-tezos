@@ -49,7 +49,8 @@ let level st = st.header.shell.level
 
 let rpc_context st =
   Alpha_context.finalize st.state.ctxt
-  >|= fun result ->
+  >|= Environment.wrap_error
+  >|=? fun result ->
   {
     Environment.Updater.block_hash = Block_hash.zero;
     block_header = {st.header.shell with fitness = result.fitness};

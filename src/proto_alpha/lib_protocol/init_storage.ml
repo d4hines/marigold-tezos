@@ -60,9 +60,9 @@ let prepare_first_block ctxt ~typecheck ~level ~timestamp ~fitness =
 let prepare ctxt ~level ~predecessor_timestamp ~timestamp ~fitness =
   Raw_context.prepare ~level ~predecessor_timestamp ~timestamp ~fitness ctxt
   >>=? fun ctxt ->
-  Storage.Block_operation_hashes.elements ctxt
-  >|= fun pred_operation_hashes ->
+  Storage.Block_operation_hashes.get ctxt
+  >|=? fun pred_operation_hashes ->
   let operation_hashes =
     Raw_context.create_operation_hashes ~current:[] ~pred_operation_hashes
   in
-  Ok (Raw_context.set_operation_hashes ctxt operation_hashes)
+  Raw_context.set_operation_hashes ctxt operation_hashes

@@ -197,8 +197,9 @@ module Operation_hashes = struct
          (Operation_hash.equal operation_hash)
          ( Raw_context.operation_hashes_get_current ctxt
          @ ( ctxt |> Raw_context.operation_hashes_get_pred
-           |> List.map Block_operation_hashes_repr.get_operation_hashes
-           |> List.flatten ) )
+           |> Block_operation_hashes_repr.to_list
+           |> Block_operation_hashes_repr.get_operation_hashes |> List.flatten
+           ) )
 
   let finalize ctxt =
     let current_pred_operation_hashes =
@@ -217,7 +218,7 @@ module Operation_hashes = struct
         ~hashes:(Raw_context.operation_hashes_get_current ctxt)
       :: take_n
            (Z.of_int Constants_repr.number_of_blocks_of_operation_hashes)
-           current_pred_operation_hashes
+           (Block_operation_hashes_repr.to_list current_pred_operation_hashes)
     in
     let operation_hashes =
       Raw_context.create_operation_hashes
@@ -225,7 +226,7 @@ module Operation_hashes = struct
         ~pred_operation_hashes:next_pred_operation_hashes
     in
     Block_operation_hashes_storage.persist ctxt next_pred_operation_hashes
-    >|= fun ctxt -> Raw_context.set_operation_hashes ctxt operation_hashes
+    >|=? fun ctxt -> Raw_context.set_operation_hashes ctxt operation_hashes
 end
 
 module Big_map = struct
@@ -300,7 +301,7 @@ let prepare = Init_storage.prepare
 
 let finalize ?commit_message:message c =
   Operation_hashes.finalize c
-  >|= fun c ->
+  >|=? fun c ->
   let fitness = Fitness.from_int64 (Fitness.current c) in
   let context = Raw_context.recover c in
   {

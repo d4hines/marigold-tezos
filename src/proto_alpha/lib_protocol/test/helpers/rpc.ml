@@ -40,7 +40,8 @@ class ['block] proto_rpc_context_of_directory conv dir :
             'o )
           RPC_service.t -> 'block -> 'q -> 'i -> 'o tzresult Lwt.t =
       fun s block q i ->
-        conv block >>= fun rpc_context -> lookup#call_service s rpc_context q i
+        conv block
+        >>=? fun rpc_context -> lookup#call_service s rpc_context q i
 
     method call_proto_service1
         : 'm 'a 'q 'i 'o.
@@ -53,7 +54,7 @@ class ['block] proto_rpc_context_of_directory conv dir :
           RPC_service.t -> 'block -> 'a -> 'q -> 'i -> 'o tzresult Lwt.t =
       fun s block a1 q i ->
         conv block
-        >>= fun rpc_context -> lookup#call_service s (rpc_context, a1) q i
+        >>=? fun rpc_context -> lookup#call_service s (rpc_context, a1) q i
 
     method call_proto_service2
         : 'm 'a 'b 'q 'i 'o.
@@ -67,7 +68,7 @@ class ['block] proto_rpc_context_of_directory conv dir :
         =
       fun s block a1 a2 q i ->
         conv block
-        >>= fun rpc_context ->
+        >>=? fun rpc_context ->
         lookup#call_service s ((rpc_context, a1), a2) q i
 
     method call_proto_service3
@@ -82,6 +83,6 @@ class ['block] proto_rpc_context_of_directory conv dir :
           'o tzresult Lwt.t =
       fun s block a1 a2 a3 q i ->
         conv block
-        >>= fun rpc_context ->
+        >>=? fun rpc_context ->
         lookup#call_service s (((rpc_context, a1), a2), a3) q i
   end

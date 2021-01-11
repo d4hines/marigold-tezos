@@ -80,7 +80,7 @@ type gas_counter_status =
  *)
 type operation_hashes = {
   current : Operation_hash.t list;
-  pred_operation_hashes : Block_operation_hashes_repr.t list;
+  pred_operation_hashes : Block_operation_hashes_repr.t;
 }
 
 let create_operation_hashes ~current ~pred_operation_hashes =

@@ -799,12 +799,11 @@ module Sapling = struct
 end
 
 module Block_operation_hashes =
-  Make_data_set_storage
-    (Make_subcontext (Registered) (Raw_context)
-       (struct
-         let name = ["block_operation_hashes"]
-       end))
-       (Make_index (Block_operation_hashes_repr))
+  Make_single_data_storage (Registered) (Raw_context)
+    (struct
+      let name = ["block_operation_hashes"]
+    end)
+    (Block_operation_hashes_repr)
 
 module Delegates =
   Make_data_set_storage

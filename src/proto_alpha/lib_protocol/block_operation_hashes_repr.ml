@@ -24,9 +24,14 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type t = {level : Raw_level_repr.t; hashes : Operation_hash.t list}
+type single_block_operation_hashes = {
+  level : Raw_level_repr.t;
+  hashes : Operation_hash.t list;
+}
 
-let encoding =
+type t = single_block_operation_hashes list
+
+let encoding_single_block_operations_hashes =
   let open Data_encoding in
   conv
     (fun {level; hashes} -> (level, hashes))
@@ -35,34 +40,20 @@ let encoding =
        (req "level" Raw_level_repr.encoding)
        (req "hashes" (list Operation_hash.encoding)))
 
-let rpc_arg =
-  let construct v =
-    Ezjsonm.to_string @@ Ezjsonm.wrap
-    @@ Data_encoding.Json.construct encoding v
-  in
-  let destruct v =
-    Ok (Data_encoding.Json.destruct encoding @@ Ezjsonm.from_string v)
-  in
-  let name = "block_operation_hashes" in
-  let description = "Operation hashes in a block" in
-  RPC_arg.make ~descr:description ~name ~construct ~destruct ()
+let encoding =
+  let open Data_encoding in
+  list encoding_single_block_operations_hashes
+
+let to_list x = x
+
+let of_list x = x
 
 let compare x y = Raw_level_repr.compare x.level y.level
 
 let path_length = 1
 
-let to_path k l =
-  let open Data_encoding in
-  (k |> Binary.to_bytes_exn encoding |> Bytes.to_string) :: l
-
-let of_path = function
-  | [s] ->
-      s |> Bytes.of_string |> Data_encoding.Binary.of_bytes encoding
-  | _ ->
-      None
-
 let get_level v = v.level
 
-let get_operation_hashes v = v.hashes
+let get_operation_hashes v = List.map (fun v -> v.hashes) v
 
 let make ~level ~hashes = {level; hashes}

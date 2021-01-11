@@ -350,9 +350,9 @@ end
 
 (** Set of all operation hashes *)
 module Block_operation_hashes :
-  Data_set_storage
+  Single_data_storage
     with type t := Raw_context.t
-     and type elt = Block_operation_hashes_repr.t
+     and type value = Block_operation_hashes_repr.t
 
 (** Set of all registered delegates. *)
 module Delegates :
