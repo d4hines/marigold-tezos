@@ -391,12 +391,14 @@ class TestContracts:
             # operations cannot be PACKed
             (
                 "pack_operation.tz",
-                r'operation type forbidden in parameter, storage, events and constants',
+                r"operation type forbidden in parameter, storage, "
+                "events and constants",
             ),
             # operations cannot be TRACEd
             (
                 "trace_operation.tz",
-                r'operation type forbidden in parameter, storage, events and constants'
+                r"operation type forbidden in parameter, storage, "
+                "events and constants",
             ),
             # big_maps cannot be PACKed
             (
@@ -1151,8 +1153,7 @@ class TestComparables:
                                 Elt (Pair 1 "foo") Unit}',
             '(map (pair nat string) unit)',
         )
-        client.typecheck_data(
-            '{}', '(map (pair nat (pair string bytes)) unit)')
+        client.typecheck_data('{}', '(map (pair nat (pair string bytes)) unit)')
 
         client.typecheck_data('{}', '(big_map (pair nat string) unit)')
         client.typecheck_data(
