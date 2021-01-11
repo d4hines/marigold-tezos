@@ -181,52 +181,69 @@ module Contract = struct
 end
 
 module Operation_hashes = struct
+  open Raw_context
+
   let add ctxt operation_hash =
-    let pred_operation_hashes = Raw_context.operation_hashes_get_pred ctxt in
-    let current = Raw_context.operation_hashes_get_current ctxt in
-    let operation_hashes =
-      Raw_context.create_operation_hashes
-        ~current:(operation_hash :: current)
-        ~pred_operation_hashes
-    in
-    Lwt.return @@ Raw_context.set_operation_hashes ctxt operation_hashes
+    Raw_context.update_block_operation_hashes
+      ctxt
+      (Block_operation_hashes_map.add
+         operation_hash
+         (create_block_operation_hashes_value ~level:(current_level ctxt).level)
+         (block_operation_hashes ctxt))
 
   let mem ctxt operation_hash =
-    Lwt.return
-    @@ List.exists
-         (Operation_hash.equal operation_hash)
-         ( Raw_context.operation_hashes_get_current ctxt
-         @ ( ctxt |> Raw_context.operation_hashes_get_pred
-           |> Block_operation_hashes_repr.to_list
-           |> Block_operation_hashes_repr.get_operation_hashes |> List.flatten
-           ) )
+    Block_operation_hashes_map.mem operation_hash (block_operation_hashes ctxt)
 
   let finalize ctxt =
-    let current_pred_operation_hashes =
-      Raw_context.operation_hashes_get_pred ctxt
+    let open Raw_context in
+    let current_level =
+      (current_level ctxt).level |> Raw_level_repr.to_int32 |> Int32.to_int
+      |> Z.of_int
     in
-    let rec take_n n xs =
-      match xs with
-      | [] ->
-          []
-      | x :: xs ->
-          if Z.(equal n (Z.of_int 1)) then [x] else x :: take_n Z.(pred n) xs
+    let k = Constants_repr.number_of_blocks_of_operation_hashes |> Z.of_int in
+    let next_block_operation_hashes_map =
+      Block_operation_hashes_map.filter
+        (fun _ v ->
+          let level =
+            v |> block_operation_hashes_get_level |> Raw_level_repr.to_int32
+            |> Int32.to_int |> Z.of_int
+          in
+          Z.(geq level (sub current_level k)))
+        (block_operation_hashes ctxt)
+    in
+    let module M = Map.Make (struct
+      include Raw_level_repr
+
+      type t = Raw_level_repr.t
+    end) in
+    let a =
+      Block_operation_hashes_map.fold
+        (fun ihash v acc ->
+          let ilevel = block_operation_hashes_get_level v in
+          let hash_metadata =
+            match M.find_opt ilevel acc with
+            | Some hash_metadata ->
+                ihash :: hash_metadata
+            | None ->
+                [ihash]
+          in
+          M.add ilevel hash_metadata acc)
+        next_block_operation_hashes_map
+        M.empty
     in
     let next_pred_operation_hashes =
-      Block_operation_hashes_repr.make
-        ~level:(Raw_context.current_level ctxt).Level_repr.level
-        ~hashes:(Raw_context.operation_hashes_get_current ctxt)
-      :: take_n
-           (Z.of_int Constants_repr.number_of_blocks_of_operation_hashes)
-           (Block_operation_hashes_repr.to_list current_pred_operation_hashes)
-    in
-    let operation_hashes =
-      Raw_context.create_operation_hashes
-        ~current:[]
-        ~pred_operation_hashes:next_pred_operation_hashes
+      M.fold
+        (fun k v acc ->
+          Block_operation_hashes_repr.make ~level:k ~hashes:v :: acc)
+        a
+        []
     in
     Block_operation_hashes_storage.persist ctxt next_pred_operation_hashes
-    >|=? fun ctxt -> Raw_context.set_operation_hashes ctxt operation_hashes
+    >|= fun ctxt ->
+    Ok
+      (Raw_context.update_block_operation_hashes
+         ctxt
+         Block_operation_hashes_map.empty)
 end
 
 module Big_map = struct

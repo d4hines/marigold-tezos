@@ -26,9 +26,4 @@
 (*****************************************************************************)
 
 let persist ctxt new_pred_operation_hashes =
-  Storage.Block_operation_hashes.set ctxt new_pred_operation_hashes
-  >>= function
-  | Ok _ as r ->
-     Lwt.return r
-  | Error _ ->
-      Storage.Block_operation_hashes.init ctxt new_pred_operation_hashes
+  Storage.Block_operation_hashes.init_set ctxt new_pred_operation_hashes

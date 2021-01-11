@@ -44,16 +44,12 @@ let encoding =
   let open Data_encoding in
   list encoding_single_block_operations_hashes
 
-let to_list x = x
-
-let of_list x = x
-
 let compare x y = Raw_level_repr.compare x.level y.level
 
 let path_length = 1
 
-let get_level v = v.level
+let[@inline] level v = v.level
 
-let get_operation_hashes v = List.map (fun v -> v.hashes) v
+let[@inline] hashes v = v.hashes
 
 let make ~level ~hashes = {level; hashes}

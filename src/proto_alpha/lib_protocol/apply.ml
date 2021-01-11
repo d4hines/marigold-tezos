@@ -1345,8 +1345,7 @@ let apply_contents_list (type kind) ctxt chain_id mode pred_block baker
 
 let apply_operation ctxt chain_id mode pred_block baker hash operation =
   let ctxt = Contract.init_origination_nonce ctxt hash in
-  Operation_hashes.add ctxt hash
-  >>= fun ctxt ->
+  let ctxt = Operation_hashes.add ctxt hash in
   apply_contents_list
     ctxt
     chain_id

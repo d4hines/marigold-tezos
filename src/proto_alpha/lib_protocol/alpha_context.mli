@@ -682,9 +682,9 @@ module Seed : sig
 end
 
 module Operation_hashes : sig
-  val add : context -> Operation_list_hash.elt -> context Lwt.t
+  val add : context -> Operation_list_hash.elt -> context
 
-  val mem : context -> Operation_list_hash.elt -> bool Lwt.t
+  val mem : context -> Operation_list_hash.elt -> bool
 end
 
 module Big_map : sig

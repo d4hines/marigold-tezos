@@ -44,14 +44,16 @@ type error += Failed_to_decode_parameter of Data_encoding.json * string
 
 val storage_error : storage_error -> 'a tzresult
 
-type operation_hashes
+module Block_operation_hashes_map : S.MAP with type key = Operation_hash.t
 
-val create_operation_hashes :
-  current:Operation_hash.t list ->
-  pred_operation_hashes:Block_operation_hashes_repr.t ->
-  operation_hashes
+type block_operation_hashes_value
+
+val block_operation_hashes_get_level :
+  block_operation_hashes_value -> Raw_level_repr.t
 
 (** {1 Abstract Context} *)
+val create_block_operation_hashes_value :
+  level:Raw_level_repr.t -> block_operation_hashes_value
 
 (** Abstract view of the context.
     Includes a handle to the functional key-value database
@@ -62,13 +64,8 @@ type context = t
 
 type root_context = t
 
-val set_operation_hashes : t -> operation_hashes -> t
-
-val get_operation_hashes : t -> operation_hashes
-
-val operation_hashes_get_current : t -> Operation_hash.t list
-
-val operation_hashes_get_pred : t -> Block_operation_hashes_repr.t
+val update_block_operation_hashes :
+  t -> block_operation_hashes_value Block_operation_hashes_map.t -> t
 
 (** Retrieves the state of the database and gives its abstract view.
     It also returns wether this is the first block validated
@@ -96,6 +93,10 @@ val fork_test_chain : context -> Protocol_hash.t -> Time.t -> t Lwt.t
 
 (** Returns the state of the database resulting of operations on its
     abstract view *)
+
+val block_operation_hashes :
+  context -> block_operation_hashes_value Block_operation_hashes_map.t
+
 val recover : context -> Context.t
 
 val current_level : context -> Level_repr.t

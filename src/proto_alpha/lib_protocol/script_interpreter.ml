@@ -1237,8 +1237,8 @@ let rec step_bounded :
   | (Self (t, entrypoint), rest) ->
       logged_return (((t, (step_constants.self, entrypoint)), rest), ctxt)
   | (Is_tx_included, (tx_hash, rest)) ->
-      Operation_hashes.mem ctxt tx_hash
-      >>= fun is_included -> logged_return ((is_included, rest), ctxt)
+      let is_included = Operation_hashes.mem ctxt tx_hash in
+      logged_return ((is_included, rest), ctxt)
   | (Self_address, rest) ->
       logged_return (((step_constants.self, "default"), rest), ctxt)
   | (Amount, rest) ->

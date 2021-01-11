@@ -31,10 +31,6 @@ type single_block_operation_hashes = {
 
 type t = single_block_operation_hashes list
 
-val to_list : t -> single_block_operation_hashes list
-
-val of_list : single_block_operation_hashes list -> t
-
 val encoding : t Data_encoding.t
 
 val path_length : int
@@ -42,9 +38,9 @@ val path_length : int
 val compare :
   single_block_operation_hashes -> single_block_operation_hashes -> int
 
-val get_level : single_block_operation_hashes -> Raw_level_repr.t
+val level : single_block_operation_hashes -> Raw_level_repr.t
 
-val get_operation_hashes : t -> Operation_hash.t list list
+val hashes : single_block_operation_hashes -> Operation_hash.t list
 
 val make :
   level:Raw_level_repr.t ->

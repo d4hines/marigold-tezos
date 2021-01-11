@@ -78,13 +78,18 @@ type gas_counter_status =
    Here are the fields on the [back] of the context:
 
  *)
-type operation_hashes = {
-  current : Operation_hash.t list;
-  pred_operation_hashes : Block_operation_hashes_repr.t;
-}
 
-let create_operation_hashes ~current ~pred_operation_hashes =
-  {current; pred_operation_hashes}
+type block_operation_hashes_value = {level : Raw_level_repr.t}
+
+let create_block_operation_hashes_value ~level = {level}
+
+let block_operation_hashes_get_level v = v.level
+
+module Block_operation_hashes_map = Map.Make (struct
+  type t = Operation_hash.t
+
+  let compare = Operation_hash.compare
+end)
 
 type back = {
   context : Context.t;
@@ -107,7 +112,8 @@ type back = {
   internal_nonce : int;
   internal_nonces_used : Int_set.t;
   gas_counter_status : gas_counter_status;
-  operation_hashes : operation_hashes;
+  block_operation_hashes :
+    block_operation_hashes_value Block_operation_hashes_map.t;
 }
 
 (*
@@ -132,16 +138,8 @@ type root_context = t
    components.
 
 *)
-let set_operation_hashes ctxt operation_hashes =
-  let back = {ctxt.back with operation_hashes} in
-  {ctxt with back}
 
-let get_operation_hashes ctxt = ctxt.back.operation_hashes
-
-let operation_hashes_get_current ctxt = ctxt.back.operation_hashes.current
-
-let operation_hashes_get_pred ctxt =
-  ctxt.back.operation_hashes.pred_operation_hashes
+let[@inline] block_operation_hashes ctxt = ctxt.back.block_operation_hashes
 
 let[@inline] context ctxt = ctxt.back.context
 
@@ -189,6 +187,9 @@ let[@inline] gas_counter ctxt = ctxt.gas_counter
 let[@inline] update_gas_counter ctxt gas_counter = {ctxt with gas_counter}
 
 let[@inline] update_back ctxt back = {ctxt with back}
+
+let[@inline] update_block_operation_hashes ctxt block_operation_hashes =
+  update_back ctxt {ctxt.back with block_operation_hashes}
 
 let[@inline] update_gas_counter_status ctxt gas_counter_status =
   update_back ctxt {ctxt.back with gas_counter_status}
@@ -773,8 +774,7 @@ let prepare ~level ~predecessor_timestamp ~timestamp ~fitness ctxt =
         internal_nonce = 0;
         internal_nonces_used = Int_set.empty;
         gas_counter_status = Unlimited_operation_gas;
-        operation_hashes =
-          create_operation_hashes ~current:[] ~pred_operation_hashes:[];
+        block_operation_hashes = Block_operation_hashes_map.empty;
       };
   }
 

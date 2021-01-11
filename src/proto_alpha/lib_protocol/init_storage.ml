@@ -62,7 +62,25 @@ let prepare ctxt ~level ~predecessor_timestamp ~timestamp ~fitness =
   >>=? fun ctxt ->
   Storage.Block_operation_hashes.get ctxt
   >|=? fun pred_operation_hashes ->
-  let operation_hashes =
-    Raw_context.create_operation_hashes ~current:[] ~pred_operation_hashes
-  in
-  Raw_context.set_operation_hashes ctxt operation_hashes
+  let open Raw_context in
+  Raw_context.update_block_operation_hashes
+    ctxt
+    (List.fold_right
+       (fun block_operation_hashes
+            (acc : block_operation_hashes_value Block_operation_hashes_map.t) ->
+         let hashes =
+           Block_operation_hashes_repr.hashes block_operation_hashes
+         in
+         let level =
+           Block_operation_hashes_repr.level block_operation_hashes
+         in
+         List.fold_right
+           (fun hash acc ->
+             Block_operation_hashes_map.add
+               hash
+               (Raw_context.create_block_operation_hashes_value ~level)
+               acc)
+           hashes
+           acc)
+       pred_operation_hashes
+       (Raw_context.block_operation_hashes ctxt))
