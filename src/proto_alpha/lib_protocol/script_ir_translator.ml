@@ -778,8 +778,23 @@ let rec unparse_stack :
       >|? fun (urest, ctxt) ->
       ((strip_locations uty, unparse_var_annot annot) :: urest, ctxt)
 
+let rec drop_bottom : type a. a stack_ty -> ex_stack_ty = function
+  | Item_t (_, Empty_t, _) ->
+      Ex_stack_ty Empty_t
+  | Empty_t ->
+      Ex_stack_ty Empty_t
+  | Item_t (ty, rest, annot) -> (
+    match drop_bottom rest with
+    | Ex_stack_ty s ->
+        Ex_stack_ty (Item_t (ty, s, annot)) )
+
 let serialize_stack_for_error ctxt stack_ty =
-  record_trace Cannot_serialize_error (unparse_stack ctxt stack_ty)
+  (* In error messages, the stack types must be conformed to the
+     specification.  Therefore, the fact that the interpreter uses a
+     nonempty stack should not be observable in error messages. *)
+  match drop_bottom stack_ty with
+  | Ex_stack_ty stack_ty ->
+      record_trace Cannot_serialize_error (unparse_stack ctxt stack_ty)
 
 let name_of_ty : type a. a ty -> type_annot option = function
   | Unit_t tname ->
@@ -3119,8 +3134,7 @@ and parse_instr :
   in
   match (script_instr, stack_ty) with
   (* stack ops *)
-  | (Prim (loc, I_DROP, [], annot), Item_t (_, (Item_t (_, _, _) as rest), _))
-    ->
+  | (Prim (loc, I_DROP, [], annot), Item_t (_, (Item_t _ as rest), _)) ->
       ( error_unexpected_annot loc annot
         >>?= fun () ->
         typed
@@ -3161,7 +3175,8 @@ and parse_instr :
       (* Technically, the arities 0 and 1 are allowed but the error only mentions 1.
             However, DROP is equivalent to DROP 1 so hinting at an arity of 1 makes sense. *)
       fail (Invalid_arity (loc, I_DROP, 1, List.length l))
-  | (Prim (loc, I_DUP, [], annot), Item_t (v, rest, stack_annot)) ->
+  | (Prim (loc, I_DUP, [], annot), Item_t (v, (Item_t _ as rest), stack_annot))
+    ->
       parse_var_annot loc annot ~default:stack_annot
       >>?= fun annot ->
       record_trace_eval
@@ -3333,8 +3348,7 @@ and parse_instr :
       let stack_ty = Item_t (Option_t (t, ty_name), stack, annot) in
       typed ctxt loc cons_none stack_ty
   | ( Prim (loc, I_IF_NONE, [bt; bf], annot),
-      ( Item_t (Option_t (t, _), (Item_t (_, _, _) as rest), option_annot) as
-      bef ) ) ->
+      (Item_t (Option_t (t, _), (Item_t _ as rest), option_annot) as bef) ) ->
       check_kind [Seq_kind] bt
       >>?= fun () ->
       check_kind [Seq_kind] bf
@@ -3601,7 +3615,8 @@ and parse_instr :
       let cdr = {size = 0; apply = (fun kinfo k -> ICdr (kinfo, k))} in
       typed ctxt loc cdr (Item_t (b, rest, annot))
   (* unions *)
-  | (Prim (loc, I_LEFT, [tr], annot), Item_t (tl, rest, stack_annot)) ->
+  | ( Prim (loc, I_LEFT, [tr], annot),
+      Item_t (tl, (Item_t _ as rest), stack_annot) ) ->
       parse_any_ty ctxt ~legacy tr
       >>?= fun (Ex_ty tr, ctxt) ->
       parse_constr_annot
@@ -3616,7 +3631,8 @@ and parse_instr :
         Item_t (Union_t ((tl, l_field), (tr, r_field), tname), rest, annot)
       in
       typed ctxt loc cons_left stack_ty
-  | (Prim (loc, I_RIGHT, [tl], annot), Item_t (tr, rest, stack_annot)) ->
+  | ( Prim (loc, I_RIGHT, [tl], annot),
+      Item_t (tr, (Item_t _ as rest), stack_annot) ) ->
       parse_any_ty ctxt ~legacy tl
       >>?= fun (Ex_ty tl, ctxt) ->
       parse_constr_annot
@@ -3686,9 +3702,7 @@ and parse_instr :
       let nil = {size = 1; apply = (fun kinfo k -> INil (kinfo, k))} in
       typed ctxt loc nil (Item_t (List_t (t, ty_name), stack, annot))
   | ( Prim (loc, I_CONS, [], annot),
-      Item_t
-        (tv, Item_t (List_t (t, ty_name), (Item_t (_, _, _) as rest), _), _) )
-    ->
+      Item_t (tv, Item_t (List_t (t, ty_name), (Item_t _ as rest), _), _) ) ->
       check_item_ty ctxt tv t loc I_CONS 1 2
       >>?= fun (Eq, t, ctxt) ->
       parse_var_annot loc annot
@@ -3699,8 +3713,8 @@ and parse_instr :
       ( typed ctxt loc cons_list (Item_t (List_t (t, ty_name), rest, annot))
         : ((a, s) judgement * context) tzresult Lwt.t )
   | ( Prim (loc, I_IF_CONS, [bt; bf], annot),
-      ( Item_t (List_t (t, ty_name), (Item_t (_, _, _) as rest), list_annot) as
-      bef ) ) ->
+      (Item_t (List_t (t, ty_name), (Item_t _ as rest), list_annot) as bef) )
+    ->
       check_kind [Seq_kind] bt
       >>?= fun () ->
       check_kind [Seq_kind] bf
@@ -3734,8 +3748,8 @@ and parse_instr :
       in
       merge_branches ~legacy ctxt loc btr bfr {branch}
       >>?= fun (judgement, ctxt) -> return ctxt judgement
-  | ( Prim (loc, I_SIZE, [], annot),
-      Item_t (List_t _, (Item_t (_, _, _) as rest), _) ) ->
+  | (Prim (loc, I_SIZE, [], annot), Item_t (List_t _, (Item_t _ as rest), _))
+    ->
       parse_var_type_annot loc annot
       >>?= fun (annot, tname) ->
       let list_size =
@@ -3759,8 +3773,7 @@ and parse_instr :
         (Item_t (elt, starting_rest, elt_annot))
       >>=? fun (judgement, ctxt) ->
       match judgement with
-      | Typed ({aft = Item_t (ret, (Item_t (_, _, _) as rest), _); _} as ibody)
-        ->
+      | Typed ({aft = Item_t (ret, (Item_t _ as rest), _); _} as ibody) ->
           let invalid_map_body () =
             serialize_stack_for_error ctxt ibody.aft
             >|? fun (aft, _ctxt) -> Invalid_map_body (loc, aft)
@@ -3798,7 +3811,7 @@ and parse_instr :
       | Failed _ ->
           fail (Invalid_map_block_fail loc) )
   | ( Prim (loc, I_ITER, [body], annot),
-      Item_t (List_t (elt, _), (Item_t (_, _, _) as rest), list_annot) ) -> (
+      Item_t (List_t (elt, _), (Item_t _ as rest), list_annot) ) -> (
       check_kind [Seq_kind] body
       >>?= fun () ->
       error_unexpected_annot loc annot
@@ -3863,8 +3876,7 @@ and parse_instr :
       in
       typed ctxt loc instr (Item_t (Set_t (t, tname), rest, annot))
   | ( Prim (loc, I_ITER, [body], annot),
-      Item_t (Set_t (comp_elt, _), (Item_t (_, _, _) as rest), set_annot) )
-    -> (
+      Item_t (Set_t (comp_elt, _), (Item_t _ as rest), set_annot) ) -> (
       check_kind [Seq_kind] body
       >>?= fun () ->
       error_unexpected_annot loc annot
@@ -3920,8 +3932,7 @@ and parse_instr :
           in
           typed ctxt loc instr rest )
   | ( Prim (loc, I_MEM, [], annot),
-      Item_t (v, Item_t (Set_t (elt, _), (Item_t (_, _, _) as rest), _), _) )
-    ->
+      Item_t (v, Item_t (Set_t (elt, _), (Item_t _ as rest), _), _) ) ->
       let elt = ty_of_comparable_ty elt in
       parse_var_type_annot loc annot
       >>?= fun (annot, tname) ->
@@ -3962,9 +3973,8 @@ and parse_instr :
       in
       typed ctxt loc instr (Item_t (Map_t (tk, tv, ty_name), stack, annot))
   | ( Prim (loc, I_MAP, [body], annot),
-      Item_t
-        (Map_t (ck, elt, _), (Item_t (_, _, _) as starting_rest), _map_annot)
-    ) -> (
+      Item_t (Map_t (ck, elt, _), (Item_t _ as starting_rest), _map_annot) )
+    -> (
       let k = ty_of_comparable_ty ck in
       check_kind [Seq_kind] body
       >>?= fun () ->
@@ -4023,10 +4033,8 @@ and parse_instr :
       | Failed _ ->
           fail (Invalid_map_block_fail loc) )
   | ( Prim (loc, I_ITER, [body], annot),
-      Item_t
-        ( Map_t (comp_elt, element_ty, _),
-          (Item_t (_, _, _) as rest),
-          _map_annot ) ) -> (
+      Item_t (Map_t (comp_elt, element_ty, _), (Item_t _ as rest), _map_annot)
+    ) -> (
       check_kind [Seq_kind] body
       >>?= fun () ->
       error_unexpected_annot loc annot
@@ -4342,8 +4350,7 @@ and parse_instr :
       merge_branches ~legacy ctxt loc btr bfr {branch}
       >>?= fun (judgement, ctxt) -> return ctxt judgement
   | ( Prim (loc, I_LOOP, [body], annot),
-      (Item_t (Bool_t _, (Item_t (_, _, _) as rest), _stack_annot) as stack) )
-    -> (
+      (Item_t (Bool_t _, (Item_t _ as rest), _stack_annot) as stack) ) -> (
       check_kind [Seq_kind] body
       >>?= fun () ->
       error_unexpected_annot loc annot
@@ -4391,9 +4398,8 @@ and parse_instr :
           typed ctxt loc instr rest )
   | ( Prim (loc, I_LOOP_LEFT, [body], annot),
       ( Item_t
-          ( Union_t ((tl, l_field), (tr, _), _),
-            (Item_t (_, _, _) as rest),
-            union_annot ) as stack ) ) -> (
+          (Union_t ((tl, l_field), (tr, _), _), (Item_t _ as rest), union_annot)
+      as stack ) ) -> (
       check_kind [Seq_kind] body
       >>?= fun () ->
       parse_var_annot loc annot
@@ -4505,7 +4511,7 @@ and parse_instr :
           (Item_t (Lambda_t (arg_ty, ret, lam_annot), rest, annot))
         : ((a, s) judgement * context) tzresult Lwt.t )
   | ( Prim (loc, I_DIP, [code], annot),
-      Item_t (v, (Item_t (_, _, _) as rest), stack_annot) ) -> (
+      Item_t (v, (Item_t _ as rest), stack_annot) ) -> (
       error_unexpected_annot loc annot
       >>?= fun () ->
       check_kind [Seq_kind] code
@@ -4534,8 +4540,7 @@ and parse_instr :
           typed ctxt loc instr (Item_t (v, descr.aft, stack_annot))
       | Failed _ ->
           fail (Fail_not_in_tail_position loc) )
-  | (Prim (loc, I_DIP, [n; code], result_annot), (Item_t (_, _, _) as stack))
-    ->
+  | (Prim (loc, I_DIP, [n; code], result_annot), (Item_t _ as stack)) ->
       parse_uint10 n
       >>?= fun n ->
       Gas.consume ctxt (Typecheck_costs.proof_argument n)
@@ -4593,7 +4598,7 @@ and parse_instr :
       (* Technically, the arities 1 and 2 are allowed but the error only mentions 2.
             However, DIP {code} is equivalent to DIP 1 {code} so hinting at an arity of 2 makes sense. *)
       fail (Invalid_arity (loc, I_DIP, 2, List.length l))
-  | (Prim (loc, I_FAILWITH, [], annot), Item_t (v, _rest, _)) ->
+  | (Prim (loc, I_FAILWITH, [], annot), Item_t (v, (Item_t _ as _rest), _)) ->
       error_unexpected_annot loc annot
       >>?= fun () ->
       (if legacy then ok_unit else check_packable ~legacy:false loc v)
@@ -5148,7 +5153,8 @@ and parse_instr :
       let instr = {size = 0; apply = (fun kinfo k -> IGe (kinfo, k))} in
       typed ctxt loc instr (Item_t (Bool_t None, rest, annot))
   (* annotations *)
-  | (Prim (loc, I_CAST, [cast_t], annot), Item_t (t, stack, item_annot)) ->
+  | ( Prim (loc, I_CAST, [cast_t], annot),
+      Item_t (t, (Item_t _ as stack), item_annot) ) ->
       parse_var_annot loc annot ~default:item_annot
       >>?= fun annot ->
       parse_any_ty ctxt ~legacy cast_t
@@ -5158,7 +5164,7 @@ and parse_instr :
       let instr = {size = 0; apply = (fun kinfo k -> INop (kinfo, k))} in
       ( typed ctxt loc instr (Item_t (cast_t, stack, annot))
         : ((a, s) judgement * context) tzresult Lwt.t )
-  | (Prim (loc, I_RENAME, [], annot), Item_t (t, stack, _)) ->
+  | (Prim (loc, I_RENAME, [], annot), Item_t (t, (Item_t _ as stack), _)) ->
       parse_var_annot loc annot
       >>?= fun annot ->
       (* can erase annot *)
