@@ -332,6 +332,7 @@ module Script : sig
     | I_PAIR
     | I_UNPAIR
     | I_PUSH
+    | I_GET_GLOBAL
     | I_RIGHT
     | I_SIZE
     | I_SOME
@@ -574,6 +575,20 @@ module Constants : sig
   type t = {fixed : fixed; parametric : parametric}
 
   val encoding : t Data_encoding.t
+end
+
+module Global_constants : sig
+  (** See docs in global_constants.mli *)
+  val get_opt :
+    t -> string -> (t * (Script.expr * Script.expr) option) tzresult Lwt.t
+
+  (** See docs in global_constants.mli *)
+  val set :
+    t ->
+    string ->
+    Script.expr ->
+    Script.expr ->
+    (t * Z.t, error trace) result Lwt.t
 end
 
 module Level : sig
@@ -1234,11 +1249,14 @@ module Kind : sig
 
   type delegation = Delegation_kind
 
+  type register_global = Register_global_kind
+
   type 'a manager =
     | Reveal_manager_kind : reveal manager
     | Transaction_manager_kind : transaction manager
     | Origination_manager_kind : origination manager
     | Delegation_manager_kind : delegation manager
+    | Register_global_manager_kind : register_global manager
 end
 
 type 'kind operation = {
@@ -1321,6 +1339,12 @@ and _ manager_operation =
   | Delegation :
       Signature.Public_key_hash.t option
       -> Kind.delegation manager_operation
+  | Register_global : {
+      key : string;
+      ty : Script.lazy_expr;
+      value : Script.lazy_expr;
+    }
+      -> Kind.register_global manager_operation
 
 and counter = Z.t
 
@@ -1353,6 +1377,8 @@ val manager_kind : 'kind manager_operation -> 'kind Kind.manager
 
 module Fees : sig
   val origination_burn : context -> (context * Tez.t) tzresult
+
+  val cost_of_bytes : context -> Z.t -> Tez.t tzresult
 
   val record_paid_storage_space :
     context -> Contract.t -> (context * Z.t * Z.t * Tez.t) tzresult Lwt.t

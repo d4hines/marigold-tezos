@@ -55,6 +55,7 @@ let () =
       ("saturation arithmetic", Test_saturation.tests);
       ("gas cost functions", Test_gas_costs.tests);
       ("lazy storage diff", Test_lazy_storage_diff.tests);
+      ("global table of constants", Test_global_constants.tests);
       ("sapling", Test_sapling.tests);
       ("helpers rpcs", Test_helpers_rpcs.tests);
       ("script deserialize gas", Test_script_gas.tests) ]

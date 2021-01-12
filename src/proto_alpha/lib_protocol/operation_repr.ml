@@ -48,11 +48,14 @@ module Kind = struct
 
   type delegation = Delegation_kind
 
+  type register_global = Register_global_kind
+
   type 'a manager =
     | Reveal_manager_kind : reveal manager
     | Transaction_manager_kind : transaction manager
     | Origination_manager_kind : origination manager
     | Delegation_manager_kind : delegation manager
+    | Register_global_manager_kind : register_global manager
 end
 
 type raw = Operation.t = {shell : Operation.shell_header; proto : bytes}
@@ -139,6 +142,12 @@ and _ manager_operation =
   | Delegation :
       Signature.Public_key_hash.t option
       -> Kind.delegation manager_operation
+  | Register_global : {
+      key : string;
+      ty : Script_repr.lazy_expr;
+      value : Script_repr.lazy_expr;
+    }
+      -> Kind.register_global manager_operation
 
 and counter = Z.t
 
@@ -152,6 +161,8 @@ let manager_kind : type kind. kind manager_operation -> kind Kind.manager =
       Kind.Origination_manager_kind
   | Delegation _ ->
       Kind.Delegation_manager_kind
+  | Register_global _ ->
+      Kind.Register_global_manager_kind
 
 type 'kind internal_operation = {
   source : Contract_repr.contract;
@@ -345,6 +356,24 @@ module Encoding = struct
             (function Manager (Delegation _ as op) -> Some op | _ -> None);
           proj = (function Delegation key -> key);
           inj = (fun key -> Delegation key);
+        }
+
+    let register_global_case =
+      MCase
+        {
+          tag = 4;
+          name = "register_global";
+          encoding =
+            obj3
+              (req "key" Data_encoding.string)
+              (req "ty" Script_repr.lazy_expr_encoding)
+              (req "value" Script_repr.lazy_expr_encoding);
+          select =
+            (function
+            | Manager (Register_global _ as op) -> Some op | _ -> None);
+          proj =
+            (function Register_global {key; ty; value} -> (key, ty, value));
+          inj = (fun (key, ty, value) -> Register_global {key; ty; value});
         }
 
     let encoding =
@@ -580,6 +609,9 @@ module Encoding = struct
   let delegation_case =
     make_manager_case 110 Manager_operations.delegation_case
 
+  let register_global_case =
+    make_manager_case 111 Manager_operations.register_global_case
+
   let contents_encoding =
     let make (Case {tag; name; encoding; select; proj; inj}) =
       case
@@ -601,7 +633,8 @@ module Encoding = struct
            make reveal_case;
            make transaction_case;
            make origination_case;
-           make delegation_case ]
+           make delegation_case;
+           make register_global_case ]
 
   let contents_list_encoding =
     conv to_list of_list (Variable.list contents_encoding)
@@ -780,6 +813,10 @@ let equal_manager_operation_kind :
   | (Delegation _, Delegation _) ->
       Some Eq
   | (Delegation _, _) ->
+      None
+  | (Register_global _, Register_global _) ->
+      Some Eq
+  | (Register_global _, _) ->
       None
 
 let equal_contents_kind :

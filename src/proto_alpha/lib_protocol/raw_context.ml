@@ -455,7 +455,10 @@ let gas_consumed ~since ~until =
 let init_storage_space_to_pay ctxt =
   match storage_space_to_pay ctxt with
   | Some _ ->
-      assert false
+      raise
+      @@ Failure
+           "'storage_space_to_pay' field is already initialized. This \
+            function is likely being called twice somewhere."
   | None ->
       let ctxt = update_storage_space_to_pay ctxt (Some Z.zero) in
       update_allocated_contracts ctxt (Some 0)
@@ -463,7 +466,11 @@ let init_storage_space_to_pay ctxt =
 let clear_storage_space_to_pay ctxt =
   match (storage_space_to_pay ctxt, allocated_contracts ctxt) with
   | (None, _) | (_, None) ->
-      assert false
+      raise
+      @@ Failure
+           "One of 'storage_space_to_pay' or 'allocated_contracts' was \
+            already cleared. This function is likely being called twice in a \
+            row."
   | (Some storage_space_to_pay, Some allocated_contracts) ->
       let ctxt = update_storage_space_to_pay ctxt None in
       let ctxt = update_allocated_contracts ctxt None in
@@ -472,14 +479,22 @@ let clear_storage_space_to_pay ctxt =
 let update_storage_space_to_pay ctxt n =
   match storage_space_to_pay ctxt with
   | None ->
-      assert false
+      raise
+      @@ Failure
+           "Attempted to update 'storage_space_to_pay' without first \
+            initializing it. Make sure the [init_storage_space_to_pay] \
+            function is called before this one."
   | Some storage_space_to_pay ->
       update_storage_space_to_pay ctxt (Some (Z.add n storage_space_to_pay))
 
 let update_allocated_contracts_count ctxt =
   match allocated_contracts ctxt with
   | None ->
-      assert false
+      raise
+      @@ Failure
+           "Attempted to update 'allocated_contracts' without first \
+            initializing it. Make sure the [init_storage_space_to_pay] \
+            function is called before this one."
   | Some allocated_contracts ->
       update_allocated_contracts ctxt (Some (succ allocated_contracts))
 

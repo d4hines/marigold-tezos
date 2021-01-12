@@ -48,11 +48,14 @@ module Kind : sig
 
   type delegation = Delegation_kind
 
+  type register_global = Register_global_kind
+
   type 'a manager =
     | Reveal_manager_kind : reveal manager
     | Transaction_manager_kind : transaction manager
     | Origination_manager_kind : origination manager
     | Delegation_manager_kind : delegation manager
+    | Register_global_manager_kind : register_global manager
 end
 
 type raw = Operation.t = {shell : Operation.shell_header; proto : bytes}
@@ -139,6 +142,12 @@ and _ manager_operation =
   | Delegation :
       Signature.Public_key_hash.t option
       -> Kind.delegation manager_operation
+  | Register_global : {
+      key : string;
+      ty : Script_repr.lazy_expr;
+      value : Script_repr.lazy_expr;
+    }
+      -> Kind.register_global manager_operation
 
 and counter = Z.t
 

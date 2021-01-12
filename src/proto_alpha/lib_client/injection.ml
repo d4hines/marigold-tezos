@@ -372,6 +372,8 @@ let estimated_gas_single (type kind)
         Ok consumed_gas
     | Applied (Delegation_result {consumed_gas}) ->
         Ok consumed_gas
+    | Applied (Register_global_result {consumed_gas; _}) ->
+        Ok consumed_gas
     | Skipped _ ->
         assert false
     | Backtracked (_, None) ->
@@ -404,6 +406,9 @@ let estimated_storage_single (type kind) origination_size
     | Applied (Reveal_result _) ->
         Ok Z.zero
     | Applied (Delegation_result _) ->
+        Ok Z.zero
+    | Applied (Register_global_result _) ->
+        (* TODO: correct the cost model/reporting. *)
         Ok Z.zero
     | Skipped _ ->
         assert false
@@ -446,6 +451,8 @@ let originated_contracts_single (type kind)
         Ok originated_contracts
     | Applied (Origination_result {originated_contracts; _}) ->
         Ok originated_contracts
+    | Applied (Register_global_result _) ->
+        Ok []
     | Applied (Reveal_result _) ->
         Ok []
     | Applied (Delegation_result _) ->

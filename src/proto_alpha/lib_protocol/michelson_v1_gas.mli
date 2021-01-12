@@ -303,6 +303,8 @@ module Cost_of : sig
       'a Script_typed_ir.ticket ->
       'a Script_typed_ir.ticket ->
       Gas.cost
+
+    val get_global_constants : Gas.cost
   end
 
   module Typechecking : sig

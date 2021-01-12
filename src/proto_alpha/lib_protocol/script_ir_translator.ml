@@ -199,6 +199,8 @@ let number_of_generated_growing_types : type b a. (b, a) instr -> int =
   (* Constructors *)
   | Const _ ->
       1
+  | Get_global_constant _ ->
+      1
   | Cons_pair ->
       1
   | Cons_some ->
@@ -3596,6 +3598,16 @@ and parse_instr :
         t
         d
       >>=? fun (v, ctxt) -> typed ctxt loc (Const v) (Item_t (t, stack, annot))
+  | (Prim (loc, I_GET_GLOBAL, [t; String (_, addr)], annot), stack) ->
+      parse_var_annot loc annot
+      >>?= fun annot ->
+      parse_packable_ty ctxt ~legacy t
+      >>?= fun (Ex_ty t, ctxt) ->
+      typed
+        ctxt
+        loc
+        (Get_global_constant (t, addr))
+        (Item_t (Option_t (t, None), stack, annot))
   | (Prim (loc, I_UNIT, [], annot), stack) ->
       parse_var_type_annot loc annot
       >>?= fun (annot, ty_name) ->

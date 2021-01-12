@@ -9,6 +9,7 @@
             tezos-client-base
             tezos-protocol-alpha-parameters
             tezos-test-services
+            yojson
             tezos-sapling)
  (flags (:standard -open Tezos_base__TzPervasives
                    -open Tezos_micheline

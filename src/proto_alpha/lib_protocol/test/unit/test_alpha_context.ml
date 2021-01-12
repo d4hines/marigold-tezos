@@ -43,6 +43,62 @@ module Test_Script = struct
       (`Hex "030b" |> Hex.to_bytes)
 end
 
+module Test_Global_constants = struct
+  (** A default [Alpha_context.t] to work with.  *)
+  let context = create () |> Util.force_lwt |> Fees.start_counting_storage_fees
+
+  (** Should be able to store a pair of ints and retrieve
+  them successfully. *)
+  let round_trip_pair () =
+    let expr = Expr.from_string "Pair 3 7" in
+    let (context, ty_expr) =
+      "(pair int int)" |> Expr.from_string |> Expr.ty_from_expr context
+    in
+    Global_constants.set context "some constant" ty_expr expr
+    >>=? (fun (context, _) -> Global_constants.get_opt context "some constant")
+    >|= Environment.wrap_error
+    >>=? fun (_, value) ->
+    match value with
+    | Some (_, value) ->
+        assert (value = expr) ;
+        return_unit
+    | None ->
+        failwith "Global_constant round-trip failed."
+
+  (* Should be able to store a string and retrieve it successfully. *)
+  let round_trip_string () =
+    let expr = Expr.from_string {|"foo"|} in
+    let (context, ty_expr) = Expr.ty_from_string context "string" in
+    Global_constants.set context "some constant" ty_expr expr
+    >>=? (fun (context, _) -> Global_constants.get_opt context "some constant")
+    >|= Environment.wrap_error
+    >>=? fun (_, value) ->
+    match value with
+    | Some (_, value) ->
+        assert (value = expr) ;
+        return_unit
+    | None ->
+        failwith "Global_constant round-trip failed."
+
+  (* Shouldn't be allowed to set the same constant twice. *)
+  let set_twice () =
+    let expr = Expr.from_string {|"foo"|} in
+    let (context, ty_expr) = Expr.ty_from_string context "string" in
+    (* Set the first time *)
+    Global_constants.set context "some constant" ty_expr expr
+    >>=? (fun (context, _) ->
+           (* Try setting a second time. *)
+           Global_constants.set context "some constant" ty_expr expr)
+    >|= Environment.wrap_error
+    >>= fun result ->
+    match result with
+    | Ok _ ->
+        failwith "Should get an error"
+    | Error err ->
+        Util.assert_error_has_message err "Set on existing global constant" ;
+        return_unit
+end
+
 module Test_Big_map = struct
   (** Test failure path: look for a non-existent key in a [Big_map] *)
   let mem () =
@@ -95,6 +151,18 @@ end
 
 let tests =
   [ Test.tztest
+      "Global_constant get and set round-trip with a pair: happy path."
+      `Quick
+      Test_Global_constants.round_trip_pair;
+    Test.tztest
+      "Global_constant get and set round-trip with a string: happy path."
+      `Quick
+      Test_Global_constants.round_trip_pair;
+    Test.tztest
+      "Global_constant.set: Test that you can't set the same constant twice."
+      `Quick
+      Test_Global_constants.set_twice;
+    Test.tztest
       "Script.force_bytes_in_context: checks if it serialises a simple \
        michelson expression"
       `Quick

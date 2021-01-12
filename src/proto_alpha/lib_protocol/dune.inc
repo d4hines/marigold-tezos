@@ -77,6 +77,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    init_storage.mli init_storage.ml
    fees_storage.mli fees_storage.ml
    sapling_validator.ml
+   global_constants.mli global_constants.ml
    alpha_context.mli alpha_context.ml
    script_typed_ir.ml
    script_tc_errors.ml
@@ -164,6 +165,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    init_storage.mli init_storage.ml
    fees_storage.mli fees_storage.ml
    sapling_validator.ml
+   global_constants.mli global_constants.ml
    alpha_context.mli alpha_context.ml
    script_typed_ir.ml
    script_tc_errors.ml
@@ -251,6 +253,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    init_storage.mli init_storage.ml
    fees_storage.mli fees_storage.ml
    sapling_validator.ml
+   global_constants.mli global_constants.ml
    alpha_context.mli alpha_context.ml
    script_typed_ir.ml
    script_tc_errors.ml
@@ -358,6 +361,7 @@ include Tezos_raw_protocol_alpha.Main
    Init_storage
    Fees_storage
    Sapling_validator
+   Global_constants
    Alpha_context
    Script_typed_ir
    Script_tc_errors
@@ -481,6 +485,7 @@ include Tezos_raw_protocol_alpha.Main
    init_storage.mli init_storage.ml
    fees_storage.mli fees_storage.ml
    sapling_validator.ml
+   global_constants.mli global_constants.ml
    alpha_context.mli alpha_context.ml
    script_typed_ir.ml
    script_tc_errors.ml

@@ -64,6 +64,8 @@
         "Fees_storage",
         "Sapling_validator",
 
+        "Global_constants",
+        
         "Alpha_context",
 
         "Script_typed_ir",

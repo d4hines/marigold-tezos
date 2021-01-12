@@ -311,6 +311,97 @@ module Contract = struct
       (Tez_repr)
 end
 
+module Global_constants = struct
+  (* TODO: Come up with real naming scheme for keys.
+  Currently just use plain ol' strings. *)
+  module Index : sig
+    include Storage_description.INDEX
+
+    val of_string : string -> t
+  end = struct
+    type t = string
+
+    let path_length : int = 0
+
+    let to_path = List.cons
+
+    let of_path = function [x] -> Some x | _ -> None
+
+    let of_string x = x
+
+    let rpc_arg =
+      let construct x = x in
+      let destruct x = Ok x in
+      RPC_arg.make
+        ~descr:"A global constant"
+        ~name:"global_constant"
+        ~construct
+        ~destruct
+        ()
+
+    let encoding =
+      Data_encoding.(obj1 (req "global_constant" Data_encoding.string))
+
+    let compare : t -> t -> int = String.compare
+  end
+
+  module Map =
+    Make_indexed_carbonated_data_storage
+      (Make_subcontext (Registered) (Raw_context)
+         (struct
+           let name = ["global_constant"]
+         end))
+         (Make_index (Index))
+         (struct
+           type t = Script_repr.expr * Script_repr.expr
+
+           let encoding =
+             Data_encoding.(
+               obj2
+                 (req "global_constant_type" Script_repr.expr_encoding)
+                 (req "global_constant_expression" Script_repr.expr_encoding))
+         end)
+
+  type key = Index.t
+
+  type context = Map.context
+
+  let mem = Map.mem
+
+  let delete = Map.delete
+
+  let remove = Map.remove
+
+  let set = Map.set
+
+  let set_option = Map.set_option
+
+  let init = Map.init
+
+  let init_set = Map.init_set
+
+  let consume_deserialize_gas ctxt value =
+    Raw_context.consume_gas ctxt (Script_repr.deserialized_cost value)
+
+  let get ctxt contract =
+    Map.get ctxt contract
+    >>=? fun (ctxt, (_, value)) ->
+    Lwt.return
+      (consume_deserialize_gas ctxt value >|? fun ctxt -> (ctxt, value))
+
+  let get_option ctxt contract =
+    Map.get_option ctxt contract
+    >>=? fun (ctxt, value_opt) ->
+    Lwt.return
+    @@
+    match value_opt with
+    | None ->
+        ok (ctxt, None)
+    | Some (ty, value) ->
+        consume_deserialize_gas ctxt value
+        >|? fun ctxt -> (ctxt, Some (ty, value))
+end
+
 (** Big maps handling *)
 
 module Big_map = struct

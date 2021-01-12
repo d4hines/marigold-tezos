@@ -46,6 +46,12 @@ val storage_limit_arg : (Z.t option, full) Clic.arg
 
 val default_storage_limit_arg : (Z.t option, full) Clic.arg
 
+val global_key_arg : (string option, full) Clic.arg
+
+val global_ty_arg : (string option, full) Clic.arg
+
+val global_value_arg : (string option, full) Clic.arg
+
 val arg_arg : (string option, full) Clic.arg
 
 val default_arg_arg : (string option, full) Clic.arg

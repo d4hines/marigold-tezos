@@ -109,6 +109,7 @@ type prim =
   | I_PAIR
   | I_UNPAIR
   | I_PUSH
+  | I_GET_GLOBAL
   | I_RIGHT
   | I_SIZE
   | I_SOME
@@ -268,6 +269,7 @@ let namespace = function
   | I_PAIR
   | I_PAIRING_CHECK
   | I_PUSH
+  | I_GET_GLOBAL
   | I_READ_TICKET
   | I_RENAME
   | I_RIGHT
@@ -491,6 +493,8 @@ let string_of_prim = function
       "PAIR"
   | I_PUSH ->
       "PUSH"
+  | I_GET_GLOBAL ->
+      "GET_GLOBAL"
   | I_RIGHT ->
       "RIGHT"
   | I_SIZE ->
@@ -781,6 +785,8 @@ let prim_of_string = function
       ok I_PAIRING_CHECK
   | "PUSH" ->
       ok I_PUSH
+  | "GET_GLOBAL" ->
+      ok I_GET_GLOBAL
   | "RIGHT" ->
       ok I_RIGHT
   | "SHA3" ->
@@ -1026,6 +1032,7 @@ let prim_encoding =
          ("OR", I_OR);
          ("PAIR", I_PAIR);
          ("PUSH", I_PUSH);
+         ("GET_GLOBAL", I_GET_GLOBAL);
          ("RIGHT", I_RIGHT);
          ("SIZE", I_SIZE);
          (* /!\ NEW INSTRUCTIONS MUST BE ADDED AT THE END OF THE STRING_ENUM, FOR BACKWARD COMPATIBILITY OF THE ENCODING. *)

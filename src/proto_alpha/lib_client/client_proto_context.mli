@@ -47,6 +47,24 @@ val get_contract_big_map_value :
   Script.expr * Script.expr ->
   Script.expr option tzresult Lwt.t
 
+val register_global_constant :
+  #Protocol_client_context.full ->
+  chain:Shell_services.chain ->
+  block:Shell_services.block ->
+  ?confirmations:int ->
+  ?dry_run:bool ->
+  ?verbose_signing:bool ->
+  fee:Tezos_raw_protocol_alpha.Alpha_context.Tez.tez option ->
+  storage_limit:Z.t option ->
+  source:Signature.public_key_hash ->
+  src_pk:Signature.public_key ->
+  src_sk:Client_keys.sk_uri ->
+  fee_parameter:Injection.fee_parameter ->
+  string ->
+  string ->
+  string ->
+  (Kind.register_global Kind.manager Injection.result, tztrace) result Lwt.t
+
 val get_big_map_value :
   #Protocol_client_context.rpc_context ->
   chain:Shell_services.chain ->

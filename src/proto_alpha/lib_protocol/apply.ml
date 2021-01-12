@@ -752,6 +752,62 @@ let apply_manager_operation_content :
         Delegation_result
           {consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt},
         [] )
+  | Register_global {key; ty; value} ->
+      (* TODO: use the right monad operator. *)
+      Lwt.return
+        (* First, decode the type and value. *)
+        ( Script.force_decode_in_context ctxt value
+        >>? fun (value_expr, ctxt) ->
+        let cost_arg = Script.deserialized_cost value_expr in
+        Gas.consume ctxt cost_arg
+        >>? fun ctxt ->
+        Script.force_decode_in_context ctxt ty
+        >>? fun (ty_expr, ctxt) ->
+        let cost_arg = Script.deserialized_cost ty_expr in
+        Gas.consume ctxt cost_arg
+        (* Next, parse the type into a Michelson type. *)
+        >>? fun ctxt ->
+        Script_ir_translator.parse_ty
+          ctxt
+          ~legacy:false
+          ~allow_lazy_storage:true
+          ~allow_operation:false
+          ~allow_contract:false
+          ~allow_ticket:false
+          (Micheline.root ty_expr)
+        >>? fun (Script_ir_translator.Ex_ty ty, ctxt) ->
+        Ok (ctxt, Script_ir_translator.Ex_ty ty, ty_expr, value_expr) )
+      >>=? fun (ctxt, Script_ir_translator.Ex_ty ty, ty_expr, expr) ->
+      (* Test that the given value indeed matches
+        the given type.
+        
+        TODO: This invariant shouldn't be enforced
+        here, but rather closer to its destination
+        (storage). See notes in global_constants.mli *)
+      Script_ir_translator.parse_data
+        ctxt
+        ~legacy:false
+        ~allow_forged:false
+        ty
+        (Micheline.root expr)
+      >>=? fun (_, ctxt) ->
+      (* Set the key to the type and value in storage. *)
+      Global_constants.set ctxt key ty_expr expr
+      >>=? fun (ctxt, size) ->
+      Lwt.return @@ Fees.cost_of_bytes ctxt size
+      >>=? fun fees ->
+      let result =
+        Register_global_result
+          {
+            balance_updates =
+              Receipt.cleanup_balance_updates
+                [(Contract payer, Debited fees, Block_application)];
+            consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt;
+            constant_size = size;
+            global_address = key;
+          }
+      in
+      Lwt.return @@ Ok (ctxt, result, [])
 
 type success_or_failure = Success of context | Failure
 

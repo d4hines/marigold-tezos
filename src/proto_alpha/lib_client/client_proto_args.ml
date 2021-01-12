@@ -148,6 +148,27 @@ let init_arg =
     ~default:"Unit"
     string_parameter
 
+let global_key_arg =
+  arg
+    ~long:"key"
+    ~placeholder:"data"
+    ~doc:"key of the constant as a string"
+    string_parameter
+
+let global_ty_arg =
+  arg
+    ~long:"type"
+    ~placeholder:"data"
+    ~doc:"type of the constant as a Micheline expression"
+    string_parameter
+
+let global_value_arg =
+  arg
+    ~long:"value"
+    ~placeholder:"data"
+    ~doc:"value of the constant as a Micheline expression"
+    string_parameter
+
 let arg_arg =
   arg
     ~long:"arg"

@@ -67,6 +67,11 @@ let origination_burn c =
   >|? fun to_be_paid ->
   (Raw_context.update_allocated_contracts_count c, to_be_paid)
 
+(* TODO: refactor the rest of this module to use this function. *)
+let cost_of_bytes c n =
+  let cost_per_byte = Constants_storage.cost_per_byte c in
+  Tez_repr.(cost_per_byte *? Z.to_int64 n)
+
 let record_paid_storage_space c contract =
   Contract_storage.used_storage_space c contract
   >>=? fun size ->

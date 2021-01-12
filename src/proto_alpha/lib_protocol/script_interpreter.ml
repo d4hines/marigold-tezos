@@ -240,6 +240,8 @@ let cost_of_instr : type b a. (b, a) descr -> b -> Gas.cost =
       Interp_costs.swap
   | (Const _, _) ->
       Interp_costs.push
+  | (Get_global_constant _, _) ->
+      Interp_costs.get_global_constants
   | (Cons_some, _) ->
       Interp_costs.cons_some
   | (Cons_none _, _) ->
@@ -617,6 +619,21 @@ let rec step_bounded :
       logged_return ((vo, (vi, rest)), ctxt)
   | (Const v, rest) ->
       logged_return ((v, rest), ctxt)
+  | (Get_global_constant (t, addr), rest) -> (
+      Alpha_context.Global_constants.get_opt ctxt addr
+      >>=? fun (ctxt, micheline_opt) ->
+      match micheline_opt with
+      | Some (_, micheline) -> (
+          let node = Micheline.root micheline in
+          parse_data ctxt ~legacy:false ~allow_forged:false t node
+          >>= fun result ->
+          match result with
+          | Ok (v, ctxt) ->
+              logged_return ((Some v, rest), ctxt)
+          | Error _ ->
+              logged_return ((None, rest), ctxt) )
+      | None ->
+          logged_return ((None, rest), ctxt) )
   (* options *)
   | (Cons_some, (v, rest)) ->
       logged_return ((Some v, rest), ctxt)

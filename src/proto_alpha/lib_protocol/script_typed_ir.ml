@@ -207,6 +207,9 @@ and ('bef, 'aft) instr =
   | Dup : ('top * 'rest, 'top * ('top * 'rest)) instr
   | Swap : ('tip * ('top * 'rest), 'top * ('tip * 'rest)) instr
   | Const : 'ty -> ('rest, 'ty * 'rest) instr
+  | Get_global_constant :
+      ('ty ty * string)
+      -> ('rest, 'ty option * 'rest) instr
   (* pairs *)
   | Cons_pair : ('car * ('cdr * 'rest), ('car, 'cdr) pair * 'rest) instr
   | Car : (('car, _) pair * 'rest, 'car * 'rest) instr

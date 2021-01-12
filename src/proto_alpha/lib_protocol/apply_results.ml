@@ -75,6 +75,13 @@ type _ successful_manager_operation_result =
       consumed_gas : Gas.Arith.fp;
     }
       -> Kind.delegation successful_manager_operation_result
+  | Register_global_result : {
+      balance_updates : Receipt.balance_updates;
+      consumed_gas : Gas.Arith.fp;
+      constant_size : Z.t;
+      global_address : string;
+    }
+      -> Kind.register_global successful_manager_operation_result
 
 type packed_successful_manager_operation_result =
   | Successful_manager_result :
@@ -460,6 +467,10 @@ let equal_manager_kind :
   | (Kind.Delegation_manager_kind, Kind.Delegation_manager_kind) ->
       Some Eq
   | (Kind.Delegation_manager_kind, _) ->
+      None
+  | (Kind.Register_global_manager_kind, Kind.Register_global_manager_kind) ->
+      Some Eq
+  | (Kind.Register_global_manager_kind, _) ->
       None
 
 module Encoding = struct
@@ -1055,6 +1066,14 @@ let kind_equal :
           _ } ) ->
       Some Eq
   | (Manager_operation {operation = Delegation _; _}, _) ->
+      None
+  | ( Manager_operation {operation = Register_global _; _},
+      Manager_operation_result
+        { operation_result =
+            Skipped Alpha_context.Kind.Register_global_manager_kind;
+          _ } ) ->
+      Some Eq
+  | (Manager_operation {operation = Register_global _; _}, _) ->
       None
 
 let rec kind_equal_list :

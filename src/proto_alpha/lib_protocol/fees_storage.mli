@@ -32,6 +32,10 @@ type error += Storage_limit_too_high (* `Permanent *)
 (** Does not burn, only adds the burn to storage space to be paid *)
 val origination_burn : Raw_context.t -> (Raw_context.t * Tez_repr.t) tzresult
 
+(** [cost_of_bytes ctxt n] Calculates the cost of storing n
+bytes in the key-value store. *)
+val cost_of_bytes : Raw_context.t -> Z.t -> Tez_repr.t tzresult
+
 (** The returned Tez quantity is for logging purpose only *)
 val record_paid_storage_space :
   Raw_context.t ->

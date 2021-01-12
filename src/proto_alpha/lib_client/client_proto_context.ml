@@ -317,6 +317,47 @@ let originate_contract (cctxt : #full) ~chain ~block ?confirmations ?dry_run
         "The origination introduced %d contracts instead of one."
         (List.length contracts)
 
+let parse_str str =
+  Lwt.return @@ Michelson_v1_parser.parse_expression str
+  >>= fun result ->
+  Lwt.return (Micheline_parser.no_parsing_error result)
+  >>=? fun {Michelson_v1_parser.expanded = v; _} ->
+  Lwt.return_ok @@ Script.lazy_expr v
+
+let build_register_global ?fee ?gas_limit ?storage_limit key ty value =
+  parse_str ty
+  >>=? fun ty ->
+  parse_str value
+  >>=? fun value ->
+  let op = Register_global {key; ty; value} in
+  return
+    (Injection.prepare_manager_operation ?fee ?gas_limit ?storage_limit op)
+
+let register_global_constant cctxt ~chain ~block ?confirmations ?dry_run
+    ?verbose_signing ~fee ~storage_limit ~source ~src_pk ~src_sk ~fee_parameter
+    key ty expr =
+  build_register_global ?fee ?storage_limit key ty expr
+  >>=? fun op ->
+  let op = Injection.Single_manager op in
+  Injection.inject_manager_operation
+    cctxt
+    ~chain
+    ~block
+    ?confirmations
+    ?dry_run
+    ?verbose_signing
+    ~source
+    ?fee
+    ?storage_limit
+    ~src_pk
+    ~src_sk
+    ~fee_parameter
+    op
+  >>=? fun (oph, op, result) ->
+  match Apply_results.pack_contents_list op result with
+  | Apply_results.Single_and_result ((Manager_operation _ as op), result) ->
+      return (oph, op, result)
+
 type activation_key = {
   pkh : Ed25519.Public_key_hash.t;
   amount : Tez.t;

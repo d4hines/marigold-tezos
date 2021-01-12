@@ -33,6 +33,23 @@ type error +=
       Invalid_primitive_name of
       string Micheline.canonical * Micheline.canonical_location
 
+(**  A simple variant representing every Michelson primitive.
+
+Recall that Micheline is essentially just S-expressiosn with
+a few extra atom types for strings and numbers. This variant
+represents the values that `Prim` atoms in Micheline can have.
+Other types (such a 'a Micheline.canonical) are frequently
+parameterized by this type, lending flexibility as the language
+grows.
+
+Every instruction is prefixed with a letter according to the
+following scheme:
+
+K : keyword
+D : data (Data is Capitalized, e.g. `Unit`, `Pair`, `True`)
+I : instruction ( Instructions are UPPERCASE, e.g. `UNIT`, `DUP`)
+T : type (Types are lowercased e.g. `unit`, `pair`, `nat`)
+*)
 type prim =
   | K_parameter
   | K_storage
@@ -108,6 +125,7 @@ type prim =
   | I_PAIR
   | I_UNPAIR
   | I_PUSH
+  | I_GET_GLOBAL
   | I_RIGHT
   | I_SIZE
   | I_SOME

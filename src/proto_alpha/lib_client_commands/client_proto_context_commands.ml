@@ -190,6 +190,53 @@ let transfer_command amount source destination cctxt
         cctxt
   >>= function None -> return_unit | Some (_res, _contracts) -> return_unit
 
+let register_global_command cctxt source
+    ( fee,
+      dry_run,
+      verbose_signing,
+      storage_limit,
+      _counter,
+      key,
+      ty,
+      arg,
+      _force_low_fee,
+      _fee_cap,
+      _burn_cap ) =
+  (* TODO: finish work *)
+  let src_pk = assert false in
+  let src_sk = assert false in
+  let fee_parameter =
+    assert false
+    (* {
+            Injection.minimal_fees;
+            minimal_nanotez_per_byte;
+            minimal_nanotez_per_gas_unit;
+            force_low_fee;
+            fee_cap;
+            burn_cap;
+          } *)
+  in
+  register_global_constant
+    cctxt
+    ~chain:cctxt#chain
+    ~block:cctxt#block
+    ?confirmations:cctxt#confirmations
+    ?dry_run
+    ?verbose_signing
+    ~source
+    ~fee
+    ~storage_limit
+    ~src_pk
+    ~src_sk
+    ~fee_parameter
+    key
+    ty
+    arg
+  >>=? fun _ ->
+  assert false
+  >>= report_michelson_errors ~msg:"register global simulation failed" cctxt
+  >>= fun _ -> return_unit
+
 let tez_of_string_exn index field s =
   match Tez.of_string s with
   | Some t ->
@@ -954,6 +1001,49 @@ let commands network () =
             fee_cap,
             burn_cap,
             entrypoint ));
+    command
+      ~group
+      ~desc:"Register a global constant"
+      (args11
+         fee_arg
+         dry_run_switch
+         verbose_signing_switch
+         storage_limit_arg
+         counter_arg
+         global_key_arg
+         global_ty_arg
+         global_value_arg
+         force_low_fee_arg
+         fee_cap_arg
+         burn_cap_arg)
+      (prefixes ["register"; "global"] @@ stop)
+      (fun ( _fee,
+             _dry_run,
+             _verbose_signing,
+             _storage_limit,
+             _counter,
+             _key,
+             _ty,
+             _arg,
+             _force_low_fee,
+             _fee_cap,
+             _burn_cap )
+           _cctxt ->
+        (* TODO: Finish this function *)
+        assert false)
+    (* register_global_command
+          cctxt
+          ( fee,
+            dry_run,
+            verbose_signing,
+            storage_limit,
+            counter,
+            key,
+            ty,
+            arg,
+            force_low_fee,
+            fee_cap,
+            burn_cap ) *);
     command
       ~group
       ~desc:"Call a smart contract (same as 'transfer 0')."

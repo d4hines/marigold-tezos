@@ -130,7 +130,33 @@ let pp_manager_operation_content (type kind) source internal pp_result ppf
         Signature.Public_key_hash.pp
         delegate
         pp_result
-        result ) ;
+        result
+  | Register_global {key; ty; value} ->
+      let ty =
+        match Data_encoding.force_decode ty with
+        | Some x ->
+            x
+        | None ->
+            raise (Failure "ill-serialized ty")
+      in
+      let value =
+        match Data_encoding.force_decode value with
+        | Some x ->
+            x
+        | None ->
+            raise (Failure "ill-serialized value")
+      in
+      Format.fprintf
+        ppf
+        "@[<v 2>%s:@,Contract: %a@,Key: %s@,Ty: %a@, Value: %a@]"
+        (if internal then "Internal Register Global" else "Register Global")
+        Contract.pp
+        source
+        key
+        Michelson_v1_printer.print_expr
+        ty
+        Michelson_v1_printer.print_expr
+        value ) ;
   Format.fprintf ppf "@]"
 
 let pp_balance_updates ppf = function
@@ -334,12 +360,21 @@ let pp_manager_operation_contents_and_result ppf
     | Applied (Origination_result _ as op) ->
         Format.fprintf ppf "This origination was successfully applied" ;
         pp_origination_result op
+    | Applied (Register_global_result {global_address; _}) ->
+        (* TODO: make sure these are correct. *)
+        Format.fprintf ppf "Global registered at address %s" global_address
     | Backtracked ((Origination_result _ as op), _errs) ->
         Format.fprintf
           ppf
           "@[<v 0>This origination was BACKTRACKED, its expected effects (as \
            follow) were NOT applied.@]" ;
         pp_origination_result op
+    | Backtracked (Register_global_result _, _errs) ->
+        Format.fprintf
+          ppf
+          "@[<v 0>This registration of global was BACKTRACKED, its expected \
+           effects (as follow) were NOT applied.@]" ;
+        assert false
   in
   Format.fprintf
     ppf

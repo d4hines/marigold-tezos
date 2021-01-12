@@ -1241,6 +1241,8 @@ module Cost_of = struct
       ticket +@ compare_address
       +@ add_bigint ticket_a.amount ticket_b.amount
       +@ compare ty ticket_a.contents ticket_b.contents
+
+    let get_global_constants = Gas.free (* TODO: measure this *)
   end
 
   module Typechecking = struct

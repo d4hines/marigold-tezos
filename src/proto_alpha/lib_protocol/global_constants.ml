@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2020 Nomadic Labs, <contact@nomadic-labs.com>               *)
+(* Copyright (c) 2021 Marigold <team@marigold.dev>                     *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,38 +23,35 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Protocol
-open Alpha_context
+type error += Set_on_existing_global_constant
 
-exception Expression_from_string
+let () =
+  register_error_kind
+    `Branch
+    ~id:"Set_on_existing_global_constant"
+    ~title:"Set called on existing global constant"
+    ~description:
+      "Set was called on an existing global constant. You cannot overwrite an \
+       existing constant."
+    ~pp:(fun ppf () -> Format.fprintf ppf "Set on existing global constant")
+    Data_encoding.empty
+    (function Set_on_existing_global_constant -> Some () | _ -> None)
+    (fun () -> Set_on_existing_global_constant)
 
-let from_string str : Script.expr =
-  let (ast, errs) = Michelson_v1_parser.parse_expression ~check:false str in
-  ( match errs with
-  | [] ->
-      ()
-  | lst ->
-      Format.printf "expr_from_string: %a\n" Error_monad.pp_print_error lst ;
-      raise Expression_from_string ) ;
-  ast.expanded
+let get_opt context address =
+  let key = Storage.Global_constants.Index.of_string address in
+  Storage.Global_constants.get_option context key
 
-let ty_from_expr alpha_context expr =
-  let node = Micheline.root expr in
-  let (Ex_ty ty, alpha_context) =
-    Script_ir_translator.parse_ty
-      alpha_context
-      ~legacy:false
-      ~allow_lazy_storage:false
-      ~allow_operation:false
-      ~allow_ticket:false
-      ~allow_contract:false
-      node
-    |> Util.force
-  in
-  let (ty_expr, alpha_context) =
-    Script_ir_translator.unparse_ty alpha_context ty |> Util.force
-  in
-  (alpha_context, ty_expr |> Micheline.strip_locations)
-
-let ty_from_string alpha_context str =
-  str |> from_string |> ty_from_expr alpha_context
+let set context address ty value =
+  let key = Storage.Global_constants.Index.of_string address in
+  (* It is forbidden to update an existing global constant,
+    so we first check to see if one exists at the given address
+    and fail if this is the case. *)
+  Storage.Global_constants.mem context key
+  >>=? fun (context, exists) ->
+  if exists then fail Set_on_existing_global_constant
+  else
+    Storage.Global_constants.init context key (ty, value)
+    >|=? fun (context, size) ->
+    let fee = Z.of_int size in
+    (Raw_context.update_storage_space_to_pay context fee, fee)
