@@ -1079,7 +1079,6 @@ let rec comparable_ty_of_ty :
       >|? fun (ty, ctxt) -> (Option_key (ty, tname), ctxt)
   | Lambda_t _
   | Operation_hash_t _
-  (* TODO(prometheansacrifice) is Operation_hash_t really incomparable *)
   | List_t _
   | Ticket_t _
   | Set_t _
@@ -2759,11 +2758,9 @@ let parse_chain_id ctxt = function
       error
       @@ Invalid_kind (location expr, [String_kind; Bytes_kind], kind expr)
 
-(* TODO(prometheansacrifice) Should errors be signalled as Invalid_syntactic_constant *)
-(* TODO(prometheansacrifice) gas cost computation? *)
 let parse_operation_hash ctxt = function
   | String (loc, s) as expr -> (
-      Gas.consume ctxt Typecheck_costs.contract
+      Gas.consume ctxt Typecheck_costs.operation_hash_readable
       >>? fun ctxt ->
       match Operation_hash.of_b58check_opt s with
       | Some operation_hash ->
@@ -2773,7 +2770,7 @@ let parse_operation_hash ctxt = function
           @@ Invalid_syntactic_constant
                (loc, strip_locations expr, "a valid operation hash") )
   | Bytes (loc, bytes) as expr -> (
-      Gas.consume ctxt Typecheck_costs.contract
+      Gas.consume ctxt Typecheck_costs.operation_hash_optimized
       >>? fun ctxt ->
       match Data_encoding.Binary.of_bytes Operation_hash.encoding bytes with
       | Some operation_hash ->

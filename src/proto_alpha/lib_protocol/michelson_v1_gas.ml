@@ -629,6 +629,10 @@ module Cost_of = struct
     (* model DECODING_CHAIN_ID *)
     let cost_DECODING_CHAIN_ID = Z.of_int 50
 
+    let cost_DECODING_OPERATION_HASH = Z.of_int 50 (* TODO benchmark *)  
+
+    let cost_B58CHECK_DECODING_OPERATION_HASH = Z.of_int 1_500 (* TODO: benchmark. Estimate borrowed from cost_B58CHECK_DECODING_CHAIN_ID *)
+
     (* model DECODING_PUBLIC_KEY_HASH_ed25519 *)
     let cost_DECODING_PUBLIC_KEY_HASH_ed25519 = Z.of_int 50
 
@@ -1285,6 +1289,10 @@ module Cost_of = struct
              (max
                 cost_B58CHECK_DECODING_PUBLIC_KEY_HASH_secp256k1
                 cost_B58CHECK_DECODING_PUBLIC_KEY_HASH_p256))
+
+    let operation_hash_readable = atomic_step_cost cost_B58CHECK_DECODING_OPERATION_HASH
+
+    let operation_hash_optimized = atomic_step_cost cost_DECODING_OPERATION_HASH 
 
     let signature_optimized =
       atomic_step_cost
