@@ -110,7 +110,8 @@ val typecheck_program :
   ?gas:Gas.Arith.integral ->
   ?legacy:bool ->
   Michelson_v1_parser.parsed ->
-  (Script_tc_errors.type_map * Gas.t) tzresult Lwt.t
+  (Script_tc_errors.type_map * Gas.t * Script_tc_errors.events_map) tzresult
+  Lwt.t
 
 val print_typecheck_result :
   emacs:bool ->
