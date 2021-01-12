@@ -34,6 +34,8 @@ type unparsed_stack_ty = (Script.expr * Script.annot) list
 
 type type_map = (int * (unparsed_stack_ty * unparsed_stack_ty)) list
 
+type events_map = (int * (string * Script.expr)) list
+
 (* Structure errors *)
 type error += Invalid_arity of Script.location * prim * int * int
 
