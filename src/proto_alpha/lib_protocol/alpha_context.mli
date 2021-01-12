@@ -363,6 +363,7 @@ module Script : sig
     | I_READ_TICKET
     | I_SPLIT_TICKET
     | I_JOIN_TICKETS
+    | I_TRACE
     | T_bool
     | T_contract
     | T_int
