@@ -388,3 +388,10 @@ val extract_lazy_storage_diff :
 (* raise Not_found if none or more than one found *)
 val get_single_sapling_state :
   context -> 'a Script_typed_ir.ty -> 'a -> (Sapling.Id.t * context) tzresult
+
+val get_global_constant :
+  loc:Script.location ->
+  context ->
+  'a Script_typed_ir.ty ->
+  string ->
+  ('a option * context) tzresult Lwt.t

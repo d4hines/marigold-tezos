@@ -3598,16 +3598,17 @@ and parse_instr :
         t
         d
       >>=? fun (v, ctxt) -> typed ctxt loc (Const v) (Item_t (t, stack, annot))
-  | (Prim (loc, I_GET_GLOBAL, [t; String (_, addr)], annot), stack) ->
+  | (Prim (loc, I_GET_GLOBAL, [ty; String (_, addr)], annot), stack) ->
+      let ty_loc = location ty in
       parse_var_annot loc annot
       >>?= fun annot ->
-      parse_packable_ty ctxt ~legacy t
-      >>?= fun (Ex_ty t, ctxt) ->
+      parse_packable_ty ctxt ~legacy ty
+      >>?= fun (Ex_ty ty, ctxt) ->
       typed
         ctxt
         loc
-        (Get_global_constant (t, addr))
-        (Item_t (Option_t (t, None), stack, annot))
+        (Get_global_constant {ty_loc; ty; addr})
+        (Item_t (Option_t (ty, None), stack, annot))
   | (Prim (loc, I_UNIT, [], annot), stack) ->
       parse_var_type_annot loc annot
       >>?= fun (annot, ty_name) ->
@@ -7337,3 +7338,39 @@ let get_single_sapling_state ctxt ty x =
   in
   fold_lazy_storage ~f:{f} ~init:None ctxt ty x ~has_lazy_storage
   >>? function (None, _) -> raise Not_found | (Some id, ctxt) -> ok (id, ctxt)
+
+(* Script_ir_translator.big_map_get ctxt key map
+  >>=? fun (res, ctxt) -> logged_return ((res, rest), ctxt) *)
+let parse_global_constant_ty =
+  parse_ty
+    ~legacy:false
+    ~allow_lazy_storage:false
+    ~allow_operation:false
+    ~allow_contract:false
+    ~allow_ticket:false
+
+let parse_global_constant_value = parse_data ~legacy:false ~allow_forged:false
+
+let get_global_constant :
+    type a.
+    loc:location ->
+    context ->
+    a ty ->
+    string ->
+    (a option * context) tzresult Lwt.t =
+ fun ~loc ctxt ty addr ->
+  Global_constants.get_opt ctxt addr
+  >>=? fun (ctxt, micheline_opt) ->
+  match micheline_opt with
+  | Some (ty', value) -> (
+      (* TODO: is it worth to have this additional gas consumption to check the type? *)
+      parse_global_constant_ty ctxt (Micheline.root ty')
+      >>?= fun (Ex_ty ty', ctxt) ->
+      match merge_types ~legacy:false ctxt loc ty ty' with
+      | Ok (Eq, ty, ctxt) ->
+          parse_global_constant_value ctxt ty (Micheline.root value)
+          >|=? fun (value, ctxt) -> (Some value, ctxt)
+      | Error _ ->
+          return (None, ctxt) )
+  | None ->
+      return (None, ctxt)
