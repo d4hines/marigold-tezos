@@ -6,7 +6,7 @@
     Subject:      Unit tests for Tezos_protocol_environment.Context
 *)
 
-let c = function None -> None | Some s -> Some (Bytes.to_string s)
+let c = Option.map Bytes.to_string
 
 (* NOTE: Context is generic module whose functions are invoked by many consuming
    modules (context, Raw_context). Therefore, it's bound to get the most coverage
