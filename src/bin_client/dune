@@ -77,7 +77,8 @@
                     -open Tezos_client_commands
                     -open Tezos_mockup_commands
                     -open Tezos_client_base_unix
-                    -linkall)))
+                    -linkall))
+ (modes byte native))
 
 (rule
  (action

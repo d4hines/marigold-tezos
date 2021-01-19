@@ -89,7 +89,8 @@
                    -open Tezos_shell_context
                    -open Tezos_workers
                    -open Tezos_protocol_updater
-                   -linkall)))
+                   -linkall))
+ (modes byte native))
 
 (rule
  (action

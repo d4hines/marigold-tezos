@@ -10,7 +10,8 @@
                    -open Tezos_client_commands
                    -open Tezos_baking_007_PsDELPH1_commands
                    -open Tezos_stdlib_unix
-                   -open Tezos_client_base_unix)))
+                   -open Tezos_client_base_unix))
+ (modes byte native))
 
 (rule
  (alias runtest_lint)

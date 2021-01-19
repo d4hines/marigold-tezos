@@ -21,7 +21,8 @@
                    -open Tezos_rpc_http_server
                    -open Tezos_rpc_http_client_unix
                    -open Tezos_stdlib_unix
-                   -open Tezos_stdlib)))
+                   -open Tezos_stdlib))
+ (modes byte native))
 
 (rule
  (alias runtest_lint)

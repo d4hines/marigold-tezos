@@ -56,18 +56,18 @@
 (executable
  (name main_byte)
  (public_name tezos-protocol-compiler-byte)
- (modes native)
  (libraries tezos_protocol_compiler_byte)
  (flags (:standard -linkall))
- (modules Main_byte))
+ (modules Main_byte)
+ (modes byte native))
 
 (executable
  (name main_native)
  (public_name tezos-protocol-compiler)
- (modes native)
  (libraries tezos_protocol_compiler_native)
  (flags (:standard -linkall))
- (modules Main_native))
+ (modules Main_native)
+ (modes byte native))
 
 (executable
  (name main_packer)
@@ -78,12 +78,12 @@
  (flags (:standard -open Tezos_base__TzPervasives
                    -open Tezos_stdlib_unix
                    -open Tezos_protocol_compiler))
- (modules Main_packer))
+ (modules Main_packer)
+ (modes byte native))
 
 (executable
  (name main_embedded_packer)
  (public_name tezos-embedded-protocol-packer)
- (modes native)
  (libraries tezos-base
             tezos-base.unix
             tezos-stdlib-unix)
@@ -91,14 +91,16 @@
                    -open Tezos_base__TzPervasives
                    -open Tezos_base_unix
                    -open Tezos_stdlib_unix))
- (modules Main_embedded_packer))
+ (modules Main_embedded_packer)
+ (modes byte native))
 
 (executable
  (name replace)
  (libraries tezos-base tezos-base.unix tezos-stdlib-unix re.str)
  (flags (:standard -open Tezos_base__TzPervasives
                    -open Tezos_stdlib_unix))
- (modules Replace))
+ (modules Replace)
+ (modes byte native))
 
 (install
  (section libexec)

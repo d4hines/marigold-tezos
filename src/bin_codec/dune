@@ -33,7 +33,8 @@
                    -open Tezos_clic
                    -open Tezos_stdlib_unix
                    -open Tezos_event_logging
-                   -linkall)))
+                   -linkall))
+ (modes byte native))
 
 (rule
  (action

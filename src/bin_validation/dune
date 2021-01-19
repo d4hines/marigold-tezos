@@ -33,7 +33,8 @@
                    -open Tezos_protocol_updater
                    -open Tezos_validator
                    -linkall))
- (modules Main_validator))
+ (modules Main_validator)
+ (modes byte native))
 
 (rule
  (alias runtest_lint)
