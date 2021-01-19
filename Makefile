@@ -26,37 +26,39 @@ endif
 
 current_ocaml_version := $(shell opam exec -- ocamlc -version)
 
+EXE ?= exe
+
 .PHONY: all
 all: generate_dune
 ifneq (${current_ocaml_version},${ocaml_version})
 	$(error Unexpected ocaml version (found: ${current_ocaml_version}, expected: ${ocaml_version}))
 endif
 	@dune build \
-		src/bin_node/main.exe \
-		src/bin_validation/main_validator.exe \
-		src/bin_client/main_client.exe \
-		src/bin_client/main_admin.exe \
-		src/bin_signer/main_signer.exe \
-		src/bin_codec/codec.exe \
-		src/lib_protocol_compiler/main_native.exe \
+		src/bin_node/main.$(EXE) \
+		src/bin_validation/main_validator.$(EXE) \
+		src/bin_client/main_client.$(EXE) \
+		src/bin_client/main_admin.$(EXE) \
+		src/bin_signer/main_signer.$(EXE) \
+		src/bin_codec/codec.$(EXE) \
+		src/lib_protocol_compiler/main_native.$(EXE) \
 		src/bin_snoop/main_snoop.exe \
-		$(foreach p, $(active_protocol_directories), src/proto_$(p)/bin_baker/main_baker_$(p).exe) \
-		$(foreach p, $(active_protocol_directories), src/proto_$(p)/bin_endorser/main_endorser_$(p).exe) \
-		$(foreach p, $(active_protocol_directories), src/proto_$(p)/bin_accuser/main_accuser_$(p).exe) \
+		$(foreach p, $(active_protocol_directories), src/proto_$(p)/bin_baker/main_baker_$(p).$(EXE)) \
+		$(foreach p, $(active_protocol_directories), src/proto_$(p)/bin_endorser/main_endorser_$(p).$(EXE)) \
+		$(foreach p, $(active_protocol_directories), src/proto_$(p)/bin_accuser/main_accuser_$(p).$(EXE)) \
 		$(foreach p, $(active_protocol_directories), src/proto_$(p)/lib_parameters/sandbox-parameters.json) \
 		$(foreach p, $(active_protocol_directories), src/proto_$(p)/lib_parameters/test-parameters.json)
-	@cp _build/default/src/bin_node/main.exe tezos-node
-	@cp _build/default/src/bin_validation/main_validator.exe tezos-validator
-	@cp _build/default/src/bin_client/main_client.exe tezos-client
-	@cp _build/default/src/bin_client/main_admin.exe tezos-admin-client
-	@cp _build/default/src/bin_signer/main_signer.exe tezos-signer
-	@cp _build/default/src/bin_codec/codec.exe tezos-codec
-	@cp _build/default/src/lib_protocol_compiler/main_native.exe tezos-protocol-compiler
+	@cp _build/default/src/bin_node/main.$(EXE) tezos-node
+	@cp _build/default/src/bin_validation/main_validator.$(EXE) tezos-validator
+	@cp _build/default/src/bin_client/main_client.$(EXE) tezos-client
+	@cp _build/default/src/bin_client/main_admin.$(EXE) tezos-admin-client
+	@cp _build/default/src/bin_signer/main_signer.$(EXE) tezos-signer
+	@cp _build/default/src/bin_codec/codec.$(EXE) tezos-codec
+	@cp _build/default/src/lib_protocol_compiler/main_native.$(EXE) tezos-protocol-compiler
 	@cp _build/default/src/bin_snoop/main_snoop.exe tezos-snoop
 	@for p in $(active_protocol_directories) ; do \
-	   cp _build/default/src/proto_$$p/bin_baker/main_baker_$$p.exe tezos-baker-`echo $$p | tr -- _ -` ; \
-	   cp _build/default/src/proto_$$p/bin_endorser/main_endorser_$$p.exe tezos-endorser-`echo $$p | tr -- _ -` ; \
-	   cp _build/default/src/proto_$$p/bin_accuser/main_accuser_$$p.exe tezos-accuser-`echo $$p | tr -- _ -` ; \
+	   cp _build/default/src/proto_$$p/bin_baker/main_baker_$$p.$(EXE) tezos-baker-`echo $$p | tr -- _ -` ; \
+	   cp _build/default/src/proto_$$p/bin_endorser/main_endorser_$$p.$(EXE) tezos-endorser-`echo $$p | tr -- _ -` ; \
+	   cp _build/default/src/proto_$$p/bin_accuser/main_accuser_$$p.$(EXE) tezos-accuser-`echo $$p | tr -- _ -` ; \
 	   mkdir -p src/proto_$$p/parameters ; \
 	   cp _build/default/src/proto_$$p/lib_parameters/sandbox-parameters.json src/proto_$$p/parameters/sandbox-parameters.json ; \
 	   cp _build/default/src/proto_$$p/lib_parameters/test-parameters.json src/proto_$$p/parameters/test-parameters.json ; \
@@ -64,6 +66,10 @@ endif
 ifeq ($(MERLIN_INSTALLED),0) # only build tooling support if merlin is installed
 	@dune build @check
 endif
+
+.PHONY: bc
+bc:
+	@make EXE=bc all
 
 # List protocols, i.e. directories proto_* in src with a TEZOS_PROTOCOL file.
 TEZOS_PROTOCOL_FILES=$(wildcard src/proto_*/lib_protocol/TEZOS_PROTOCOL)
@@ -103,8 +109,8 @@ coverage-report-summary:
 
 .PHONY: build-sandbox
 build-sandbox:
-	@dune build src/bin_sandbox/main.exe
-	@cp _build/default/src/bin_sandbox/main.exe tezos-sandbox
+	@dune build src/bin_sandbox/main.$(EXE)
+	@cp _build/default/src/bin_sandbox/main.$(EXE) tezos-sandbox
 
 .PHONY: build-test
 build-test: build-sandbox
@@ -129,13 +135,13 @@ test-flextesa:
 
 .PHONY: test-tezt test-tezt-i test-tezt-c test-tezt-v
 test-tezt:
-	@dune exec tezt/tests/main.exe
+	@dune exec tezt/tests/main.$(EXE)
 test-tezt-i:
-	@dune exec tezt/tests/main.exe -- --info
+	@dune exec tezt/tests/main.$(EXE) -- --info
 test-tezt-c:
-	@dune exec tezt/tests/main.exe -- --commands
+	@dune exec tezt/tests/main.$(EXE) -- --commands
 test-tezt-v:
-	@dune exec tezt/tests/main.exe -- --verbose
+	@dune exec tezt/tests/main.$(EXE) -- --verbose
 
 .PHONY: test-code
 test-code: test-protocol-compile test-unit test-flextesa test-python test-tezt
