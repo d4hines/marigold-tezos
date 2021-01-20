@@ -225,8 +225,6 @@ let number_of_generated_growing_types : type b a. (b, a) instr -> int =
       1
   | Contract _ ->
       1
-  | Get_storage _ ->
-      1
   | Ticket ->
       1
   | Read_ticket ->
@@ -5112,23 +5110,6 @@ and parse_instr :
         loc
         (Contract (t, entrypoint))
         (Item_t (Option_t (Contract_t (t, None), None), rest, annot))
-  | ( Prim (loc, I_GET_STORAGE, [ty], annot),
-      Item_t (Address_t _, rest, addr_annot) ) ->
-      parse_ty
-        ctxt
-        ~allow_lazy_storage:true
-        ~allow_operation:true
-        ~allow_contract:true
-        ~allow_ticket:true
-        ~legacy:false
-        ty
-      >>?= fun (Ex_ty t, ctxt) ->
-      parse_var_annot
-        loc
-        annot
-        ~default:(gen_access_annot addr_annot default_contract_annot)
-      >>?= fun annot ->
-      typed ctxt loc (Get_storage t) (Item_t (Option_t (t, None), rest, annot))
   | ( Prim (loc, I_VIEW, [name; input_ty; output_ty], annot),
       Item_t (input, Item_t (Address_t _, rest, addr_annot), _) ) ->
       ( match name with
@@ -5652,7 +5633,6 @@ and parse_instr :
             | I_CONTRACT
             | I_CAST
             | I_UNPACK
-            | I_GET_STORAGE
             | I_CREATE_CONTRACT ) as name ),
           (([] | _ :: _ :: _) as l),
           _ ),
@@ -5827,7 +5807,6 @@ and parse_instr :
              I_DIG;
              I_DUG;
              I_VIEW;
-             I_GET_STORAGE;
              I_SWAP;
              I_SOME;
              I_UNIT;

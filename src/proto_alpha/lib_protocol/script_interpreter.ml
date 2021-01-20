@@ -284,8 +284,6 @@ let cost_of_instr : type b a. (b, a) descr -> b -> Gas.cost =
       Interp_costs.set_update v set
   | (Set_size, _) ->
       Interp_costs.set_size
-  | (Get_storage _, _) ->
-      Interp_costs.get_storage
   | (View _, _) ->
       Interp_costs.view
   | (Empty_map _, _) ->
@@ -1137,24 +1135,8 @@ let rec step_bounded :
               lazy_storage_diff ),
             rest ),
           ctxt )
-  | (Get_storage t, ((c, _), rest)) -> (
-      Gas.consume ctxt Interp_costs.get_storage
-      >>?= fun ctxt ->
-      Contract.get_script ctxt c
-      >>=? fun (ctxt, script_opt) ->
-      match script_opt with
-      | None ->
-          logged_return ((None, rest), ctxt)
-      | Some script -> (
-          parse_script ~legacy:false ~allow_forged_in_storage:true ctxt script
-          >>=? fun (Ex_script {storage; storage_type}, ctxt) ->
-          match ty_eq ctxt loc t storage_type with
-          | Ok (Eq, ctxt) ->
-              logged_return ((Some storage, rest), ctxt)
-          | Error _ ->
-              logged_return ((None, rest), ctxt) ) )
   | (View (name, input_ty, output_ty), (input, ((c, _), rest))) -> (
-      Gas.consume ctxt Interp_costs.get_storage
+      Gas.consume ctxt Interp_costs.view
       >>?= fun ctxt ->
       Contract.get_script ctxt c
       >>=? fun (ctxt, script_opt) ->

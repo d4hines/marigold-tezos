@@ -387,9 +387,6 @@ and ('bef, 'aft) instr =
   | Contract :
       'p ty * string
       -> (address * 'rest, 'p typed_contract option * 'rest) instr
-  | Get_storage :
-      'storage ty
-      -> (address * 'rest, 'storage option * 'rest) instr
   | View :
       (string * 'input ty * 'output ty)
       -> ('input * (address * 'rest), 'output option * 'rest) instr

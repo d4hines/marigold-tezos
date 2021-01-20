@@ -294,7 +294,6 @@ module Script : sig
     | I_DIP
     | I_DROP
     | I_DUP
-    | I_GET_STORAGE
     | I_VIEW
     | I_EDIV
     | I_EMPTY_BIG_MAP

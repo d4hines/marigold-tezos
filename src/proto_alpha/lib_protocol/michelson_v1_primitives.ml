@@ -71,7 +71,6 @@ type prim =
   | I_DIP
   | I_DROP
   | I_DUP
-  | I_GET_STORAGE
   | I_VIEW
   | I_EDIV
   | I_EMPTY_BIG_MAP
@@ -225,7 +224,6 @@ let namespace = function
   | I_DROP
   | I_DUG
   | I_DUP
-  | I_GET_STORAGE
   | I_VIEW
   | I_EDIV
   | I_EMPTY_BIG_MAP
@@ -574,8 +572,6 @@ let string_of_prim = function
       "SPLIT_TICKET"
   | I_JOIN_TICKETS ->
       "JOIN_TICKETS"
-  | I_GET_STORAGE ->
-      "GET_STORAGE"
   | I_VIEW ->
       "VIEW"
   | T_bool ->
@@ -712,8 +708,6 @@ let prim_of_string = function
       ok I_DROP
   | "DUP" ->
       ok I_DUP
-  | "GET_STORAGE" ->
-      ok I_GET_STORAGE
   | "VIEW" ->
       ok I_VIEW
   | "EDIV" ->
@@ -1129,7 +1123,6 @@ let prim_encoding =
          ("SPLIT_TICKET", I_SPLIT_TICKET);
          ("JOIN_TICKETS", I_JOIN_TICKETS);
          ("GET_AND_UPDATE", I_GET_AND_UPDATE);
-         ("GET_STORAGE", I_GET_STORAGE);
          ("VIEW", I_VIEW);
          ("view", K_view)
          (* New instructions must be added here, for backward compatibility of the encoding. *)
