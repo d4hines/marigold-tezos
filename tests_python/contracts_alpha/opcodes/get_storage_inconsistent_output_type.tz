@@ -1,3 +1,0 @@
-parameter (pair nat address) ;
-storage nat;
-code { CAR ; UNPAIR; DROP; GET_STORAGE bool ; IF_SOME { DROP ; PUSH nat 1 } { PUSH nat 2 } ; NIL operation ; PAIR }

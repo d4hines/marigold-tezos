@@ -577,9 +577,6 @@ class TestView:
             ('view_op_nonexistent_addr', 'True', 'False'),
             ('view_op_toplevel_inconsistent_input_type', '5', '0'),
             ('view_op_toplevel_inconsistent_output_type', 'True', 'False'),
-            ('get_storage', '144', '3'),
-            ('get_storage_nonexistent', '144', '0'),
-            ('get_storage_inconsistent_output_type', '0', '2'),
         ],
     )
     def test_runtime(self, client, session, contract, init_storage, expected):
@@ -627,10 +624,6 @@ class TestView:
             (
                 'view_op_bad_return_type',
                 'two branches don\'t end with the same stack type',
-            ),
-            (
-                'get_storage_invalid_arbity',
-                'primitive GET_STORAGE expects 1 arguments',
             ),
         ],
     )
