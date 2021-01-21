@@ -1,10 +1,9 @@
-
 #! /bin/sh
 
 ## How to use:
 ## eval $(scripts/env.sh)
 
-## Why?
+## Why this script exists?
 ## As we have vendored dependencies, to run a bytecode executable
 ## we need to have the shared libraries on CAML_LD_LIBRARY_PATH
 
@@ -13,7 +12,7 @@ set -e
 script_dir="$(cd "$(dirname "$0")" && echo "$(pwd -P)/")"
 src_dir="$(dirname "$script_dir")"
 
-eval $(opam env)
+eval "$(opam env)"
 
 add_ld_path () {
   echo "CAML_LD_LIBRARY_PATH=\"$src_dir/$1:\$CAML_LD_LIBRARY_PATH\""
