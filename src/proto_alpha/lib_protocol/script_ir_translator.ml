@@ -6191,19 +6191,16 @@ let parse_code :
         (storage_type, None, None),
         None )
   in
-  let tc_context =
-    Toplevel
-      {
-        storage_type;
-        param_type = arg_type;
-        root_name;
-        legacy_create_contract_literal = false;
-      }
-  in
   trace
     (Ill_typed_contract (code, []))
     (parse_returning
-       tc_context
+       (Toplevel
+          {
+            storage_type;
+            param_type = arg_type;
+            root_name;
+            legacy_create_contract_literal = false;
+          })
        ctxt
        ~legacy
        ~stack_depth:0
@@ -6220,7 +6217,7 @@ let parse_code :
     >>?= fun (Ex_ty output_ty', ctxt) ->
     parse_instr
       ~stack_depth:0
-      tc_context
+      Lambda
       ctxt
       ~legacy
       code
