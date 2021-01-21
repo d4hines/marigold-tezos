@@ -198,7 +198,7 @@ let number_of_generated_growing_types : type b a. (b, a) instr -> int =
   function
   (* Constructors *)
   | View _ ->
-      2
+      1
   | Const _ ->
       1
   | Cons_pair ->
