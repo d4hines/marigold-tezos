@@ -627,7 +627,7 @@ class TestView:
             ),
         ],
     )
-    def test_compile_time_error(
+    def test_typechecking_error(
         self, client, session, contract, expected_error
     ):
         path = f'{CONTRACT_PATH}/ill_typed/' + contract + '.tz'
