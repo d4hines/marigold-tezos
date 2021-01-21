@@ -1136,8 +1136,6 @@ let rec step_bounded :
             rest ),
           ctxt )
   | (View (name, input_ty, output_ty), (input, ((c, _), rest))) -> (
-      Gas.consume ctxt Interp_costs.view
-      >>?= fun ctxt ->
       Contract.get_script ctxt c
       >>=? fun (ctxt, script_opt) ->
       match script_opt with
