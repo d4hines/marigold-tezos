@@ -2,6 +2,7 @@
  (targets v2.ml)
  (deps
    v2/s.ml
+   v2/fQueue.ml
    v2/blake2B.ml
    v2/ed25519.ml
    v2/secp256k1.ml
