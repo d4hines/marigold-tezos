@@ -39,7 +39,6 @@
    v1/s.mli
    v1/set.mli
    v1/map.mli
-   v1/fQueue.mli
    v1/blake2B.mli
    v1/bls12_381.mli
    v1/ed25519.mli
