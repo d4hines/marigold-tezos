@@ -2326,6 +2326,43 @@ parameter if the sender is the contract's manager.
     :: 'S   ->   nat : 'S
 
 
+Operations on views
+~~~~~~~~~~~~~~~~~~~~
+
+-  ``VIEW name 'arg 'return { (instr) ; ... }``: This VIEW should be defined in the toplevel. Like the main Michelson program, it maintains a stack and its initial value contains a pair in which the first element is an input value and the second element is storage contents.
+
+
+-  ``VIEW name 'arg 'return``: It allows to use of predefine `VIEW` in toplevl and a result can be obtained immediately. If the given address or name is nonexistent, `NONE` will be returned. Otherwise, `Some a` will be returned.
+
+::
+
+    :: arg : address : 'S -> option 'return :'S
+
+    > VIEW name 'arg 'return / arg : address : S => option 'return : S
+
+
+Here is an example contract with `view`s:
+In the first contract, it defines two `view` s in toplevel which named `add_v` and `mul_v`.
+
+::
+
+    { parameter nat;
+      storage nat;
+      code { CAR; NIL operation ; PAIR };
+      view "add_v" nat nat { UNPAIR; ADD };
+      view "mul_v" nat nat { UNPAIR; MUL };
+    }
+
+
+In this contract, it calls the `add_v` of the above contract and obtains a result immediately.
+
+::
+
+    { parameter (pair nat address) ;
+      storage nat ;
+      code { CAR ; UNPAIR; VIEW "add_v" nat nat ;
+             IF_SOME { } { FAIL }; NIL operation; PAIR }; }
+
 Macros
 ------
 

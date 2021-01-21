@@ -16,3 +16,13 @@ to Edo.
 - Proto/Michelson: disallow empty entrypoints in string addresses
 
   Fixes: https://gitlab.com/tezos/tezos/-/issue/643
+
+Changelog
+---------
+
+List of Merge Requests
+~~~~~~~~~~~~~~~~~~~~~~
+
+This is the full list of Merge Requests that compose 008.
+
+* `Michelson onchain views <gitlab.com/tezos/tezos/-/merge_requests/2359>`_
