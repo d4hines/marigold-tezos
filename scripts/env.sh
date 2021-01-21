@@ -3,9 +3,8 @@
 ## How to use:
 ## eval $(scripts/env.sh)
 
-## Why this script exists?
-## As we have vendored dependencies, to run a bytecode executable
-## we need to have the shared libraries on CAML_LD_LIBRARY_PATH
+## This script setups the shell environment, to be able to build and
+## use the generated executables, including the bytecode version
 
 set -e
 
