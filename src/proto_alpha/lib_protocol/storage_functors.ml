@@ -853,21 +853,21 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
       pack u i
 
     let carbonated_cache_mem c k =
-      let (t, _i) = unpack c in
-      C.carbonated_cache_mem t k
+      let (t, i) = unpack c in
+      C.carbonated_cache_mem t (to_key i k)
 
     let carbonated_cache_find_option c k =
-      let (t, _i) = unpack c in
-      C.carbonated_cache_find_option t k
+      let (t, i) = unpack c in
+      C.carbonated_cache_find_option t (to_key i k)
 
     let carbonated_cache_add c k v =
       let (t, i) = unpack c in
-      let u = C.carbonated_cache_add t k v in
+      let u = C.carbonated_cache_add t (to_key i k) v in
       pack u i
 
     let carbonated_cache_remove c k =
       let (t, i) = unpack c in
-      let u = C.carbonated_cache_remove t k in
+      let u = C.carbonated_cache_remove t (to_key i k) in
       pack u i
   end
 

@@ -540,7 +540,7 @@ module Limitation = struct
     | None ->
         failwith "List.nth klist 0 doesn't exist"
     | Some kn -> (
-        let k5_prefix = "big_mapsindex03170a2e75970contents" in
+        let k5_prefix = "03170a2e75970big_mapsindex03170a2e75970contents" in
         let k5_str = String.concat "" (Script_expr_hash.to_path k5 ["data"]) in
         Assert.equal
           ~loc:__LOC__
@@ -557,7 +557,7 @@ module Limitation = struct
         | None ->
             failwith "List.nth klist 2 doesn't exist"
         | Some kn ->
-            let k3_prefix = "big_mapsindex03170a2e75970contents" in
+            let k3_prefix = "03170a2e75970big_mapsindex03170a2e75970contents" in
             let k3_str =
               String.concat "" (Script_expr_hash.to_path k3 ["data"])
             in
