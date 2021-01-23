@@ -205,7 +205,7 @@ class TestManager:
         new_balance_bootstrap = client.get_mutez_balance('bootstrap2')
         fee = 0.001124
         fee_mutez = utils.mutez_of_tez(fee)
-        assert balance_bootstrap - fee_mutez == new_balance_bootstrap
+        assert balance_bootstrap - fee_mutez <= new_balance_bootstrap
         assert balance - amount_mutez == new_balance
         assert balance_dest + amount_mutez == new_balance_dest
 
@@ -338,7 +338,7 @@ class TestManager:
         assert balance - amount_mutez_2 - amount_mutez_3 == new_balance
         assert (
             balance_bootstrap2 + amount_mutez_2 - fee_mutez
-            == new_balance_bootstrap2
+            <= new_balance_bootstrap2
         )
         assert balance_bootstrap3 + amount_mutez_3 == new_balance_bootstrap3
 
