@@ -8,68 +8,7 @@
 
 open Protocol
 open Alpha_context
-open Script_interpreter
-
-let ( >>=?? ) x y =
-  x
-  >>= function
-  | Ok s -> y s | Error _ as err -> Lwt.return @@ Environment.wrap_error err
-
-let test_context () =
-  Context.init 3
-  >>=? fun (b, _cs) ->
-  Incremental.begin_construction b
-  >>=? fun v -> return (Incremental.alpha_ctxt v)
-
-let default_source = Contract.implicit_contract Signature.Public_key_hash.zero
-
-let default_step_constants =
-  {
-    source = default_source;
-    payer = default_source;
-    self = default_source;
-    amount = Tez.zero;
-    chain_id = Chain_id.zero;
-  }
-
-(** Helper function that parses and types a script, its initial storage and
-   parameters from strings. It then executes the typed script with the storage
-   and parameter and returns the result. *)
-let run_script ctx ?(step_constants = default_step_constants) contract
-    ?(entrypoint = "default") ~storage ~parameter () =
-  let contract_expr = Expr.from_string contract in
-  let storage_expr = Expr.from_string storage in
-  let parameter_expr = Expr.from_string parameter in
-  let script =
-    Script.{code = lazy_expr contract_expr; storage = lazy_expr storage_expr}
-  in
-  Script_interpreter.execute
-    ctx
-    Readable
-    step_constants
-    ~script
-    ~entrypoint
-    ~parameter:parameter_expr
-    ~internal:false
-  >>=?? fun res -> return res
-
-module Logger : STEP_LOGGER = struct
-  let log_interp _ctxt _descr _stack = ()
-
-  let log_entry _ctxt _descr _stack = ()
-
-  let log_exit _ctxt _descr _stack = ()
-
-  let get_log () = Lwt.return (Ok None)
-end
-
-let run_step ctxt code param =
-  Script_interpreter.step
-    (module Logger)
-    ctxt
-    default_step_constants
-    code
-    param
+open Interpreter
 
 (** Runs a script with an ill-typed parameter and verifies that a
     Bad_contract_parameter error is returned. *)
@@ -94,11 +33,6 @@ let test_bad_contract_parameter () =
       return_unit
   | Error errs ->
       Alcotest.failf "Unexpected error: %a" Error_monad.pp_print_error errs
-
-let read_file filename =
-  let ch = open_in filename in
-  let s = really_input_string ch (in_channel_length ch) in
-  close_in ch ; s
 
 (* Check that too many recursive calls of the Michelson interpreter result in an error *)
 let test_stack_overflow () =
