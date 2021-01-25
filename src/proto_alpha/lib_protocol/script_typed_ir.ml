@@ -168,6 +168,7 @@ and 'ty ty =
   | Bls12_381_g2_t : type_annot option -> Bls12_381.G2.t ty
   | Bls12_381_fr_t : type_annot option -> Bls12_381.Fr.t ty
   | Ticket_t : 'a comparable_ty * type_annot option -> 'a ticket ty
+  | Event_t : type_annot option -> Event.t ty
 
 and 'ty stack_ty =
   | Item_t :

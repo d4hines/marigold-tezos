@@ -1459,5 +1459,9 @@ module Cost_of = struct
       (*       let size = Data_encoding.Binary.length Sapling.diff_encoding d in *)
       (*       string_cost size *)
       Gas.free
+
+    let event _d =
+      (* TODO: implement this cost *)
+      Gas.free
   end
 end
