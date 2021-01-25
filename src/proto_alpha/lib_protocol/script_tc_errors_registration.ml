@@ -40,6 +40,17 @@ let type_map_enc =
           (req "stack_before" stack_enc)
           (req "stack_after" stack_enc)))
 
+let events_map_enc =
+  let open Data_encoding in
+  list
+    (conv
+       (fun (loc, (topic, ty)) -> (loc, topic, ty))
+       (fun (loc, topic, ty) -> (loc, (topic, ty)))
+       (obj3
+          (req "location" Script.location_encoding)
+          (req "topic" string)
+          (req "type" Script.expr_encoding)))
+
 let stack_ty_enc =
   let open Data_encoding in
   list (obj2 (req "type" Script.expr_encoding) (dft "annots" (list string) []))

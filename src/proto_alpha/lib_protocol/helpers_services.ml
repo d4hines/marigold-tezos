@@ -143,9 +143,10 @@ module Scripts = struct
              (opt "gas" Gas.Arith.z_integral_encoding)
              (opt "legacy" bool))
         ~output:
-          (obj2
+          (obj3
              (req "type_map" Script_tc_errors_registration.type_map_enc)
-             (req "gas" Gas.encoding))
+             (req "gas" Gas.encoding)
+             (req "events_map" Script_tc_errors_registration.events_map_enc))
         RPC_path.(path / "typecheck_code")
 
     let typecheck_data =
@@ -301,11 +302,11 @@ module Scripts = struct
         ~entrypoint
         ~parameter
         ~internal:true
-      >>=? fun {ctxt; storage; lazy_storage_diff; operations} ->
+      >>=? fun execution_result ->
       Logger.get_log ()
       >|=? fun trace ->
       let trace = Option.value ~default:[] trace in
-      ({ctxt; storage; lazy_storage_diff; operations}, trace)
+      (execution_result, trace)
   end
 
   let typecheck_data :
@@ -470,7 +471,7 @@ module Scripts = struct
               Gas.set_limit ctxt gas
         in
         Script_ir_translator.typecheck_code ~legacy ctxt expr
-        >|=? fun (res, ctxt) -> (res, Gas.level ctxt)) ;
+        >|=? fun (res, events, ctxt) -> (res, Gas.level ctxt, events)) ;
     register0 S.typecheck_data (fun ctxt () (data, ty, maybe_gas, legacy) ->
         let legacy = Option.value ~default:false legacy in
         let ctxt =
