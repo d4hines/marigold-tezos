@@ -500,6 +500,7 @@ and ('bef, 'aft) instr =
   | Join_tickets :
       'a comparable_ty
       -> (('a ticket * 'a ticket) * 'rest, 'a ticket option * 'rest) instr
+  | Trace : string * 'a ty -> ('a * 'rest, Event.t * 'rest) instr
 
 and ('before, 'after) comb_gadt_witness =
   | Comb_one : ('a * 'before, 'a * 'before) comb_gadt_witness
