@@ -409,5 +409,7 @@ module Cost_of : sig
     val sapling_transaction : Sapling.transaction -> Gas.cost
 
     val sapling_diff : Sapling.diff -> Gas.cost
+
+    val event : bytes -> Gas.cost
   end
 end

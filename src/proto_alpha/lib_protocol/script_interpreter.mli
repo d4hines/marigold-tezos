@@ -43,14 +43,12 @@ type error += Cannot_serialize_storage
 
 type error += Michelson_too_many_recursive_calls
 
-type events = Event.t list
-
 type execution_result = {
   ctxt : context;
   storage : Script.expr;
   lazy_storage_diff : Lazy_storage.diffs option;
   operations : packed_internal_operation list;
-  events : events;
+  events : Event.t list;
 }
 
 type step_constants = {
@@ -95,7 +93,7 @@ val step :
   step_constants ->
   ('bef, 'aft) Script_typed_ir.descr ->
   'bef ->
-  ('aft * context * events) tzresult Lwt.t
+  ('aft * context) tzresult Lwt.t
 
 val execute :
   ?logger:logger ->

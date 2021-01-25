@@ -106,12 +106,20 @@ type operation = packed_internal_operation * Lazy_storage.diffs option
 type 'a ticket = {ticketer : address; contents : 'a; amount : n num}
 
 type ('arg, 'storage) script = {
-  code : (('arg, 'storage) pair, (operation boxed_list, 'storage) pair) lambda;
+  code : ('arg, 'storage) script_lambda;
   arg_type : 'arg ty;
   storage : 'storage;
   storage_type : 'storage ty;
   root_name : field_annot option;
 }
+
+and ('arg, 'storage) script_lambda =
+  | Without_events of
+      (('arg, 'storage) pair, (operation boxed_list, 'storage) pair) lambda
+  | With_events of
+      ( ('arg, 'storage) pair,
+        ((operation boxed_list, 'storage) pair, Event.t boxed_list) pair )
+      lambda
 
 and end_of_stack = unit
 
@@ -167,6 +175,7 @@ and 'ty ty =
   | Bls12_381_g2_t : type_annot option -> Bls12_381.G2.t ty
   | Bls12_381_fr_t : type_annot option -> Bls12_381.Fr.t ty
   | Ticket_t : 'a comparable_ty * type_annot option -> 'a ticket ty
+  | Event_t : type_annot option -> Event.t ty
 
 and 'ty stack_ty =
   | Item_t :
@@ -498,7 +507,7 @@ and ('bef, 'aft) instr =
   | Join_tickets :
       'a comparable_ty
       -> (('a ticket * 'a ticket) * 'rest, 'a ticket option * 'rest) instr
-  | Trace : string * 'a ty -> ('a * 'rest, 'rest) instr
+  | Trace : string * 'a ty -> ('a * 'rest, Event.t * 'rest) instr
 
 and ('before, 'after) comb_gadt_witness =
   | Comb_one : ('a * 'before, 'a * 'before) comb_gadt_witness

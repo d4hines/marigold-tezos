@@ -38,12 +38,7 @@ type ex_stack_ty = Ex_stack_ty : 'a Script_typed_ir.stack_ty -> ex_stack_ty
 type ex_script = Ex_script : ('a, 'b) Script_typed_ir.script -> ex_script
 
 type ('arg, 'storage) code = {
-  code :
-    ( ('arg, 'storage) Script_typed_ir.pair,
-      ( Script_typed_ir.operation Script_typed_ir.boxed_list,
-        'storage )
-      Script_typed_ir.pair )
-    Script_typed_ir.lambda;
+  code : ('arg, 'storage) Script_typed_ir.script_lambda;
   arg_type : 'arg Script_typed_ir.ty;
   storage_type : 'storage Script_typed_ir.ty;
   root_name : Script_typed_ir.field_annot option;

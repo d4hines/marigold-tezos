@@ -169,6 +169,8 @@ let rec type_size : type t. t ty -> int =
       1 + comparable_type_size k + type_size v
   | Contract_t (arg, _) ->
       1 + type_size arg
+  | Event_t _ ->
+      1
 
 let rec type_size_of_stack_head : type st. st stack_ty -> up_to:int -> int =
  fun stack ~up_to ->
@@ -1005,6 +1007,8 @@ let rec unparse_ty :
         ( T_sapling_state,
           [unparse_memo_size memo_size],
           unparse_type_annot tname )
+  | Event_t tname ->
+      return ctxt (T_event, [], unparse_type_annot tname)
 
 let rec strip_var_annots = function
   | (Int _ | String _ | Bytes _) as atom ->
@@ -1084,7 +1088,8 @@ let rec comparable_ty_of_ty :
   | Bls12_381_g1_t _
   | Bls12_381_g2_t _
   | Sapling_state_t _
-  | Sapling_transaction_t _ ->
+  | Sapling_transaction_t _
+  | Event_t _ ->
       serialize_ty_for_error ctxt ty
       >>? fun (t, _ctxt) -> error (Comparable_type_expected (loc, t))
 
@@ -1166,6 +1171,8 @@ let name_of_ty : type a. a ty -> type_annot option = function
   | Sapling_state_t (_, tname) ->
       tname
   | Sapling_transaction_t (_, tname) ->
+      tname
+  | Event_t tname ->
       tname
 
 (* ---- Tickets ------------------------------------------------------------ *)
@@ -1273,6 +1280,8 @@ let rec check_dupable_ty :
   | Big_map_t (key_ty, val_ty, _) ->
       let () = check_dupable_comparable_ty key_ty in
       check_dupable_ty ctxt loc val_ty
+  | Event_t _ ->
+      ok ctxt
 
 (* ---- Equality witnesses --------------------------------------------------*)
 
@@ -1575,6 +1584,8 @@ let merge_types :
         >>? fun tname ->
         merge_memo_sizes ms1 ms2
         >|? fun ms -> (Eq, Sapling_transaction_t (ms, tname), ctxt)
+    | (Event_t tn1, Event_t tn2) ->
+        merge_type_annot tn1 tn2 >|? fun tname -> (Eq, Event_t tname, ctxt)
     | (_, _) ->
         serialize_ty_for_error ctxt ty1
         >>? fun (ty1, ctxt) ->
@@ -2100,6 +2111,9 @@ and parse_ty :
       >>? fun ty_name ->
       parse_memo_size memo_size
       >|? fun memo_size -> (Ex_ty (Sapling_state_t (memo_size, ty_name)), ctxt)
+  | Prim (loc, T_event, [], annot) ->
+      parse_type_annot loc annot
+      >>? fun ty_name -> ok (Ex_ty (Event_t ty_name), ctxt)
   | Prim (loc, (T_big_map | T_sapling_state), _, _) ->
       error (Unexpected_lazy_storage loc)
   | Prim
@@ -2289,12 +2303,14 @@ let check_packable ~legacy loc root =
     | Contract_t (_, _) ->
         error (Unexpected_contract loc)
     | Sapling_transaction_t _ ->
-        ok ()
+        ok_unit
+    | Event_t _ ->
+        ok_unit
   in
   check root
 
 type ('arg, 'storage) code = {
-  code : (('arg, 'storage) pair, (operation boxed_list, 'storage) pair) lambda;
+  code : ('arg, 'storage) script_lambda;
   arg_type : 'arg ty;
   storage_type : 'storage ty;
   root_name : field_annot option;
@@ -3294,6 +3310,10 @@ let rec parse_data :
          result of a verify_update. *)
       traced_fail
         (Invalid_kind (location expr, [Int_kind; Seq_kind], kind expr))
+  | (Event_t _, _) ->
+      (* events cannot appear in parameters or storage,
+            the protocol should never parse the bytes of an operation *)
+      assert false
 
 and parse_returning :
     type arg ret.
@@ -3345,6 +3365,74 @@ and parse_returning :
       return
         ( ( Lam (descr (Item_t (ret, Empty_t, None)), script_instr)
             : (arg, ret) lambda ),
+          ctxt )
+
+and parse_script_lambda :
+    type arg storage.
+    ?type_logger:type_logger ->
+    stack_depth:int ->
+    tc_context ->
+    context ->
+    legacy:bool ->
+    (arg * storage) ty * var_annot option ->
+    storage ty ->
+    Script.node ->
+    ((arg, storage) script_lambda * context) tzresult Lwt.t =
+ fun ?type_logger
+     ~stack_depth
+     tc_context
+     ctxt
+     ~legacy
+     (arg, arg_annot)
+     storage_type
+     script_instr ->
+  let without_events =
+    Pair_t
+      ( (List_t (Operation_t None, None), None, None),
+        (storage_type, None, None),
+        None )
+  in
+  let with_events =
+    Pair_t
+      ( (without_events, None, None),
+        (List_t (Event_t None, None), None, None),
+        None )
+  in
+  parse_instr
+    ?type_logger
+    tc_context
+    ctxt
+    ~legacy
+    ~stack_depth:(stack_depth + 1)
+    script_instr
+    (Item_t (arg, Empty_t, arg_annot))
+  >>=? function
+  | (Typed ({loc; aft = Item_t (ty, Empty_t, _) as stack_ty; _} as descr), ctxt)
+    ->
+      Lwt.return
+      @@ record_trace_eval
+           (fun () ->
+             serialize_ty_for_error ctxt without_events
+             >>? fun (ret, ctxt) ->
+             serialize_stack_for_error ctxt stack_ty
+             >|? fun (stack_ty, _ctxt) -> Bad_return (loc, stack_ty, ret))
+           ( match merge_types ~legacy ctxt loc ty with_events with
+           | Ok (Eq, _ret, ctxt) ->
+               ok (With_events (Lam (descr, script_instr)), ctxt)
+           | Error _ ->
+               merge_types ~legacy ctxt loc ty without_events
+               >|? fun (Eq, _ret, ctxt) ->
+               (Without_events (Lam (descr, script_instr)), ctxt) )
+  | (Typed {loc; aft = stack_ty; _}, ctxt) ->
+      Lwt.return
+        ( serialize_ty_for_error ctxt with_events
+        >>? fun (ret, ctxt) ->
+        serialize_stack_for_error ctxt stack_ty
+        >>? fun (stack_ty, _ctxt) -> error (Bad_return (loc, stack_ty, ret)) )
+  | (Failed {descr}, ctxt) ->
+      return
+        ( Without_events
+            (Lam (descr (Item_t (without_events, Empty_t, None)), script_instr)),
           ctxt )
 
 and parse_instr :
@@ -5483,7 +5571,8 @@ and parse_instr :
         ~legacy:true
         (* allow to pack contracts for hash/signature checks *) loc
         t
-      >>?= fun () -> typed ctxt loc (Trace (topic, t)) rest
+      >>?= fun () ->
+      typed ctxt loc (Trace (topic, t)) (Item_t (Event_t None, rest, None))
   (* Primitive parsing errors *)
   | ( Prim
         ( loc,
@@ -6100,15 +6189,9 @@ let parse_code :
     Pair_t
       ((arg_type, None, arg_annot), (storage_type, None, storage_annot), None)
   in
-  let ret_type_full =
-    Pair_t
-      ( (List_t (Operation_t None, None), None, None),
-        (storage_type, None, None),
-        None )
-  in
   trace
     (Ill_typed_contract (code, []))
-    (parse_returning
+    (parse_script_lambda
        (Toplevel
           {
             storage_type;
@@ -6121,7 +6204,7 @@ let parse_code :
        ~stack_depth:0
        ?type_logger
        (arg_type_full, None)
-       ret_type_full
+       storage_type
        code_field)
   >|=? fun (code, ctxt) ->
   (Ex_code {code; arg_type; storage_type; root_name}, ctxt)
@@ -6206,12 +6289,6 @@ let typecheck_code :
     Pair_t
       ((arg_type, None, arg_annot), (storage_type, None, storage_annot), None)
   in
-  let ret_type_full =
-    Pair_t
-      ( (List_t (Operation_t None, None), None, None),
-        (storage_type, None, None),
-        None )
-  in
   let type_logger ctxt (script_instr : Script.node) (Ex_descr descr) =
     (* Unparsing for logging done in an unlimited context as this
          is used only by the client and not the protocol *)
@@ -6236,7 +6313,7 @@ let typecheck_code :
         ok_unit
   in
   let result =
-    parse_returning
+    parse_script_lambda
       (Toplevel
          {
            storage_type;
@@ -6249,11 +6326,11 @@ let typecheck_code :
       ~stack_depth:0
       ~type_logger
       (arg_type_full, None)
-      ret_type_full
+      storage_type
       code_field
   in
   trace (Ill_typed_contract (code, !type_map)) result
-  >|=? fun (Lam _, ctxt) -> (!type_map, !events_map, ctxt)
+  >|=? fun (_, ctxt) -> (!type_map, !events_map, ctxt)
 
 module Entrypoints_map = Map.Make (String)
 
@@ -6580,6 +6657,11 @@ let rec unparse_comparable_data :
   | (Never_key _, _) ->
       .
 
+let unparse_event ctxt event =
+  let bytes = Data_encoding.Binary.to_bytes_exn Event.encoding event in
+  Gas.consume ctxt (Unparse_costs.event bytes)
+  >|? fun ctxt -> (Bytes (-1, bytes), ctxt)
+
 (* -- Unparsing data of any type -- *)
 
 let comb_witness2 : type t. t ty -> (t, unit -> unit -> unit) comb_witness =
@@ -6741,6 +6823,8 @@ let rec unparse_data :
                   Micheline.Prim (-1, D_Pair, [Int (-1, id); unparsed_diff], [])
               ) ),
           ctxt ) )
+  | (Event_t _, event) ->
+      Lwt.return @@ unparse_event ctxt event
 
 and unparse_items :
     type k v.
@@ -6816,7 +6900,13 @@ and unparse_code ctxt ~stack_depth mode code =
 (* Gas accounting may not be perfect in this function, as it is only called by RPCs. *)
 let unparse_script ctxt mode {code; arg_type; storage; storage_type; root_name}
     =
-  let (Lam (_, original_code)) = code in
+  let original_code =
+    match code with
+    | Without_events (Lam (_, code)) ->
+        code
+    | With_events (Lam (_, code)) ->
+        code
+  in
   unparse_code ctxt ~stack_depth:0 mode original_code
   >>=? fun (code, ctxt) ->
   unparse_data ctxt ~stack_depth:0 mode storage_type storage
@@ -7122,6 +7212,8 @@ let rec has_lazy_storage : type t. t ty -> t has_lazy_storage =
       aux1 (fun h -> List_f h) t
   | Map_t (_, t, _) ->
       aux1 (fun h -> Map_f h) t
+  | Event_t _ ->
+      False_f
 
 (**
   Transforms a value potentially containing lazy storage in an intermediary

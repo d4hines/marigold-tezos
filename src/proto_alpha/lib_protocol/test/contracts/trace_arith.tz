@@ -6,10 +6,19 @@
          CAR ;
          IF_LEFT
            { IF_LEFT
-             { PAIR ; DUP ; TRACE "add" ; UNPAIR ; ADD }
-             { PAIR ; DUP ; TRACE "mul" ; UNPAIR ; SWAP ; MUL } }
-           { PAIR ; DUP ; TRACE "sub" ; UNPAIR ; SWAP ; SUB } ;
+             { PAIR ; DUP ; TRACE "add" ; SWAP ; UNPAIR ; ADD }
+             { PAIR ; DUP ; TRACE "mul" ; SWAP ; UNPAIR ; SWAP ; MUL } }
+           { PAIR ; DUP ; TRACE "sub" ; SWAP ; UNPAIR ; SWAP ; SUB } ;
          DUP ;
          TRACE "output" ;
+         SWAP ;
          NIL operation ;
+         PAIR ; 
+         DIP 1 {
+           NIL event ;
+           SWAP ;
+           CONS ;
+           SWAP ;
+           CONS ;
+         } ;
          PAIR } }

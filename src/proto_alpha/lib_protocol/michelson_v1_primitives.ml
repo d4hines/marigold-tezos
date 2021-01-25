@@ -177,6 +177,7 @@ type prim =
   | T_bls12_381_g2
   | T_bls12_381_fr
   | T_ticket
+  | T_event
 
 (* Auxiliary types for error documentation.
    All the prim constructor prefixes must match their namespace. *)
@@ -329,7 +330,8 @@ let namespace = function
   | T_bls12_381_fr
   | T_bls12_381_g1
   | T_bls12_381_g2
-  | T_ticket ->
+  | T_ticket
+  | T_event ->
       Type_namespace
 
 let valid_case name =
@@ -631,6 +633,8 @@ let string_of_prim = function
       "bls12_381_fr"
   | T_ticket ->
       "ticket"
+  | T_event ->
+      "event"
 
 let prim_of_string = function
   | "parameter" ->
@@ -917,6 +921,8 @@ let prim_of_string = function
       ok T_bls12_381_fr
   | "ticket" ->
       ok T_ticket
+  | "event" ->
+      ok T_event
   | n ->
       if valid_case n then error (Unknown_primitive_name n)
       else error (Invalid_case n)
@@ -1119,7 +1125,8 @@ let prim_encoding =
          ("JOIN_TICKETS", I_JOIN_TICKETS);
          ("GET_AND_UPDATE", I_GET_AND_UPDATE);
          (* Alpha_009 addition *)
-         ("TRACE", I_TRACE)
+         ("TRACE", I_TRACE);
+         ("event", T_event)
          (* New instructions must be added here, for backward compatibility of the encoding. *)
          (* Keep the comment above at the end of the list *)
         ]

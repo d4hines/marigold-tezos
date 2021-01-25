@@ -31,31 +31,5 @@
 *)
 
 let () =
-  Alcotest_lwt.run
-    "protocol_alpha"
-    [ ("transfer", Test_transfer.tests);
-      ("origination", Test_origination.tests);
-      ("activation", Test_activation.tests);
-      ("revelation", Test_reveal.tests);
-      ("endorsement", Test_endorsement.tests);
-      ("double endorsement", Test_double_endorsement.tests);
-      ("double baking", Test_double_baking.tests);
-      ("seed", Test_seed.tests);
-      ("baking", Test_baking.tests);
-      ("delegation", Test_delegation.tests);
-      ("rolls", Test_rolls.tests);
-      ("combined", Test_combined_operations.tests);
-      ("qty", Test_qty.tests);
-      ("voting", Test_voting.tests);
-      ("interpretation", Test_interpretation.tests);
-      ("typechecking", Test_typechecking.tests);
-      ("gas properties", Test_gas_properties.tests);
-      ("fixed point computation", Test_fixed_point.tests);
-      ("gas levels", Test_gas_levels.tests);
-      ("gas cost functions", Test_gas_costs.tests);
-      ("lazy storage diff", Test_lazy_storage_diff.tests);
-      ("sapling", Test_sapling.tests);
-      ("helpers rpcs", Test_helpers_rpcs.tests);
-      ("script deserialize gas", Test_script_gas.tests);
-      ("events block", Test_trace.tests) ]
+  Alcotest_lwt.run "protocol_alpha" [("events block", Test_trace.tests)]
   |> Lwt_main.run
