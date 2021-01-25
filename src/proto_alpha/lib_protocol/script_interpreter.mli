@@ -48,6 +48,7 @@ type execution_result = {
   storage : Script.expr;
   lazy_storage_diff : Lazy_storage.diffs option;
   operations : packed_internal_operation list;
+  events : Event.t list;
 }
 
 type step_constants = {
