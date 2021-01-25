@@ -240,7 +240,7 @@ val parse_toplevel :
   ( Script.node
   * Script.node
   * Script.node
-  * (string * Script.node * Script.node * Script.node) list
+  * (Script.node * Script.node * Script.node) Script_typed_ir.SMap.t
   * Script_typed_ir.field_annot option )
   tzresult
 

@@ -6033,7 +6033,7 @@ and parse_toplevel :
     ( Script.node
     * Script.node
     * Script.node
-    * (string * Script.node * Script.node * Script.node) list
+    * (Script.node * Script.node * Script.node) SMap.t
     * field_annot option )
     tzresult =
  fun ~legacy toplevel ->
@@ -6085,7 +6085,10 @@ and parse_toplevel :
         | Prim (loc, K_view, [name; input_ty; output_ty; code], _) :: rest -> (
           match name with
           | String (_, str) ->
-              find_fields p s c ((str, input_ty, output_ty, code) :: vs) rest
+              if SMap.mem str vs then error (Duplicated_view_name loc)
+              else
+                let vs' = SMap.add str (input_ty, output_ty, code) vs in
+                find_fields p s c vs' rest
           | _ ->
               error (Bad_view_name loc) )
         | Prim
@@ -6099,7 +6102,7 @@ and parse_toplevel :
             let allowed = [K_parameter; K_storage; K_code; K_view] in
             error (Invalid_primitive (loc, allowed, name))
       in
-      find_fields None None None [] fields
+      find_fields None None None SMap.empty fields
       >>? function
       | (None, _, _, _) ->
           error (Missing_field K_parameter)
@@ -6209,8 +6212,8 @@ let parse_code :
        ret_type_full
        code_field)
   >>=? fun (code, ctxt) ->
-  let aux (prev_views', ctxt) cur_view =
-    let (name, input_ty, output_ty, code) = cur_view in
+  let aux (prev_views', ctxt) (name, cur_view) =
+    let (input_ty, output_ty, code) = cur_view in
     parse_parameter_ty ctxt ~legacy input_ty
     >>?= fun (Ex_ty input_ty', ctxt) ->
     parse_parameter_ty ctxt ~legacy output_ty
@@ -6237,10 +6240,9 @@ let parse_code :
           (Item_t (output_ty', Empty_t, None))
         >>?= fun (Eq, ctxt) ->
         let cur_view' = Ex_view (Lam (descr, code)) in
-        if SMap.mem name prev_views' then fail (Duplicated_view_name descr.loc)
-        else return (SMap.add name cur_view' prev_views', ctxt)
+        return (SMap.add name cur_view' prev_views', ctxt)
   in
-  fold_left_s aux (SMap.empty, ctxt) views
+  fold_left_s aux (SMap.empty, ctxt) (SMap.bindings views)
   >>=? fun (views, ctxt) ->
   return (Ex_code {code; arg_type; storage_type; views; root_name}, ctxt)
 
