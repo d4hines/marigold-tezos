@@ -1167,7 +1167,7 @@ let rec step_bounded :
                 in
                 match bef_ty with
                 | Ok (Eq, ctxt) ->
-                    step logger ctxt step_constants view ((input, storage), ())
+                    non_terminal_recursion ctxt view ((input, storage), ())
                     >>=? fun ((output, ()), ctxt) ->
                     logged_return ((Some output, rest), ctxt)
                 | Error _ ->
@@ -1491,7 +1491,7 @@ let rec step_bounded :
       in
       logged_return ((result, rest), ctxt)
 
-and step :
+let step :
     type b a.
     logger ->
     context ->
