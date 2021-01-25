@@ -369,6 +369,7 @@ module Script : sig
     | I_READ_TICKET
     | I_SPLIT_TICKET
     | I_JOIN_TICKETS
+    | I_TRACE
     | T_bool
     | T_contract
     | T_int
@@ -399,6 +400,7 @@ module Script : sig
     | T_bls12_381_g2
     | T_bls12_381_fr
     | T_ticket
+    | T_event
 
   type location = Micheline.canonical_location
 
@@ -974,6 +976,19 @@ module Contract : sig
   val initial_origination_nonce : Operation_hash.t -> origination_nonce
 
   val originated_contract : origination_nonce -> contract
+end
+
+module Event : sig
+  type event = {
+    source : Contract.t;
+    topic : string;
+    ty : Script.expr;
+    data : Script.expr;
+  }
+
+  type t = event
+
+  val encoding : t Data_encoding.t
 end
 
 module Delegate : sig
