@@ -53,11 +53,10 @@ type tc_context =
 
 type unparsing_mode = Optimized | Readable | Optimized_legacy
 
-type type_logger =
-  int ->
-  (Script.expr * Script.annot) list ->
-  (Script.expr * Script.annot) list ->
-  unit
+type ex_descr = Ex_descr : ('b, 'a) Script_typed_ir.descr -> ex_descr
+[@@unboxed]
+
+type type_logger = context -> Script.node -> ex_descr -> unit tzresult
 
 let add_dip ty annot prev =
   match prev with
@@ -3457,17 +3456,12 @@ and parse_instr :
          ( merge_types ~legacy ctxt loc exp got
          >>? fun (Eq, ty, ctxt) -> ok ((Eq : (a, b) eq), (ty : a ty), ctxt) )
   in
-  let log_stack ctxt loc stack_ty aft =
-    match (type_logger, script_instr) with
-    | (None, _) | (Some _, (Seq (-1, _) | Int _ | String _ | Bytes _)) ->
+  let log_descr ctxt descr =
+    match type_logger with
+    | None ->
         ok_unit
-    | (Some log, (Prim _ | Seq _)) ->
-        (* Unparsing for logging done in an unlimited context as this
-             is used only by the client and not the protocol *)
-        let ctxt = Gas.set_unlimited ctxt in
-        unparse_stack ctxt stack_ty
-        >>? fun (stack_ty, _) ->
-        unparse_stack ctxt aft >|? fun (aft, _) -> log loc stack_ty aft ; ()
+    | Some log ->
+        log ctxt script_instr (Ex_descr descr)
   in
   let return_no_lwt :
       type bef. context -> bef judgement -> (bef judgement * context) tzresult
@@ -3493,8 +3487,8 @@ and parse_instr :
    fun ctxt judgement -> Lwt.return @@ return_no_lwt ctxt judgement
   in
   let typed_no_lwt ctxt loc instr aft =
-    log_stack ctxt loc stack_ty aft
-    >>? fun () -> return_no_lwt ctxt (Typed {loc; instr; bef = stack_ty; aft})
+    let descr = {loc; instr; bef = stack_ty; aft} in
+    log_descr ctxt descr >>? fun () -> return_no_lwt ctxt (Typed descr)
   in
   let typed ctxt loc instr aft =
     Lwt.return @@ typed_no_lwt ctxt loc instr aft
@@ -4679,13 +4673,13 @@ and parse_instr :
       (if legacy then ok_unit else check_packable ~legacy:false loc v)
       >>?= fun () ->
       let descr aft = {loc; instr = Failwith v; bef = stack_ty; aft} in
-      log_stack ctxt loc stack_ty Empty_t
+      log_descr ctxt (descr Empty_t)
       >>?= fun () -> return ctxt (Failed {descr})
   | (Prim (loc, I_NEVER, [], annot), Item_t (Never_t _, _rest, _)) ->
       error_unexpected_annot loc annot
       >>?= fun () ->
       let descr aft = {loc; instr = Never; bef = stack_ty; aft} in
-      log_stack ctxt loc stack_ty Empty_t
+      log_descr ctxt (descr Empty_t)
       >>?= fun () -> return ctxt (Failed {descr})
   (* timestamp operations *)
   | ( Prim (loc, I_ADD, [], annot),
@@ -6271,10 +6265,11 @@ let typecheck_code :
     legacy:bool ->
     context ->
     Script.expr ->
-    (type_map * context) tzresult Lwt.t =
+    (type_map * events_map * context) tzresult Lwt.t =
  fun ~legacy ctxt code ->
   parse_toplevel ~legacy code
   >>?= fun (arg_type, storage_type, code_field, root_name) ->
+  let events_map = ref [] in
   let type_map = ref [] in
   record_trace
     (Ill_formed_type (Some "parameter", code, location arg_type))
@@ -6300,11 +6295,28 @@ let typecheck_code :
     Pair_t
       ((arg_type, None, arg_annot), (storage_type, None, storage_annot), None)
   in
-  let ret_type_full =
-    Pair_t
-      ( (List_t (Operation_t None, None), None, None),
-        (storage_type, None, None),
-        None )
+  let type_logger ctxt (script_instr : Script.node) (Ex_descr descr) =
+    (* Unparsing for logging done in an unlimited context as this
+         is used only by the client and not the protocol *)
+    let ctxt = Gas.set_unlimited ctxt in
+    let {loc; bef; aft; instr} = descr in
+    ( match script_instr with
+    | Seq (-1, _) | Int _ | String _ | Bytes _ ->
+        ok_unit
+    | Prim _ | Seq _ ->
+        unparse_stack ctxt bef
+        >>? fun (bef, _) ->
+        unparse_stack ctxt aft
+        >|? fun (aft, _) -> type_map := (loc, (bef, aft)) :: !type_map )
+    >>? fun () ->
+    match instr with
+    | Trace (topic, ty) ->
+        unparse_ty ctxt ty
+        >|? fun (ty, _) ->
+        let ty = strip_locations ty in
+        events_map := (loc, (topic, ty)) :: !events_map
+    | _ ->
+        ok_unit
   in
   let result =
     parse_returning
@@ -6325,7 +6337,7 @@ let typecheck_code :
       code_field
   in
   trace (Ill_typed_contract (code, !type_map)) result
-  >|=? fun (Lam _, ctxt) -> (!type_map, ctxt)
+  >|=? fun (_, ctxt) -> (!type_map, !events_map, ctxt)
 
 module Entrypoints_map = Map.Make (String)
 
