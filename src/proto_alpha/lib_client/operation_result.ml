@@ -133,6 +133,24 @@ let pp_manager_operation_content (type kind) source internal pp_result ppf
         result ) ;
   Format.fprintf ppf "@]"
 
+let pp_event ppf Event.{source; topic; ty; data} =
+  Format.fprintf
+    ppf
+    "@,@[<hv 2>source: %a, topic: %s, ty: %a; data: %a }@]"
+    Contract.pp
+    source
+    topic
+    Michelson_v1_printer.print_expr
+    ty
+    Michelson_v1_printer.print_expr
+    data
+
+let pp_events ppf = function
+  | [] ->
+      ()
+  | events ->
+      Format.fprintf ppf "@[<v 0>%a@]" (Format.pp_print_list pp_event) events
+
 let pp_balance_updates ppf = function
   | [] ->
       ()
@@ -218,7 +236,8 @@ let pp_manager_operation_contents_and_result ppf
           storage_size;
           paid_storage_size_diff;
           lazy_storage_diff;
-          allocated_destination_contract = _ }) =
+          allocated_destination_contract = _;
+          events }) =
     ( match originated_contracts with
     | [] ->
         ()
@@ -246,7 +265,7 @@ let pp_manager_operation_contents_and_result ppf
         "@,Paid storage size diff: %s bytes"
         (Z.to_string paid_storage_size_diff) ;
     Format.fprintf ppf "@,Consumed gas: %a" Gas.Arith.pp consumed_gas ;
-    match balance_updates with
+    ( match balance_updates with
     | [] ->
         ()
     | balance_updates ->
@@ -254,7 +273,12 @@ let pp_manager_operation_contents_and_result ppf
           ppf
           "@,Balance updates:@,  %a"
           pp_balance_updates
-          balance_updates
+          balance_updates ) ;
+    match events with
+    | [] ->
+        ()
+    | events ->
+        Format.fprintf ppf "@,Events:@,  %a" pp_events events
   in
   let pp_origination_result
       (Origination_result

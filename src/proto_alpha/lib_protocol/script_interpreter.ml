@@ -147,6 +147,10 @@ let () =
 
 module Interp_costs = Michelson_v1_gas.Cost_of.Interpreter
 
+let strip_locations ctxt data =
+  Gas.consume ctxt (Script.strip_locations_cost data)
+  >|? fun ctxt -> (Micheline.strip_locations data, ctxt)
+
 let rec interp_stack_prefix_preserving_operation :
     type fbef bef faft aft result.
     (fbef -> (faft * result) tzresult Lwt.t) ->
@@ -550,6 +554,8 @@ let cost_of_instr : type b a. (b, a) descr -> b -> Gas.cost =
       Interp_costs.split_ticket ticket.amount amount_a amount_b
   | (Join_tickets ty, ((ticket_a, ticket_b), _)) ->
       Interp_costs.join_tickets ty ticket_a ticket_b
+  | (Trace _, _) ->
+      Interp_costs.trace
 
 let unpack ctxt ~ty ~bytes =
   Gas.check_enough ctxt (Script.serialized_cost bytes)
@@ -1112,16 +1118,11 @@ let rec step_bounded :
       >>=? fun (p, lazy_storage_diff, ctxt) ->
       unparse_data ctxt Optimized tp p
       >>=? fun (p, ctxt) ->
-      Gas.consume ctxt (Script.strip_locations_cost p)
-      >>?= fun ctxt ->
+      strip_locations ctxt p
+      >>?= fun (p, ctxt) ->
       let operation =
         Transaction
-          {
-            amount;
-            destination;
-            entrypoint;
-            parameters = Script.lazy_expr (Micheline.strip_locations p);
-          }
+          {amount; destination; entrypoint; parameters = Script.lazy_expr p}
       in
       fresh_internal_nonce ctxt
       >>?= fun (ctxt, nonce) ->
@@ -1166,9 +1167,8 @@ let rec step_bounded :
       >>=? fun (init, lazy_storage_diff, ctxt) ->
       unparse_data ctxt Optimized storage_type init
       >>=? fun (storage, ctxt) ->
-      Gas.consume ctxt (Script.strip_locations_cost storage)
-      >>?= fun ctxt ->
-      let storage = Micheline.strip_locations storage in
+      Lwt.return @@ strip_locations ctxt storage
+      >>=? fun (storage, ctxt) ->
       Contract.fresh_contract_from_current_nonce ctxt
       >>?= fun (ctxt, contract) ->
       let operation =
@@ -1447,6 +1447,18 @@ let rec step_bounded :
         else None
       in
       logged_return ((result, rest), ctxt)
+  | (Trace (topic, ty), (t, rest)) ->
+      unparse_data ctxt Readable ty t
+      >>=? fun (data, ctxt) ->
+      Lwt.return
+      @@ ( unparse_ty ctxt ty
+         >>? fun (ty, ctxt) ->
+         strip_locations ctxt data
+         >>? fun (data, ctxt) ->
+         strip_locations ctxt ty
+         >|? fun (ty, ctxt) ->
+         (ctxt, Event.{source = step_constants.self; topic; ty; data}) )
+      >>=? fun (ctxt, event) -> logged_return ((event, rest), ctxt)
 
 let step :
     type b a.
@@ -1479,7 +1491,8 @@ let execute logger ctxt mode step_constants ~entrypoint ~internal
     ( Script.expr
     * packed_internal_operation list
     * context
-    * Lazy_storage.diffs option )
+    * Lazy_storage.diffs option
+    * Event.t list )
     tzresult
     Lwt.t =
   parse_script ctxt unparsed_script ~legacy:true ~allow_forged_in_storage:true
@@ -1500,8 +1513,15 @@ let execute logger ctxt mode step_constants ~entrypoint ~internal
   >>?= fun (to_update, ctxt) ->
   trace
     (Runtime_contract_error (step_constants.self, script_code))
-    (interp logger ctxt step_constants code (arg, storage))
-  >>=? fun ((ops, storage), ctxt) ->
+    ( match code with
+    | Without_events code ->
+        interp logger ctxt step_constants code (arg, storage)
+        >|=? fun ((ops, storage), ctxt) -> ((ops, storage, []), ctxt)
+    | With_events code ->
+        interp logger ctxt step_constants code (arg, storage)
+        >|=? fun (((ops, storage), events), ctxt) ->
+        ((ops, storage, events.elements), ctxt) )
+  >>=? fun ((ops, storage, events), ctxt) ->
   Script_ir_translator.extract_lazy_storage_diff
     ctxt
     mode
@@ -1514,10 +1534,7 @@ let execute logger ctxt mode step_constants ~entrypoint ~internal
   trace
     Cannot_serialize_storage
     ( unparse_data ctxt mode storage_type storage
-    >>=? fun (storage, ctxt) ->
-    Lwt.return
-      ( Gas.consume ctxt (Script.strip_locations_cost storage)
-      >>? fun ctxt -> ok (Micheline.strip_locations storage, ctxt) ) )
+    >>=? fun (storage, ctxt) -> Lwt.return @@ strip_locations ctxt storage )
   >|=? fun (storage, ctxt) ->
   let (ops, op_diffs) = List.split ops.elements in
   let lazy_storage_diff =
@@ -1530,13 +1547,14 @@ let execute logger ctxt mode step_constants ~entrypoint ~internal
     | diff ->
         Some diff
   in
-  (storage, ops, ctxt, lazy_storage_diff)
+  (storage, ops, ctxt, lazy_storage_diff, events)
 
 type execution_result = {
   ctxt : context;
   storage : Script.expr;
   lazy_storage_diff : Lazy_storage.diffs option;
   operations : packed_internal_operation list;
+  events : Event.t list;
 }
 
 let execute ?(logger = (module No_trace : STEP_LOGGER)) ctxt mode
@@ -1550,5 +1568,5 @@ let execute ?(logger = (module No_trace : STEP_LOGGER)) ctxt mode
     ~internal
     script
     (Micheline.root parameter)
-  >|=? fun (storage, operations, ctxt, lazy_storage_diff) ->
-  {ctxt; storage; lazy_storage_diff; operations}
+  >|=? fun (storage, operations, ctxt, lazy_storage_diff, events) ->
+  {ctxt; storage; lazy_storage_diff; operations; events}

@@ -605,6 +605,7 @@ let apply_manager_operation_content :
                   storage_size = Z.zero;
                   paid_storage_size_diff = Z.zero;
                   allocated_destination_contract;
+                  events = [];
                 }
             in
             (ctxt, result, []) )
@@ -627,7 +628,7 @@ let apply_manager_operation_content :
             ~parameter
             ~entrypoint
             ~internal
-          >>=? fun {ctxt; storage; lazy_storage_diff; operations} ->
+          >>=? fun {ctxt; storage; lazy_storage_diff; operations; events} ->
           Contract.update_script_storage
             ctxt
             destination
@@ -655,6 +656,7 @@ let apply_manager_operation_content :
                 storage_size = new_size;
                 paid_storage_size_diff;
                 allocated_destination_contract;
+                events;
               }
           in
           (ctxt, result, operations) )
