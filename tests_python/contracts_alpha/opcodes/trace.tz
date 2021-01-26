@@ -1,0 +1,40 @@
+parameter unit;
+storage unit;
+code { DROP;
+
+       # Dump a packable type
+       PUSH string "dummy";
+       TRACE "pack";
+       DROP;
+
+       # int
+       PUSH int 1;
+       TRACE "int";
+       DROP;
+
+       # lambda
+       PUSH (lambda unit unit) { };
+       TRACE "lambda";
+       DROP;
+
+       # map
+       EMPTY_MAP string int;
+       TRACE "map";
+       DROP;
+
+
+       PUSH int 2;
+       PUSH int 2;
+       PAIR;
+       DUP;
+       TRACE "pair_i";
+       DROP;
+       UNPAIR;
+       ADD;
+       DUP;
+       TRACE "pair_o";
+       DROP;
+       PUSH int 4;
+       ASSERT_CMPEQ;
+       
+       UNIT; NIL @noop operation; PAIR;};

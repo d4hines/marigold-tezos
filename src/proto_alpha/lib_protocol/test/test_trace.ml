@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
+(* Copyright (c) 2020 Nomadic Labs <contact@nomadic-labs.com>                *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,39 +23,39 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** Testing
-    -------
-    Component:    Protocol
-    Invocation:   dune build @src/proto_alpha/lib_protocol/runtest
-    Subject:      Entrypoint
-*)
+open Protocol
+open Interpreter
 
-let () =
-  Alcotest_lwt.run
-    "protocol_alpha"
-    [ ("transfer", Test_transfer.tests);
-      ("origination", Test_origination.tests);
-      ("activation", Test_activation.tests);
-      ("revelation", Test_reveal.tests);
-      ("endorsement", Test_endorsement.tests);
-      ("double endorsement", Test_double_endorsement.tests);
-      ("double baking", Test_double_baking.tests);
-      ("seed", Test_seed.tests);
-      ("baking", Test_baking.tests);
-      ("delegation", Test_delegation.tests);
-      ("rolls", Test_rolls.tests);
-      ("combined", Test_combined_operations.tests);
-      ("qty", Test_qty.tests);
-      ("voting", Test_voting.tests);
-      ("interpretation", Test_interpretation.tests);
-      ("typechecking", Test_typechecking.tests);
-      ("gas properties", Test_gas_properties.tests);
-      ("fixed point computation", Test_fixed_point.tests);
-      ("gas levels", Test_gas_levels.tests);
-      ("gas cost functions", Test_gas_costs.tests);
-      ("lazy storage diff", Test_lazy_storage_diff.tests);
-      ("sapling", Test_sapling.tests);
-      ("helpers rpcs", Test_helpers_rpcs.tests);
-      ("script deserialize gas", Test_script_gas.tests);
-      ("events", Test_trace.tests) ]
-  |> Lwt_main.run
+let contract_trace_arith = read_file "contracts/trace_arith.tz"
+
+let check_event ~topic ~ty ~data event =
+  let open Alcotest in
+  let open Alpha_context.Event in
+  check string "topic" event.topic topic ;
+  check string "ty" (expression_to_string event.ty) ty ;
+  check string "data" (expression_to_string event.data) data
+
+let test_events_are_emitted () =
+  test_context ()
+  >>=? fun ctx ->
+  run_script
+    ctx
+    contract_trace_arith
+    ~entrypoint:"add"
+    ~storage:"1"
+    ~parameter:"2"
+    ()
+  >|=? fun {events; _} ->
+  match events with
+  | [operation; output] ->
+      check_event
+        ~topic:"add"
+        ~ty:"(pair (int @parameter.left.add) (int @storage))"
+        ~data:"(Pair 2 1)"
+        operation ;
+      check_event ~topic:"output" ~ty:"int" ~data:"3" output
+  | _ ->
+      assert false
+
+let tests =
+  [Test.tztest "test_events_are_emitted" `Quick test_events_are_emitted]
