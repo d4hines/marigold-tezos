@@ -5089,7 +5089,7 @@ and parse_instr :
         loc
         (Contract (t, entrypoint))
         (Item_t (Option_t (Contract_t (t, None), None), rest, annot))
-  | ( Prim (loc, I_VIEW, [name; input_ty; output_ty], annot),
+  | ( Prim (loc, I_VIEW, [name; output_ty], annot),
       Item_t (input, Item_t (Address_t _, rest, addr_annot), _) ) ->
       ( match name with
       | String (_, str) ->
@@ -5097,15 +5097,6 @@ and parse_instr :
       | _ ->
           fail (Bad_view_name loc) )
       >>=? fun name ->
-      parse_ty
-        ctxt
-        ~allow_lazy_storage:true
-        ~allow_operation:true
-        ~allow_contract:true
-        ~allow_ticket:true
-        ~legacy:false
-        input_ty
-      >>?= fun (Ex_ty input_ty', ctxt) ->
       parse_ty
         ctxt
         ~allow_lazy_storage:true
@@ -5126,12 +5117,10 @@ and parse_instr :
         annot
         ~default:(gen_access_annot addr_annot default_contract_annot)
       >>?= fun annot ->
-      ty_eq ctxt loc input input_ty'
-      >>?= fun (Eq, ctxt) ->
       typed
         ctxt
         loc
-        (View (name, input_ty', output_ty'))
+        (View (name, input, output_ty'))
         (Item_t (Option_t (output_ty', None), rest, annot))
   | ( Prim (loc, I_TRANSFER_TOKENS, [], annot),
       Item_t (p, Item_t (Mutez_t _, Item_t (Contract_t (cp, _), rest, _), _), _)
@@ -5626,6 +5615,7 @@ and parse_instr :
   | ( Prim
         ( loc,
           ( ( I_PUSH
+            | I_VIEW
             | I_IF_NONE
             | I_IF_LEFT
             | I_IF_CONS
@@ -5637,12 +5627,9 @@ and parse_instr :
       _ ) ->
       fail (Invalid_arity (loc, name, 2, List.length l))
   | ( Prim
-        ( loc,
-          ((I_LAMBDA | I_VIEW) as name),
-          (([] | [_] | [_; _] | _ :: _ :: _ :: _ :: _) as l),
-          _ ),
+      (loc, I_LAMBDA, (([] | [_] | [_; _] | _ :: _ :: _ :: _ :: _) as l), _),
       _ ) ->
-      fail (Invalid_arity (loc, name, 3, List.length l))
+        fail (Invalid_arity (loc, I_LAMBDA, 3, List.length l))
   (* Stack errors *)
   | ( Prim
         ( loc,
