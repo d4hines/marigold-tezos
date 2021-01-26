@@ -2310,7 +2310,7 @@ let check_packable ~legacy loc root =
   check root
 
 type ('arg, 'storage) code = {
-  code : (('arg, 'storage) pair, (operation boxed_list, 'storage) pair) lambda;
+  code : ('arg, 'storage) script_lambda;
   arg_type : 'arg ty;
   storage_type : 'storage ty;
   root_name : field_annot option;
@@ -5228,15 +5228,9 @@ and parse_instr :
             (storage_type, None, storage_annot),
             None )
       in
-      let ret_type_full =
-        Pair_t
-          ( (List_t (Operation_t None, None), None, None),
-            (storage_type, None, None),
-            None )
-      in
       trace
         (Ill_typed_contract (canonical_code, []))
-        (parse_returning
+        (parse_script_lambda
            (Toplevel
               {
                 storage_type;
@@ -5249,18 +5243,9 @@ and parse_instr :
            ?type_logger
            ~stack_depth
            (arg_type_full, None)
-           ret_type_full
+           storage_type
            code_field)
-      >>=? fun ( ( Lam
-                     ( { bef = Item_t (arg, Empty_t, _);
-                         aft = Item_t (ret, Empty_t, _);
-                         _ },
-                       _ ) as lambda ),
-                 ctxt ) ->
-      merge_types ~legacy ctxt loc arg arg_type_full
-      >>?= fun (Eq, _, ctxt) ->
-      merge_types ~legacy ctxt loc ret ret_type_full
-      >>?= fun (Eq, _, ctxt) ->
+      >>=? fun (lambda, ctxt) ->
       merge_types ~legacy ctxt loc storage_type ginit
       >>?= fun (Eq, _, ctxt) ->
       typed
@@ -6189,15 +6174,9 @@ let parse_code :
     Pair_t
       ((arg_type, None, arg_annot), (storage_type, None, storage_annot), None)
   in
-  let ret_type_full =
-    Pair_t
-      ( (List_t (Operation_t None, None), None, None),
-        (storage_type, None, None),
-        None )
-  in
   trace
     (Ill_typed_contract (code, []))
-    (parse_returning
+    (parse_script_lambda
        (Toplevel
           {
             storage_type;
@@ -6210,7 +6189,7 @@ let parse_code :
        ~stack_depth:0
        ?type_logger
        (arg_type_full, None)
-       ret_type_full
+       storage_type
        code_field)
   >|=? fun (code, ctxt) ->
   (Ex_code {code; arg_type; storage_type; root_name}, ctxt)
@@ -6319,7 +6298,7 @@ let typecheck_code :
         ok_unit
   in
   let result =
-    parse_returning
+    parse_script_lambda
       (Toplevel
          {
            storage_type;
@@ -6330,10 +6309,9 @@ let typecheck_code :
       ctxt
       ~legacy
       ~stack_depth:0
-      ~type_logger:(fun loc bef aft ->
-        type_map := (loc, (bef, aft)) :: !type_map)
+      ~type_logger
       (arg_type_full, None)
-      ret_type_full
+      storage_type
       code_field
   in
   trace (Ill_typed_contract (code, !type_map)) result
@@ -6907,7 +6885,11 @@ and unparse_code ctxt ~stack_depth mode code =
 (* Gas accounting may not be perfect in this function, as it is only called by RPCs. *)
 let unparse_script ctxt mode {code; arg_type; storage; storage_type; root_name}
     =
-  let (Lam (_, original_code)) = code in
+  let original_code =
+    match code with
+    | Without_events (Lam (_, code)) | With_events (Lam (_, code)) ->
+        code
+  in
   unparse_code ctxt ~stack_depth:0 mode original_code
   >>=? fun (code, ctxt) ->
   unparse_data ctxt ~stack_depth:0 mode storage_type storage

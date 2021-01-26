@@ -1135,9 +1135,14 @@ let rec step_bounded :
   | (Implicit_account, (key, rest)) ->
       let contract = Contract.implicit_contract key in
       logged_return (((Unit_t None, (contract, "default")), rest), ctxt)
-  | ( Create_contract (storage_type, param_type, Lam (_, code), root_name),
+  | ( Create_contract (storage_type, param_type, lambda, root_name),
       (* Removed the instruction's arguments manager, spendable and delegatable *)
     (delegate, (credit, (init, rest))) ) ->
+      let code =
+        match lambda with
+        | With_events (Lam (_, code)) | Without_events (Lam (_, code)) ->
+            code
+      in
       unparse_ty ctxt param_type
       >>?= fun (unparsed_param_type, ctxt) ->
       let unparsed_param_type =
