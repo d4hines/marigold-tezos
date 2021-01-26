@@ -648,7 +648,7 @@ type outdated_context = OutDatedContext of context [@@unboxed]
 
 let update_context local_gas_counter = function
   | OutDatedContext ctxt ->
-      Gas.update_gas_counter ctxt (Saturation_repr.of_int local_gas_counter)
+      Gas.update_gas_counter ctxt (Saturation_repr.safe_int local_gas_counter)
   [@@ocaml.inline always]
 
 let update_local_gas_counter ctxt =
@@ -1213,8 +1213,8 @@ and step :
           (* The cost for this fold_left has been paid upfront *)
           let total_length =
             List.fold_left
-              (fun acc s -> S.add acc (S.of_int (String.length s)))
-              S.zero
+              (fun acc s -> S.add acc (S.safe_int (String.length s)))
+              (S.zero |> S.may_saturate)
               accu.elements
           in
           consume' ctxt gas (Interp_costs.concat_string total_length :> int)
@@ -1246,8 +1246,8 @@ and step :
           (* The cost for this fold_left has been paid upfront *)
           let total_length =
             List.fold_left
-              (fun acc s -> S.add acc (S.of_int (Bytes.length s)))
-              S.zero
+              (fun acc s -> S.add acc (S.safe_int (Bytes.length s)))
+              (S.zero |> S.may_saturate)
               accu.elements
           in
           consume' ctxt gas (Interp_costs.concat_string total_length :> int)

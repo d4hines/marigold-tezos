@@ -167,7 +167,9 @@ module Cycle : sig
 end
 
 module Gas : sig
-  module Arith : Fixed_point_repr.Safe with type 'a t = Saturation_repr.t
+  module Arith :
+    Fixed_point_repr.Safe
+      with type 'a t = Saturation_repr.may_saturate Saturation_repr.t
 
   type t = private Unaccounted | Limited of {remaining : Arith.fp}
 
@@ -175,7 +177,7 @@ module Gas : sig
 
   val pp : Format.formatter -> t -> unit
 
-  type cost = Saturation_repr.t
+  type cost = Saturation_repr.may_saturate Saturation_repr.t
 
   val cost_encoding : cost Data_encoding.encoding
 
