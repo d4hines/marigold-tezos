@@ -1147,23 +1147,16 @@ let rec step_bounded :
           match SMap.find_opt name views with
           | None ->
               logged_return ((None, rest), ctxt)
-          | Some (Ex_view (Lam (view, _))) -> (
+          | Some (Ex_view (Lam (({aft = Item_t (aft_tv, Empty_t, _);
+                                  bef = (Item_t ( bef_tv, Empty_t, None )) } as view), _))) -> (
+
             match
-              stack_ty_eq ctxt loc view.aft (Item_t (output_ty, Empty_t, None))
+              ty_eq ctxt loc aft_tv output_ty
             with
             | Ok (Eq, ctxt) -> (
                 let bef_ty =
-                  stack_ty_eq
-                    ctxt
-                    loc
-                    view.bef
-                    (Item_t
-                       ( Pair_t
-                           ( (input_ty, None, None),
-                             (storage_type, None, None),
-                             None ),
-                         Empty_t,
-                         None ))
+                  ty_eq ctxt loc bef_tv
+                  ( Pair_t ((input_ty, None, None), (storage_type, None, None), None ))
                 in
                 match bef_ty with
                 | Ok (Eq, ctxt) ->
@@ -1173,7 +1166,8 @@ let rec step_bounded :
                 | Error _ ->
                     logged_return ((None, rest), ctxt) )
             | Error _ ->
-                logged_return ((None, rest), ctxt) ) ) )
+                logged_return ((None, rest), ctxt) )
+          | Some _ -> logged_return ((None, rest), ctxt) ) )
   | (Implicit_account, (key, rest)) ->
       let contract = Contract.implicit_contract key in
       logged_return (((Unit_t None, (contract, "default")), rest), ctxt)

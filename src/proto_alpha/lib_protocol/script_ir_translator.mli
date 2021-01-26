@@ -154,14 +154,6 @@ val ty_eq :
 
 val compare_address : Script_typed_ir.address -> Script_typed_ir.address -> int
 
-val stack_ty_eq :
-  context ->
-  int ->
-  'ta Script_typed_ir.stack_ty ->
-  'tb Script_typed_ir.stack_ty ->
-  (('ta Script_typed_ir.stack_ty, 'tb Script_typed_ir.stack_ty) eq * context)
-  tzresult
-
 val compare_comparable : 'a Script_typed_ir.comparable_ty -> 'a -> 'a -> int
 
 val parse_comparable_data :
