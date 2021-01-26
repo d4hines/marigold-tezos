@@ -647,9 +647,11 @@ let report_errors ~details ~show_source ?parsed ppf errs =
         | Non_dupable_type (loc, ty) ->
             Format.fprintf
               ppf
-              "%aDUP used on the non-dupable type %a."
+              "%aDUP used on the non-dupable type %a or non-dupable type %a on the return of VIEW"
               print_loc
               loc
+              print_ty
+              ty
               print_ty
               ty
         | Unexpected_ticket loc ->

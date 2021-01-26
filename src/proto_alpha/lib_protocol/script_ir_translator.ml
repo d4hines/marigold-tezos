@@ -5115,6 +5115,12 @@ and parse_instr :
         ~legacy:false
         output_ty
       >>?= fun (Ex_ty output_ty', ctxt) ->
+      record_trace_eval
+        (fun () ->
+          serialize_ty_for_error ctxt output_ty'
+          >|? fun (t, _ctxt) -> Non_dupable_type (loc, t))
+        (check_dupable_ty ctxt loc output_ty')
+      >>?= fun ctxt ->
       parse_var_annot
         loc
         annot
@@ -6214,6 +6220,12 @@ let parse_code :
           Ex_view  (Lam (descr (Item_t (output_ty', Empty_t, None)), code )) in
         return (SMap.add name cur_view' prev_views', ctxt))
     | (Typed ({loc; aft = Item_t (tv, Empty_t, _); _} as descr) ) ->
+        record_trace_eval
+          (fun () ->
+            serialize_ty_for_error ctxt output_ty'
+            >|? fun (t, _ctxt) -> Non_dupable_type (loc, t))
+          (check_dupable_ty ctxt loc output_ty')
+        >>?= fun ctxt ->
         ty_eq ctxt loc tv output_ty'
         >>?= fun (Eq, ctxt) ->
         let cur_view' = Ex_view (Lam (descr, code)) in
