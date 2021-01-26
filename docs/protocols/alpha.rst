@@ -23,6 +23,6 @@ Changelog
 List of Merge Requests
 ~~~~~~~~~~~~~~~~~~~~~~
 
-This is the full list of Merge Requests that compose 008.
+This is the full list of Merge Requests that compose the Alpha protocol.
 
 * `Michelson onchain views <gitlab.com/tezos/tezos/-/merge_requests/2359>`_
