@@ -1,0 +1,4 @@
+parameter address;
+storage address;
+code { CAR ; NIL operation ; PAIR } ;
+view "dup" address (ticket nat) { CDR ; PUSH nat 1 ; SWAP ; TICKET } ;
