@@ -6084,11 +6084,11 @@ and parse_toplevel :
             error (Invalid_arity (loc, name, 1, List.length args))
         | Prim (loc, K_view, [name; input_ty; output_ty; code], _) :: rest -> (
           match name with
-          | String (_, str) ->
-              if SMap.mem str vs then error (Duplicated_view_name loc)
-              else
-                let vs' = SMap.add str (input_ty, output_ty, code) vs in
-                find_fields p s c vs' rest
+          | String (_, str) -> (
+            if SMap.mem str vs then error (Duplicated_view_name loc)
+            else (
+              let vs' = SMap.add str (input_ty, output_ty, code) vs in
+              find_fields p s c vs' rest))
           | _ ->
               error (Bad_view_name loc) )
         | Prim
@@ -6230,8 +6230,10 @@ let parse_code :
            None ))
     >>=? fun (judgement, ctxt) ->
     match judgement with
-    | Failed _ ->
-        fail (Failed_view code)
+    | Failed {descr} ->
+        (let cur_view' =
+          Ex_view  (Lam (descr (Item_t (output_ty', Empty_t, None)), code )) in
+        return (SMap.add name cur_view' prev_views', ctxt))
     | Typed descr ->
         stack_ty_eq
           ctxt
