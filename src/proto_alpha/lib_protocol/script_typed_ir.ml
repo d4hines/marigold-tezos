@@ -106,12 +106,20 @@ type operation = packed_internal_operation * Lazy_storage.diffs option
 type 'a ticket = {ticketer : address; contents : 'a; amount : n num}
 
 type ('arg, 'storage) script = {
-  code : (('arg, 'storage) pair, (operation boxed_list, 'storage) pair) lambda;
+  code : ('arg, 'storage) script_lambda;
   arg_type : 'arg ty;
   storage : 'storage;
   storage_type : 'storage ty;
   root_name : field_annot option;
 }
+
+and ('arg, 'storage) script_lambda =
+  | Without_events of
+      (('arg, 'storage) pair, (operation boxed_list, 'storage) pair) lambda
+  | With_events of
+      ( ('arg, 'storage) pair,
+        ((operation boxed_list, 'storage) pair, Event.t boxed_list) pair )
+      lambda
 
 and end_of_stack = unit
 
@@ -387,10 +395,7 @@ and ('bef, 'aft) instr =
   | Implicit_account
       : (public_key_hash * 'rest, unit typed_contract * 'rest) instr
   | Create_contract :
-      'g ty
-      * 'p ty
-      * ('p * 'g, operation boxed_list * 'g) lambda
-      * field_annot option
+      'g ty * 'p ty * ('p, 'g) script_lambda * field_annot option
       -> ( public_key_hash option * (Tez.t * ('g * 'rest)),
            operation * (address * 'rest) )
          instr
