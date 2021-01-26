@@ -1595,27 +1595,6 @@ let ty_eq :
  fun ctxt loc ta tb ->
   merge_types ~legacy:true ctxt loc ta tb >|? fun (eq, _ty, ctxt) -> (eq, ctxt)
 
-let rec stack_ty_eq :
-    type ta tb.
-    context ->
-    int ->
-    ta stack_ty ->
-    tb stack_ty ->
-    ((ta stack_ty, tb stack_ty) eq * context) tzresult =
- fun ctxt lvl ta tb ->
-  match (ta, tb) with
-  | (Item_t (tva, ra, _), Item_t (tvb, rb, _)) ->
-      ty_eq ctxt lvl tva tvb
-      |> record_trace (Bad_stack_item lvl)
-      >>? fun (Eq, ctxt) ->
-      stack_ty_eq ctxt (lvl + 1) ra rb
-      >>? fun (Eq, ctxt) ->
-      (Ok (Eq, ctxt) : ((ta stack_ty, tb stack_ty) eq * context) tzresult)
-  | (Empty_t, Empty_t) ->
-      Ok (Eq, ctxt)
-  | (_, _) ->
-      error Bad_stack_length
-
 let merge_stacks :
     type ta tb.
     legacy:bool ->
@@ -6234,15 +6213,12 @@ let parse_code :
         (let cur_view' =
           Ex_view  (Lam (descr (Item_t (output_ty', Empty_t, None)), code )) in
         return (SMap.add name cur_view' prev_views', ctxt))
-    | Typed descr ->
-        stack_ty_eq
-          ctxt
-          descr.loc
-          descr.aft
-          (Item_t (output_ty', Empty_t, None))
+    | (Typed ({loc; aft = Item_t (tv, Empty_t, _); _} as descr) ) ->
+        ty_eq ctxt loc tv output_ty'
         >>?= fun (Eq, ctxt) ->
         let cur_view' = Ex_view (Lam (descr, code)) in
         return (SMap.add name cur_view' prev_views', ctxt)
+    | (Typed {loc}) -> Lwt.return (error (Bad_stack_item loc))
   in
   fold_left_s aux (SMap.empty, ctxt) (SMap.bindings views)
   >>=? fun (views, ctxt) ->
