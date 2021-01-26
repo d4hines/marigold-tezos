@@ -1,0 +1,88 @@
+tests_alpha/test_contract_opcodes.py::TestContractOpcodes::test_contract_input_output[log.tz-Unit-Unit-Unit]
+
+storage
+  Unit
+emitted operations
+  
+big_map diff
+  
+trace
+  - location: 6 (remaining gas: 1039970.323 units remaining)
+    [ (Pair Unit Unit)  	 ]
+  - location: 7 (remaining gas: 1039970.183 units remaining)
+    [  ]
+  - location: 10 (remaining gas: 1039969.183 units remaining)
+    [ "dummy"  	 ]
+  - location: 9 (remaining gas: 1039969.113 units remaining)
+    [ "dummy"  	 ]
+  - location: 8 (remaining gas: 1039969.113 units remaining)
+    [  ]
+  - location: 15 (remaining gas: 1039968.113 units remaining)
+    [ 1  	 ]
+  - location: 14 (remaining gas: 1039968.043 units remaining)
+    [ 1  	 ]
+  - location: 13 (remaining gas: 1039968.043 units remaining)
+    [  ]
+  - location: 20 (remaining gas: 1039967.043 units remaining)
+    [ {}  	 ]
+  - location: 19 (remaining gas: 1039966.973 units remaining)
+    [ {}  	 ]
+  - location: 18 (remaining gas: 1039966.973 units remaining)
+    [  ]
+  - location: 27 (remaining gas: 1039965.813 units remaining)
+    [ {}  	 ]
+  - location: 26 (remaining gas: 1039965.743 units remaining)
+    [ {}  	 ]
+  - location: 25 (remaining gas: 1039965.743 units remaining)
+    [  ]
+  - location: 30 (remaining gas: 1039965.603 units remaining)
+    [ 2  	 ]
+  - location: 33 (remaining gas: 1039965.463 units remaining)
+    [ 2  	
+      2  	 ]
+  - location: 38 (remaining gas: 1039964.463 units remaining)
+    [ (Pair 2 2)  	 ]
+  - location: 39 (remaining gas: 1039964.323 units remaining)
+    [ "input"  	
+      (Pair 2 2)  	 ]
+  - location: 42 (remaining gas: 1039964.183 units remaining)
+    [ (Pair "input" 2 2)  	 ]
+  - location: -1 (remaining gas: 1039964.113 units remaining)
+    [ (Pair "input" 2 2)  	 ]
+  - location: 36 (remaining gas: 1039964.113 units remaining)
+    [ 2  	
+      2  	 ]
+  - location: 43 (remaining gas: 1039963.973 units remaining)
+    [ 4  	 ]
+  - location: 46 (remaining gas: 1039962.973 units remaining)
+    [ "output"  	
+      4  	 ]
+  - location: 49 (remaining gas: 1039962.833 units remaining)
+    [ (Pair "output" 4)  	 ]
+  - location: -1 (remaining gas: 1039962.763 units remaining)
+    [ (Pair "output" 4)  	 ]
+  - location: 44 (remaining gas: 1039962.763 units remaining)
+    [ 4  	 ]
+  - location: 50 (remaining gas: 1039962.623 units remaining)
+    [ 4  	
+      4  	 ]
+  - location: 55 (remaining gas: 1039962.293 units remaining)
+    [ 0  	 ]
+  - location: 56 (remaining gas: 1039962.153 units remaining)
+    [ True  	 ]
+  - location: -1 (remaining gas: 1039962.083 units remaining)
+    [ True  	 ]
+  - location: 58 (remaining gas: 1039961.893 units remaining)
+    [  ]
+  - location: -1 (remaining gas: 1039961.823 units remaining)
+    [  ]
+  - location: 63 (remaining gas: 1039961.683 units remaining)
+    [ Unit  	 ]
+  - location: 64 (remaining gas: 1039961.543 units remaining)
+    [ {}  	@noop
+      Unit  	 ]
+  - location: 66 (remaining gas: 1039961.403 units remaining)
+    [ (Pair {} Unit)  	 ]
+  - location: -1 (remaining gas: 1039961.333 units remaining)
+    [ (Pair {} Unit)  	 ]
+

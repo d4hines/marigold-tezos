@@ -391,7 +391,14 @@ class TestContracts:
             # operations cannot be PACKed
             (
                 "pack_operation.tz",
-                r'operation type forbidden in parameter, storage and constants',
+                r"operation type forbidden in parameter, storage, "
+                "events and constants",
+            ),
+            # operations cannot be TRACEd
+            (
+                "trace_operation.tz",
+                r"operation type forbidden in parameter, storage, "
+                "events and constants",
             ),
             # big_maps cannot be PACKed
             (

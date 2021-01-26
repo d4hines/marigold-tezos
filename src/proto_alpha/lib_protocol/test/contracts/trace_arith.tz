@@ -1,0 +1,24 @@
+{ parameter (or (or (int %add) (int %mul)) (int %sub)) ;
+  storage int ;
+  code { DUP ;
+         CDR ;
+         SWAP ;
+         CAR ;
+         IF_LEFT
+           { IF_LEFT
+             { PAIR ; DUP ; TRACE "add" ; SWAP ; UNPAIR ; ADD }
+             { PAIR ; DUP ; TRACE "mul" ; SWAP ; UNPAIR ; SWAP ; MUL } }
+           { PAIR ; DUP ; TRACE "sub" ; SWAP ; UNPAIR ; SWAP ; SUB } ;
+         DUP ;
+         TRACE "output" ;
+         SWAP ;
+         NIL operation ;
+         PAIR ; 
+         DIP 1 {
+           NIL event ;
+           SWAP ;
+           CONS ;
+           SWAP ;
+           CONS ;
+         } ;
+         PAIR } }
