@@ -616,14 +616,10 @@ class TestView:
                 'view_toplevel_dupable_type',
                 'non-dupable type ticket nat on the return of VIEW',
             ),
-            ('view_op_invalid_arity', 'primitive VIEW expects 3 arguments'),
+            ('view_op_invalid_arity', 'primitive VIEW expects 2 arguments'),
             (
                 'view_op_bad_name',
                 'Tezos_raw_protocol_alpha.Script_tc_errors.Bad_view_name',
-            ),
-            (
-                'view_op_bad_input_type',
-                'Type nat is not compatible with type string',
             ),
             (
                 'view_op_bad_return_type',
