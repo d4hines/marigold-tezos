@@ -312,6 +312,7 @@ let commands () =
               ~legacy
               program
             >>= fun res ->
+            let res = res >|? fun (types, gas, _events) -> (types, gas) in
             print_typecheck_result
               ~emacs:emacs_mode
               ~show_types
