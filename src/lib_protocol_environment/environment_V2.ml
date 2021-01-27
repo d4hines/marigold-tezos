@@ -127,7 +127,7 @@ struct
   module TzEndian = TzEndian
   module Set = Stdlib.Set
   module Map = Stdlib.Map
-  module FQueue = FQueue
+  module FQueue = CCFQueue
   module Int32 = Int32
   module Int64 = Int64
   module Buffer = Buffer

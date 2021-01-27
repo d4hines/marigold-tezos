@@ -16,6 +16,8 @@ depends: [
   "crowbar" { with-test }
   "lwt" { with-test }
   "tezos-sapling"
+  "containers" { >= "3.0.0" }
+  "containers-data" { >= "3.0.0" }
 ]
 build: [
   ["dune" "build" "-p" name "-j" jobs]
