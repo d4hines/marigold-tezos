@@ -6,8 +6,7 @@
             tezos-protocol-environment-sigs
             tezos-protocol-environment-structs
             tezos-micheline
-            containers
-            containers-data)
+            containers)
  (flags (:standard -open Tezos_base__TzPervasives
                    -open Tezos_micheline))
  (wrapped false)

@@ -24,8 +24,7 @@
             ezjsonm
             lwt
             ipaddr
-	    containers
-	    containers-data))
+	    containers))
 
 (ocamllex point_parser)
 
