@@ -23,7 +23,9 @@
             ptime
             ezjsonm
             lwt
-            ipaddr))
+            ipaddr
+	    containers
+	    containers-data))
 
 (ocamllex point_parser)
 
