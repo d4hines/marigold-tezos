@@ -790,17 +790,6 @@ let apply_manager_operation_content :
 type success_or_failure = Success of context | Failure
 
 let apply_internal_manager_operations ctxt mode ~payer ~chain_id ops =
-  let rec ording ops bfs_list dfs_stack =
-    match ops with
-    | [] ->
-        (bfs_list, dfs_stack)
-    | (Internal_operation i as op) :: rest -> (
-      match i.exec_ord with
-      | BFS ->
-          ording rest (bfs_list @ [op]) dfs_stack
-      | DFS ->
-          ording rest bfs_list (dfs_stack @ [[op]]) )
-  in
   let rec apply ctxt applied worklist =
     match worklist with
     | [] ->
@@ -809,7 +798,7 @@ let apply_internal_manager_operations ctxt mode ~payer ~chain_id ops =
       match q with
       | [] ->
           apply ctxt applied s
-      | Internal_operation ({source; operation; nonce; exec_ord = _} as op)
+      | Internal_operation ({source; operation; nonce; exec_ord} as op)
         :: rest -> (
           ( if internal_nonce_already_recorded ctxt nonce then
             fail (Internal_operation_replay (Internal_operation op))
@@ -838,15 +827,16 @@ let apply_internal_manager_operations ctxt mode ~payer ~chain_id ops =
               in
               Lwt.return (Failure, List.rev (skipped @ (result :: applied)))
           | Ok (ctxt, result, emitted) ->
-              let (b, d) = ording emitted rest [] in
-              let nl = d @ (b :: s) in
+              (let worklist' =
+                match exec_ord with
+                | BFS -> (rest @ emitted) :: s
+                | DFS -> emitted :: rest :: s in
               apply
                 ctxt
                 (Internal_operation_result (op, Applied result) :: applied)
-                nl ) )
+                worklist' ) ) )
   in
-  let (iniBfs, iniDfs) = ording ops [] [] in
-  let initStack = iniDfs @ [iniBfs] in
+  let initStack = [ops] in
   apply ctxt [] initStack
 
 let precheck_manager_contents (type kind) ctxt
