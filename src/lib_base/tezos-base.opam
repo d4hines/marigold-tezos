@@ -20,6 +20,8 @@ depends: [
   "ezjsonm" { >= "0.5.0" }
   "ipaddr" {>= "5.0.0" & < "6.0.0"}
   "crowbar" { with-test }
+  "containers" {>= "3.0.0" }
+  "containers-data" {>= "3.0.0" }
 ]
 build: [
   ["dune" "build" "-p" name "-j" jobs]
