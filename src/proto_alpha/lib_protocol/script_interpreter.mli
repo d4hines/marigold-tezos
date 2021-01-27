@@ -119,12 +119,12 @@ type (_, _, _, _) continuation =
       * (('a, 'c) Script_typed_ir.map, 'd * 's, 'r, 'f) continuation
       -> ('c, 'd * 's, 'r, 'f) continuation
 
-type ('a, 's, 'b, 'f, 'u) logging_function =
+type ('a, 's, 'b, 'f, 'c, 'u) logging_function =
   ('a, 's, 'b, 'f) Script_typed_cps_ir.kinstr ->
   context ->
   Script.location ->
-  'u Script_typed_cps_ir.stack_ty ->
-  'u ->
+  ('c, 'u) Script_typed_cps_ir.stack_ty ->
+  'c * 'u ->
   unit
 
 (** [STEP_LOGGER] is the module type of logging
@@ -136,18 +136,18 @@ module type STEP_LOGGER = sig
       function [interp]. [interp] is called when starting
       the interpretation of a script and subsequently
       at each [Exec] instruction. *)
-  val log_interp : ('a, 's, 'b, 'f, 'u) logging_function
+  val log_interp : ('a, 's, 'b, 'f, 'c, 'u) logging_function
 
   (** [log_entry] is called {i before} executing
       each instruction but {i after} gas for
       this instruction has been successfully consumed. *)
-  val log_entry : ('a, 's, 'b, 'f, 'a * 's) logging_function
+  val log_entry : ('a, 's, 'b, 'f, 'a, 's) logging_function
 
   val log_control : ('a, 's, 'b, 'f) continuation -> unit
 
   (** [log_exit] is called {i after} executing each
       instruction. *)
-  val log_exit : ('a, 's, 'b, 'f, 'u) logging_function
+  val log_exit : ('a, 's, 'b, 'f, 'c, 'u) logging_function
 
   (** [get_log] allows to obtain an execution trace, if
       any was produced. *)

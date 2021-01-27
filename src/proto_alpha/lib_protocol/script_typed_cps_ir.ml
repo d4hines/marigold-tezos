@@ -905,11 +905,11 @@ and 'ty ty =
   | Bls12_381_fr_t : type_annot option -> Bls12_381.Fr.t ty
   | Ticket_t : 'a comparable_ty * type_annot option -> 'a ticket ty
 
-and 'ty stack_ty =
+and ('top_ty, 'resty) stack_ty =
   | Item_t :
-      'ty ty * 'rest stack_ty * var_annot option
-      -> ('ty * 'rest) stack_ty
-  | Empty_t : unit stack_ty
+      'ty ty * ('ty2, 'rest) stack_ty * var_annot option
+      -> ('ty, 'ty2 * 'rest) stack_ty
+  | Bot_t : (unit, unit) stack_ty
 
 and ('key, 'value) big_map = {
   id : Big_map.Id.t option;
@@ -930,15 +930,15 @@ and ('arg, 'storage) script = {
 
 and ('a, 's, 'r, 'f) kdescr = {
   kloc : Script.location;
-  kbef : ('a * 's) stack_ty;
-  kaft : ('r * 'f) stack_ty;
+  kbef : ('a, 's) stack_ty;
+  kaft : ('r, 'f) stack_ty;
   kinstr : ('a, 's, 'r, 'f) kinstr;
 }
 
 and ('a, 's, 'b, 'u) descr = {
   loc : Script.location;
-  bef : ('a * 's) stack_ty;
-  aft : ('b * 'u) stack_ty;
+  bef : ('a, 's) stack_ty;
+  aft : ('b, 'u) stack_ty;
   instr : ('a, 's, 'b, 'u) cinstr;
 }
 
@@ -948,7 +948,7 @@ and ('a, 's, 'b, 'u) cinstr = {
     'r 'f. ('a, 's) kinfo -> ('b, 'u, 'r, 'f) kinstr -> ('a, 's, 'r, 'f) kinstr;
 }
 
-and ('a, 's) kinfo = {iloc : Script.location; kstack_ty : ('a * 's) stack_ty}
+and ('a, 's) kinfo = {iloc : Script.location; kstack_ty : ('a, 's) stack_ty}
 
 and (_, _, _, _, _, _, _, _) stack_prefix_preservation_witness =
   | KPrefix :

@@ -7,31 +7,23 @@ emitted operations
 big_map diff
   
 trace
-  - location: 8 (remaining gas: 1039991.548 units remaining)
-    [ (Pair { "test1" ; "test2" } {})  	
-      Unit  	 ]
-  - location: 9 (remaining gas: 1039991.468 units remaining)
-    [ { "test1" ; "test2" }  	@parameter
-      Unit  	 ]
-  - location: 12 (remaining gas: 1039990.864 units remaining)
+  - location: 9 (remaining gas: 1039991.678 units remaining)
+    [ (Pair { "test1" ; "test2" } {})  	 ]
+  - location: 9 (remaining gas: 1039991.598 units remaining)
+    [ { "test1" ; "test2" }  	@parameter ]
+  - location: 12 (remaining gas: 1039990.994 units remaining)
     [ "Hello "  	@hello
-      "test1"  	@parameter.elt
-      Unit  	 ]
-  - location: 15 (remaining gas: 1039990.784 units remaining)
-    [ "Hello test1"  	
-      Unit  	 ]
-  - location: 12 (remaining gas: 1039990.704 units remaining)
+      "test1"  	@parameter.elt ]
+  - location: 15 (remaining gas: 1039990.914 units remaining)
+    [ "Hello test1"  	 ]
+  - location: 12 (remaining gas: 1039990.834 units remaining)
     [ "Hello "  	@hello
-      "test2"  	@parameter.elt
-      Unit  	 ]
-  - location: 15 (remaining gas: 1039990.624 units remaining)
-    [ "Hello test2"  	
-      Unit  	 ]
-  - location: 16 (remaining gas: 1039990.544 units remaining)
+      "test2"  	@parameter.elt ]
+  - location: 15 (remaining gas: 1039990.754 units remaining)
+    [ "Hello test2"  	 ]
+  - location: 16 (remaining gas: 1039990.674 units remaining)
     [ {}  	
-      { "Hello test1" ; "Hello test2" }  	
-      Unit  	 ]
-  - location: 18 (remaining gas: 1039990.464 units remaining)
-    [ (Pair {} { "Hello test1" ; "Hello test2" })  	
-      Unit  	 ]
+      { "Hello test1" ; "Hello test2" }  	 ]
+  - location: 18 (remaining gas: 1039990.594 units remaining)
+    [ (Pair {} { "Hello test1" ; "Hello test2" })  	 ]
 

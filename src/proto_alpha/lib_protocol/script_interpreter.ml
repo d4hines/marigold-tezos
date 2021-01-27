@@ -821,22 +821,22 @@ let consume_control local_gas_counter ks =
     where these functions are called.
 
 *)
-type ('a, 's, 'b, 'f, 'u) logging_function =
+type ('a, 's, 'b, 'f, 'c, 'u) logging_function =
   ('a, 's, 'b, 'f) kinstr ->
   context ->
   Script.location ->
-  'u stack_ty ->
-  'u ->
+  ('c, 'u) stack_ty ->
+  'c * 'u ->
   unit
 
 module type STEP_LOGGER = sig
-  val log_interp : ('a, 's, 'b, 'f, 'u) logging_function
+  val log_interp : ('a, 's, 'b, 'f, 'c, 'u) logging_function
 
-  val log_entry : ('a, 's, 'b, 'f, 'a * 's) logging_function
+  val log_entry : ('a, 's, 'b, 'f, 'a, 's) logging_function
 
   val log_control : ('a, 's, 'b, 'f) continuation -> unit
 
-  val log_exit : ('a, 's, 'b, 'f, 'u) logging_function
+  val log_exit : ('a, 's, 'b, 'f, 'c, 'u) logging_function
 
   val get_log : unit -> execution_trace option tzresult Lwt.t
 end
@@ -2081,9 +2081,7 @@ and apply :
   >>?= fun (ty_expr, ctxt) ->
   match full_arg_ty with
   | Pair_t ((capture_ty, _, _), (arg_ty, _, _), _) ->
-      let arg_stack_ty =
-        Item_t (arg_ty, Item_t (Unit_t None, Empty_t, None), None)
-      in
+      let arg_stack_ty = Item_t (arg_ty, Bot_t, None) in
       let full_descr =
         {
           kloc = descr.kloc;

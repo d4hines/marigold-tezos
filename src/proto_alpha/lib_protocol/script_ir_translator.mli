@@ -34,7 +34,7 @@ type ex_comparable_ty =
 type ex_ty = Ex_ty : 'a Script_typed_cps_ir.ty -> ex_ty
 
 type ex_stack_ty =
-  | Ex_stack_ty : 'a Script_typed_cps_ir.stack_ty -> ex_stack_ty
+  | Ex_stack_ty : ('a, 's) Script_typed_cps_ir.stack_ty -> ex_stack_ty
 
 type ex_script = Ex_script : ('a, 'b) Script_typed_cps_ir.script -> ex_script
 
@@ -54,7 +54,7 @@ type ex_code = Ex_code : ('a, 'c) code -> ex_code
 
 type tc_context =
   | Lambda : tc_context
-  | Dip : 'a Script_typed_cps_ir.stack_ty * tc_context -> tc_context
+  | Dip : ('a, 's) Script_typed_cps_ir.stack_ty * tc_context -> tc_context
   | Toplevel : {
       storage_type : 'sto Script_typed_cps_ir.ty;
       param_type : 'param Script_typed_cps_ir.ty;
@@ -67,7 +67,7 @@ type ('a, 's) judgement =
   | Typed : ('a, 's, 'b, 'u) Script_typed_cps_ir.descr -> ('a, 's) judgement
   | Failed : {
       descr :
-        'b 'u. ('b * 'u) Script_typed_cps_ir.stack_ty ->
+        'b 'u. ('b, 'u) Script_typed_cps_ir.stack_ty ->
         ('a, 's, 'b, 'u) Script_typed_cps_ir.descr;
     }
       -> ('a, 's) judgement
@@ -196,7 +196,7 @@ val parse_instr :
   context ->
   legacy:bool ->
   Script.node ->
-  ('a * 's) Script_typed_cps_ir.stack_ty ->
+  ('a, 's) Script_typed_cps_ir.stack_ty ->
   (('a, 's) judgement * context) tzresult Lwt.t
 
 (**

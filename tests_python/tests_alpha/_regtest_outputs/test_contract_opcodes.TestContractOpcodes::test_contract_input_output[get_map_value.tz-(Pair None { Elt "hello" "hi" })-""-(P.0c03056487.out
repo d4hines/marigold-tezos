@@ -7,47 +7,31 @@ emitted operations
 big_map diff
   
 trace
-  - location: 11 (remaining gas: 1039984.923 units remaining)
-    [ (Pair "" None { Elt "hello" "hi" })  	
-      Unit  	 ]
+  - location: 12 (remaining gas: 1039984.923 units remaining)
+    [ (Pair "" None { Elt "hello" "hi" })  	 ]
   - location: 12 (remaining gas: 1039984.843 units remaining)
     [ (Pair "" None { Elt "hello" "hi" })  	
-      (Pair "" None { Elt "hello" "hi" })  	
-      Unit  	 ]
+      (Pair "" None { Elt "hello" "hi" })  	 ]
   - location: 13 (remaining gas: 1039984.763 units remaining)
     [ ""  	@parameter
-      (Pair "" None { Elt "hello" "hi" })  	
-      Unit  	 ]
+      (Pair "" None { Elt "hello" "hi" })  	 ]
   - location: 14 (remaining gas: 1039984.663 units remaining)
-    [ (Pair "" None { Elt "hello" "hi" })  	
-      Unit  	 ]
+    [ (Pair "" None { Elt "hello" "hi" })  	 ]
   - location: 17 (remaining gas: 1039984.583 units remaining)
-    [ (Pair None { Elt "hello" "hi" })  	@storage
-      Unit  	 ]
+    [ (Pair None { Elt "hello" "hi" })  	@storage ]
   - location: 18 (remaining gas: 1039984.503 units remaining)
-    [ { Elt "hello" "hi" }  	
-      Unit  	 ]
+    [ { Elt "hello" "hi" }  	 ]
   - location: 19 (remaining gas: 1039984.423 units remaining)
     [ { Elt "hello" "hi" }  	
-      { Elt "hello" "hi" }  	
-      Unit  	 ]
-  - location: 15 (remaining gas: 1039984.343 units remaining)
-    [ ""  	@parameter
-      { Elt "hello" "hi" }  	
-      { Elt "hello" "hi" }  	
-      Unit  	 ]
-  - location: 20 (remaining gas: 1039984.263 units remaining)
+      { Elt "hello" "hi" }  	 ]
+  - location: 20 (remaining gas: 1039984.343 units remaining)
     [ None  	
-      { Elt "hello" "hi" }  	
-      Unit  	 ]
-  - location: 21 (remaining gas: 1039984.183 units remaining)
-    [ (Pair None { Elt "hello" "hi" })  	
-      Unit  	 ]
-  - location: 22 (remaining gas: 1039984.103 units remaining)
+      { Elt "hello" "hi" }  	 ]
+  - location: 21 (remaining gas: 1039984.263 units remaining)
+    [ (Pair None { Elt "hello" "hi" })  	 ]
+  - location: 22 (remaining gas: 1039984.183 units remaining)
     [ {}  	
-      (Pair None { Elt "hello" "hi" })  	
-      Unit  	 ]
-  - location: 24 (remaining gas: 1039984.023 units remaining)
-    [ (Pair {} None { Elt "hello" "hi" })  	
-      Unit  	 ]
+      (Pair None { Elt "hello" "hi" })  	 ]
+  - location: 24 (remaining gas: 1039984.103 units remaining)
+    [ (Pair {} None { Elt "hello" "hi" })  	 ]
 

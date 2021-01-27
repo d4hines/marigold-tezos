@@ -93,7 +93,7 @@ let test_stack_overflow () =
   let open Script_typed_cps_ir in
   test_context ()
   >>=? fun ctxt ->
-  let stack = Script_typed_cps_ir.Item_t (Unit_t None, Empty_t, None) in
+  let stack = Script_typed_cps_ir.Bot_t in
   let descr kinstr =
     Script_typed_cps_ir.{kloc = 0; kbef = stack; kaft = stack; kinstr}
   in

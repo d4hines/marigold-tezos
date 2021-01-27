@@ -7,58 +7,38 @@ emitted operations
 big_map diff
   
 trace
-  - location: 6 (remaining gas: 1039989.170 units remaining)
-    [ (Pair 38 14)  	
-      Unit  	 ]
+  - location: 7 (remaining gas: 1039989.170 units remaining)
+    [ (Pair 38 14)  	 ]
   - location: 7 (remaining gas: 1039989.090 units remaining)
     [ { UNPAIR ; ADD }  	
-      (Pair 38 14)  	
-      Unit  	 ]
+      (Pair 38 14)  	 ]
   - location: 15 (remaining gas: 1039989.020 units remaining)
     [ (Pair 38 14)  	
-      { UNPAIR ; ADD }  	
-      Unit  	 ]
+      { UNPAIR ; ADD }  	 ]
   - location: 16 (remaining gas: 1039988.940 units remaining)
     [ 38  	@parameter
       14  	@storage
-      { UNPAIR ; ADD }  	
-      Unit  	 ]
+      { UNPAIR ; ADD }  	 ]
   - location: 17 (remaining gas: 1039988.840 units remaining)
     [ 14  	@storage
-      { UNPAIR ; ADD }  	
-      Unit  	 ]
+      { UNPAIR ; ADD }  	 ]
   - location: 19 (remaining gas: 1039987.515 units remaining)
-    [ { PUSH nat 14 ; PAIR ; { UNPAIR ; ADD } }  	
-      Unit  	 ]
-  - location: 19 (remaining gas: 1039987.435 units remaining)
-    [ 38  	@parameter
-      { PUSH nat 14 ; PAIR ; { UNPAIR ; ADD } }  	
-      Unit  	 ]
+    [ { PUSH nat 14 ; PAIR ; { UNPAIR ; ADD } }  	 ]
+  - location: 20 (remaining gas: 1039987.415 units remaining)
+    [ 38  	 ]
   - location: 12 (remaining gas: 1039987.335 units remaining)
-    [ 38  	
-      Unit  	 ]
+    [ 14  	
+      38  	 ]
   - location: 12 (remaining gas: 1039987.255 units remaining)
+    [ (Pair 14 38)  	@arg ]
+  - location: 13 (remaining gas: 1039987.175 units remaining)
     [ 14  	
-      38  	
-      Unit  	 ]
-  - location: 12 (remaining gas: 1039987.175 units remaining)
-    [ (Pair 14 38)  	@arg
-      Unit  	 ]
-  - location: 13 (remaining gas: 1039987.095 units remaining)
-    [ 14  	
-      38  	
-      Unit  	 ]
-  - location: 14 (remaining gas: 1039987.015 units remaining)
-    [ 52  	
-      Unit  	 ]
-  - location: 20 (remaining gas: 1039987.015 units remaining)
-    [ 52  	
-      Unit  	 ]
-  - location: 21 (remaining gas: 1039986.935 units remaining)
+      38  	 ]
+  - location: 14 (remaining gas: 1039987.095 units remaining)
+    [ 52  	 ]
+  - location: 21 (remaining gas: 1039987.015 units remaining)
     [ {}  	
-      52  	
-      Unit  	 ]
-  - location: 23 (remaining gas: 1039986.855 units remaining)
-    [ (Pair {} 52)  	
-      Unit  	 ]
+      52  	 ]
+  - location: 23 (remaining gas: 1039986.935 units remaining)
+    [ (Pair {} 52)  	 ]
 

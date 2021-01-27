@@ -7,48 +7,32 @@ emitted operations
 big_map diff
   New map(0) of type (big_map string nat)
 trace
-  - location: 11 (remaining gas: 1039986.686 units remaining)
-    [ (Pair "bar" {} None)  	
-      Unit  	 ]
+  - location: 12 (remaining gas: 1039986.686 units remaining)
+    [ (Pair "bar" {} None)  	 ]
   - location: 12 (remaining gas: 1039986.606 units remaining)
     [ "bar"  	@parameter
-      (Pair {} None)  	@storage
-      Unit  	 ]
+      (Pair {} None)  	@storage ]
   - location: 13 (remaining gas: 1039986.506 units remaining)
-    [ (Pair {} None)  	@storage
-      Unit  	 ]
+    [ (Pair {} None)  	@storage ]
   - location: 15 (remaining gas: 1039986.426 units remaining)
-    [ {}  	
-      Unit  	 ]
+    [ {}  	 ]
   - location: 16 (remaining gas: 1039986.346 units remaining)
     [ {}  	
-      {}  	
-      Unit  	 ]
-  - location: 14 (remaining gas: 1039986.266 units remaining)
-    [ "bar"  	@parameter
-      {}  	
-      {}  	
-      Unit  	 ]
-  - location: 17 (remaining gas: 1039986.186 units remaining)
+      {}  	 ]
+  - location: 17 (remaining gas: 1039986.266 units remaining)
     [ False  	
-      {}  	
-      Unit  	 ]
-  - location: 18 (remaining gas: 1039986.106 units remaining)
+      {}  	 ]
+  - location: 18 (remaining gas: 1039986.186 units remaining)
     [ (Some False)  	
-      {}  	
-      Unit  	 ]
-  - location: 19 (remaining gas: 1039986.036 units remaining)
+      {}  	 ]
+  - location: 19 (remaining gas: 1039986.116 units remaining)
     [ {}  	
-      (Some False)  	
-      Unit  	 ]
-  - location: 20 (remaining gas: 1039985.956 units remaining)
-    [ (Pair {} (Some False))  	
-      Unit  	 ]
-  - location: 21 (remaining gas: 1039985.876 units remaining)
+      (Some False)  	 ]
+  - location: 20 (remaining gas: 1039986.036 units remaining)
+    [ (Pair {} (Some False))  	 ]
+  - location: 21 (remaining gas: 1039985.956 units remaining)
     [ {}  	
-      (Pair {} (Some False))  	
-      Unit  	 ]
-  - location: 23 (remaining gas: 1039985.796 units remaining)
-    [ (Pair {} {} (Some False))  	
-      Unit  	 ]
+      (Pair {} (Some False))  	 ]
+  - location: 23 (remaining gas: 1039985.876 units remaining)
+    [ (Pair {} {} (Some False))  	 ]
 

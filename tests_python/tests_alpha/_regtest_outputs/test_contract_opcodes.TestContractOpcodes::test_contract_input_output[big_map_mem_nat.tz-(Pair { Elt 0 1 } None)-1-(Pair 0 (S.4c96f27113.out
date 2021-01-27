@@ -8,48 +8,32 @@ big_map diff
   New map(0) of type (big_map nat nat)
   Set map(0)[0] to 1
 trace
-  - location: 11 (remaining gas: 1039986.170 units remaining)
-    [ (Pair 1 { Elt 0 1 } None)  	
-      Unit  	 ]
+  - location: 12 (remaining gas: 1039986.170 units remaining)
+    [ (Pair 1 { Elt 0 1 } None)  	 ]
   - location: 12 (remaining gas: 1039986.090 units remaining)
     [ 1  	@parameter
-      (Pair { Elt 0 1 } None)  	@storage
-      Unit  	 ]
+      (Pair { Elt 0 1 } None)  	@storage ]
   - location: 13 (remaining gas: 1039985.990 units remaining)
-    [ (Pair { Elt 0 1 } None)  	@storage
-      Unit  	 ]
+    [ (Pair { Elt 0 1 } None)  	@storage ]
   - location: 15 (remaining gas: 1039985.910 units remaining)
-    [ { Elt 0 1 }  	
-      Unit  	 ]
+    [ { Elt 0 1 }  	 ]
   - location: 16 (remaining gas: 1039985.830 units remaining)
     [ { Elt 0 1 }  	
-      { Elt 0 1 }  	
-      Unit  	 ]
-  - location: 14 (remaining gas: 1039985.750 units remaining)
-    [ 1  	@parameter
-      { Elt 0 1 }  	
-      { Elt 0 1 }  	
-      Unit  	 ]
-  - location: 17 (remaining gas: 1039985.670 units remaining)
+      { Elt 0 1 }  	 ]
+  - location: 17 (remaining gas: 1039985.750 units remaining)
     [ False  	
-      { Elt 0 1 }  	
-      Unit  	 ]
-  - location: 18 (remaining gas: 1039985.590 units remaining)
+      { Elt 0 1 }  	 ]
+  - location: 18 (remaining gas: 1039985.670 units remaining)
     [ (Some False)  	
-      { Elt 0 1 }  	
-      Unit  	 ]
-  - location: 19 (remaining gas: 1039985.520 units remaining)
+      { Elt 0 1 }  	 ]
+  - location: 19 (remaining gas: 1039985.600 units remaining)
     [ { Elt 0 1 }  	
-      (Some False)  	
-      Unit  	 ]
-  - location: 20 (remaining gas: 1039985.440 units remaining)
-    [ (Pair { Elt 0 1 } (Some False))  	
-      Unit  	 ]
-  - location: 21 (remaining gas: 1039985.360 units remaining)
+      (Some False)  	 ]
+  - location: 20 (remaining gas: 1039985.520 units remaining)
+    [ (Pair { Elt 0 1 } (Some False))  	 ]
+  - location: 21 (remaining gas: 1039985.440 units remaining)
     [ {}  	
-      (Pair { Elt 0 1 } (Some False))  	
-      Unit  	 ]
-  - location: 23 (remaining gas: 1039985.280 units remaining)
-    [ (Pair {} { Elt 0 1 } (Some False))  	
-      Unit  	 ]
+      (Pair { Elt 0 1 } (Some False))  	 ]
+  - location: 23 (remaining gas: 1039985.360 units remaining)
+    [ (Pair {} { Elt 0 1 } (Some False))  	 ]
 

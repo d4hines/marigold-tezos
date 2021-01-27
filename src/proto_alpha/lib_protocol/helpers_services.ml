@@ -293,17 +293,20 @@ module Scripts = struct
   module Traced_interpreter (Unparsing_mode : UNPARSING_MODE) = struct
     type log_element =
       | Log :
-          context * Script.location * 'a * 'a Script_typed_cps_ir.stack_ty
+          context
+          * Script.location
+          * ('a * 's)
+          * ('a, 's) Script_typed_cps_ir.stack_ty
           -> log_element
 
     let unparse_stack ctxt (stack, stack_ty) =
       (* We drop the gas limit as this function is only used for debugging/errors. *)
       let ctxt = Gas.set_unlimited ctxt in
       let rec unparse_stack :
-          type a.
-          a Script_typed_cps_ir.stack_ty * a ->
+          type a s.
+          (a, s) Script_typed_cps_ir.stack_ty * (a * s) ->
           (Script.expr * string option) list tzresult Lwt.t = function
-        | (Empty_t, ()) ->
+        | (Bot_t, ((), ())) ->
             return_nil
         | (Item_t (ty, rest_ty, annot), (v, rest)) ->
             Script_ir_translator.unparse_data
