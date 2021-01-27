@@ -247,7 +247,7 @@ module Cost_of = struct
     (* model N_Dip *)
     let cost_N_Dip = S.safe_int 100
 
-    (* model N_Make_DFS *)
+    (* TODO: benchmark*)
     let cost_N_Make_DFS = Z.of_int 1
 
     (* model N_DipN *)

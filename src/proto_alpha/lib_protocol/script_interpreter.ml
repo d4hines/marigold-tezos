@@ -1102,8 +1102,6 @@ let rec step_bounded :
     | _ ->
         logged_return ((None, rest), ctxt) )
   | (Make_dfs, ((Internal_operation op, s), rest)) ->
-      Gas.consume ctxt Interp_costs.make_dfs
-      >>?= fun ctxt ->
       logged_return
         (((Internal_operation {op with exec_ord = DFS}, s), rest), ctxt)
   | (Transfer_tokens, (p, (amount, ((tp, (destination, entrypoint)), rest))))
