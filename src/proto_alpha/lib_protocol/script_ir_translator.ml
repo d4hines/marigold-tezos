@@ -6204,7 +6204,7 @@ let parse_code :
     match judgement with
     | Failed {descr} ->
         (let cur_view' =
-          Ex_view  (Lam (descr (Item_t (output_ty', Empty_t, None)), code )) in
+          Ex_view  (fun _ -> Lam (descr (Item_t (output_ty', Empty_t, None)), code )) in
         return (SMap.add name cur_view' prev_views', ctxt))
     | (Typed ({loc; aft = Item_t (tv, Empty_t, _); _} as descr) ) ->
         record_trace_eval
@@ -6215,7 +6215,9 @@ let parse_code :
         >>?= fun ctxt ->
         ty_eq ctxt loc tv output_ty'
         >>?= fun (Eq, ctxt) ->
-        let cur_view' = Ex_view (Lam (descr, code)) in
+        let cur_view' = Ex_view (
+          fun _
+          -> Lam (descr, code)) in
         return (SMap.add name cur_view' prev_views', ctxt)
     | (Typed {loc}) -> Lwt.return (error (Bad_stack_item loc))
   in
