@@ -94,11 +94,10 @@ are of three kinds:
 Smart contracts can also emit "internal operations".
 Smart contracts called by internal transactions can in turn also emit
 internal operation. There is a structure, stack of queue of operation
-(op for short), to maintains the execution flow of operation.
-If an emitted operation is DFS, then this operation will be enqueued
-into a new queue which will be pushed into stack. If an emitted 
-operation is BFS, then this operation will be enqueued into a queue
-which is the top element of stack.
+, to maintains the execution flow of operation (op for short).
+All emitted ops will be enqueued into a queue which is the top
+element of stack. If executed op is in DFS, this op will be enqueued
+into a new queue and the new queue will be pushed into stack.
 
 Here is an example of the evaluation flow of operation, , `!` indicates the op is running in DFS:
 
