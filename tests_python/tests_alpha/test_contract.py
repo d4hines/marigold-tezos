@@ -405,17 +405,6 @@ class TestExecOrd:
         "child_contract, parent_contract, grandparent_contract,"
         + "contract_input,expected",
         [
-            (
-                "ordering_concat_string_child1",
-                "ordering_mix_dfs_bfs_parent1",
-                "ordering_mix_dfs_bfs_grandparent1",
-                [
-                    ([("A", "True"), ("B", "False"), ("C", "False")], "True"),
-                    ([], "True"),
-                    ([("D", "True"), ("E", "False"), ("F", "False")], "False"),
-                ],
-                "EFDBCA",
-            ),
             # all in BFS
             (
                 "ordering_concat_string_child2",
@@ -441,6 +430,17 @@ class TestExecOrd:
                 "ABCDEF",
             ),
             (
+                "ordering_concat_string_child1",
+                "ordering_mix_dfs_bfs_parent1",
+                "ordering_mix_dfs_bfs_grandparent1",
+                [
+                    ([("A", "True"), ("B", "False"), ("C", "False")], "True"),
+                    ([], "True"),
+                    ([("D", "True"), ("E", "False"), ("F", "False")], "False"),
+                ],
+                "DEFABC",
+            ),
+            (
                 "ordering_concat_string_child4",
                 "ordering_mix_dfs_bfs_parent4",
                 "ordering_mix_dfs_bfs_grandparent4",
@@ -449,7 +449,7 @@ class TestExecOrd:
                     ([("C", "True"), ("D", "False")], "True"),
                     ([("E", "False"), ("F", "True"), ("G", "False")], "False"),
                 ],
-                "BACEGFDC",
+                "ABCEFGCD",
             ),
         ],
     )
@@ -518,19 +518,19 @@ class TestExecOrd:
                 "ordering2_concat_string_child1",
                 "ordering2_mix_dfs_bfs_parent1",
                 [("A", "True"), ("B", "False"), ("C", "True"), ("D", "False")],
-                "BDAC",
+                "ABCD",
             ),
             (
                 "ordering2_concat_string_child2",
                 "ordering2_mix_dfs_bfs_parent2",
                 [("A", "False"), ("B", "False"), ("C", "True"), ("D", "False")],
-                "ABDC",
+                "ABCD",
             ),
             (
                 "ordering2_concat_string_child3",
                 "ordering2_mix_dfs_bfs_parent3",
                 [("A", "True"), ("B", "True"), ("C", "True"), ("D", "False")],
-                "DABC",
+                "ABCD",
             ),
         ],
     )
