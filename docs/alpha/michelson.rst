@@ -143,12 +143,12 @@ Example 3. The internal operations, !3b, !3d, are in DFS. The others are in BFS.
     +------------+------------------+-------------------------------------+
     | executing  | emissions        | resulting stack of queue of op      |
     +------------+------------------+-------------------------------------+
-    | op 3       | 3a, !3b, 3c, !3d | [[!3b], [!3d], [3a, 3c]]            |
-    | op !3b     | 3bi              | [[3bi], [!3d], [3a, 3c]]            |
-    | op 3bi     |                  | [[!3d], [3a, 3c]]                   |
-    | op !3d     |                  | [[3a, 3c]]                          |
-    | op 3a      | 3ai, 3aj         | [[3c, 3ai, 3aj]]                    |
-    | op 3c      |                  | [[3ai, 3aj]]                        |
+    | op 3       | 3a, !3b, 3c, !3d | [[3a, !3b, 3c, !3d]]                |
+    | op 3a      | 3ai, 3aj         | [[!3b, 3c, !3d, 3ai, 3aj]]          |
+    | op !3b     | 3bi              | [[3bi], [3c, !3d, 3ai, 3aj]]        |
+    | op 3bi     |                  | [[3c, !3d, 3ai, 3aj]]               |
+    | op 3c      |                  | [[!3d, 3ai, 3aj]]                   |
+    | op !3d     |                  | [[3ai, 3aj]]                        |
     | op 3ai     |                  | [[3aj]]                             |
     | op 3aj     |                  | [[]]                                |
     +------------+------------------+-------------------------------------+
