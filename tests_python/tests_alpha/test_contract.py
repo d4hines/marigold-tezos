@@ -406,64 +406,96 @@ class TestContracts:
             ("stack_bottom_unpopable.tz", r'ill-typed script'),
             ("stack_bottom_unpopable_in_lambda.tz", r'ill-typed script'),
             # operations cannot be PACKed
-            ("pack_operation.tz",
-             r'operation type forbidden in parameter, storage and constants'),
+            (
+                "pack_operation.tz",
+                r'operation type forbidden in parameter, storage and constants',
+            ),
             # big_maps cannot be PACKed
-            ("pack_big_map.tz",
-             r'big_map or sapling_state type not expected here'),
-            ("invalid_self_entrypoint.tz",
-             r'Contract has no entrypoint named D'),
+            (
+                "pack_big_map.tz",
+                r'big_map or sapling_state type not expected here',
+            ),
+            (
+                "invalid_self_entrypoint.tz",
+                r'Contract has no entrypoint named D',
+            ),
             ("contract_annotation_default.tz", r'unexpected annotation'),
             # Missing field
-            ("missing_only_storage_field.tz",
-             r'Missing contract field: storage'),
+            (
+                "missing_only_storage_field.tz",
+                r'Missing contract field: storage',
+            ),
             ("missing_only_code_field.tz", r'Missing contract field: code'),
-            ("missing_only_parameter_field.tz",
-             r'Missing contract field: parameter'),
-            ("missing_parameter_and_storage_fields.tz",
-             r'Missing contract field: parameter'),
+            (
+                "missing_only_parameter_field.tz",
+                r'Missing contract field: parameter',
+            ),
+            (
+                "missing_parameter_and_storage_fields.tz",
+                r'Missing contract field: parameter',
+            ),
             # Duplicated field
-            ("multiple_parameter_field.tz",
-             r'duplicate contract field: parameter'),
+            (
+                "multiple_parameter_field.tz",
+                r'duplicate contract field: parameter',
+            ),
             ("multiple_code_field.tz", r'duplicate contract field: code'),
             ("multiple_storage_field.tz", r'duplicate contract field: storage'),
             # The first duplicated field is reported, storage in this case
-            ("multiple_storage_and_code_fields.tz",
-             r'duplicate contract field: storage'),
+            (
+                "multiple_storage_and_code_fields.tz",
+                r'duplicate contract field: storage',
+            ),
             # error message for set update on non-comparable type
-            ("set_update_non_comparable.tz",
-             r'Type nat is not compatible with type list operation'),
+            (
+                "set_update_non_comparable.tz",
+                r'Type nat is not compatible with type list operation',
+            ),
             # error message for the arity of the chain_id type
-            ("chain_id_arity.tz",
-             r'primitive chain_id expects 0 arguments but is given 1'),
+            (
+                "chain_id_arity.tz",
+                r'primitive chain_id expects 0 arguments but is given 1',
+            ),
             # error message for DIP over the limit
             ("big_dip.tz", r'expected a positive 10-bit integer'),
             # error message for DROP over the limit
             ("big_drop.tz", r'expected a positive 10-bit integer'),
             # error message for set update on non-comparable type
-            ("set_update_non_comparable.tz",
-             r'Type nat is not compatible with type list operation'),
+            (
+                "set_update_non_comparable.tz",
+                r'Type nat is not compatible with type list operation',
+            ),
             # error message for attempting to push a value of type never
             ("never_literal.tz", r'type never has no inhabitant.'),
             # field annotation mismatch with UNPAIR
-            ("unpair_field_annotation_mismatch.tz",
-             r'The field access annotation does not match'),
+            (
+                "unpair_field_annotation_mismatch.tz",
+                r'The field access annotation does not match',
+            ),
             # COMB, UNCOMB, and DUP cannot take 0 as argument
             ("comb0.tz", r"PAIR expects an argument of at least 2"),
             ("comb1.tz", r"PAIR expects an argument of at least 2"),
             ("uncomb0.tz", r"UNPAIR expects an argument of at least 2"),
             ("uncomb1.tz", r"UNPAIR expects an argument of at least 2"),
             ("dup0.tz", r"DUP n expects an argument of at least 1"),
-            ("push_big_map_with_id_with_parens.tz",
-             r"big_map or sapling_state type not expected here"),
-            ("push_big_map_with_id_without_parens.tz",
-             r"primitive PUSH expects 2 arguments but is given 4"),
+            (
+                "push_big_map_with_id_with_parens.tz",
+                r"big_map or sapling_state type not expected here",
+            ),
+            (
+                "push_big_map_with_id_without_parens.tz",
+                r"primitive PUSH expects 2 arguments but is given 4",
+            ),
             # sapling_state is not packable
-            ("pack_sapling_state.tz",
-             r"big_map or sapling_state type not expected here"),
+            (
+                "pack_sapling_state.tz",
+                r"big_map or sapling_state type not expected here",
+            ),
             # sapling_state is not packable
-            ("unpack_sapling_state.tz",
-             r"big_map or sapling_state type not expected here"),
+            (
+                "unpack_sapling_state.tz",
+                r"big_map or sapling_state type not expected here",
+            ),
             # Ticket duplication attempt
             ("ticket_dup.tz", r'DUP used on the non-dupable type ticket nat'),
             # error message for ticket unpack
@@ -471,8 +503,10 @@ class TestContracts:
             # error message for attempting to use APPLY to capture a ticket
             ("ticket_apply.tz", r'Ticket in unauthorized position'),
             # error message for attempting to wrap a ticket in a ticket
-            ("ticket_in_ticket.tz",
-             r'comparable type expected.Type ticket unit is not comparable'),
+            (
+                "ticket_in_ticket.tz",
+                r'comparable type expected.Type ticket unit is not comparable',
+            ),
         ],
     )
     def test_ill_typecheck(self, client: Client, contract, error_pattern):
