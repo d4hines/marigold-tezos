@@ -5102,7 +5102,7 @@ and parse_instr :
         ~allow_lazy_storage:true
         ~allow_operation:false
         ~allow_contract:true
-        ~allow_ticket:true
+        ~allow_ticket:false
         ~legacy:false
         output_ty
       >>?= fun (Ex_ty output_ty', ctxt) ->
