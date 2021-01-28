@@ -347,8 +347,8 @@ class TestManager:
 @pytest.mark.incremental
 class TestExecOrd:
     def child_input(self, contract_input, c_addr):
-        return ("Pair (Pair \"{}\" \"{}\") {}").format(
-            contract_input[0], c_addr, contract_input[1]
+        return ("Pair (Pair \"{}\" \"{}\") (Pair {} {})").format(
+            contract_input[0], c_addr, contract_input[1], contract_input[2]
         )
 
     def parent_input(self, contract_input, p_addr, c_addr):
@@ -361,8 +361,8 @@ class TestExecOrd:
                     itertools.repeat(c_addr),
                 )
             )
-            + "}}\"{}\") {}"
-        ).format(p_addr, contract_input[1])
+            + "}}\"{}\") (Pair {} {})"
+        ).format(p_addr, contract_input[1], contract_input[2])
 
     ##
     # This test case uses string concatenation to verify the execution flow
@@ -382,24 +382,30 @@ class TestExecOrd:
     #
     # (* Ture: run operation in BFS, False run operation in DFS *)
     # flow = True | False
+    # allow_dfs_in_children = True | False
+    #
     # (* The `flow` is the flow of child *)
-    # input_of_child = string * flow
+    # input_of_child = string * flow * allow_dfs_in_children
+    #
     # (* The `flow` is the flow of parent *)
     # input_of_parent = input_of_child * flow
     # input_of_grandparent = [ input_of_parent ]
     #
     # For example:
     #  contract_input
-    #    = [([("A","True"), ("B","False"), ("C","False")], "True"),
-    #       ([], "True"),
-    #       ([("D", "True"), ("E", "False"), ("F","False")], "False")],
+    #    = [([("A","True", "True"), ("B","False", "True"), ("C","False", "True")], "True", "False"),
+    #       ([], "True", "False"),
+    #       ([("D", "True", "False"), ("E", "False", "True"), ("F","False", "True")], "False", "True")],
     #
-    # Grandprent --> Parent in BFS --> Child with "A" in BFS
-    #            |                 |-> Child with "B" in DFS
-    #            |                 |-> Child with "C" in DFS
-    #            --> Parent in BFS --> Child with "D" in DFS
-    #            --> Parent in DFS --> Child with "E" in BFS
-    #                              |-> Child with "F" in BFS
+    # Grandprent --> Parent in BFS --> Child* with "A" in BFS
+    #            |                 |-> Child* with "B" in DFS
+    #            |                 |-> Child* with "C" in DFS
+    #            --> Parent in BFS
+    #            --> Parent* in DFS --> Child** with "D" in BFS
+    #                               |-> Child* with "E" in BFS
+    #                               |-> Child** with "F" in BFS
+    # * the node is allowed to run in DFS order by its parent.
+    # ** allow_dfs_in_children is transitive
     ##
     @pytest.mark.parametrize(
         "child_contract, parent_contract, grandparent_contract,"
@@ -411,9 +417,9 @@ class TestExecOrd:
                 "ordering_mix_dfs_bfs_parent2",
                 "ordering_mix_dfs_bfs_grandparent2",
                 [
-                    ([("A", "True"), ("B", "True"), ("C", "True")], "True"),
-                    ([], "True"),
-                    ([("D", "True"), ("E", "True"), ("F", "True")], "True"),
+                    ([("A", "True", "True"), ("B", "True", "True"), ("C", "True", "True")], "True", "True"),
+                    ([], "True", "True"),
+                    ([("D", "True", "True"), ("E", "True", "True"), ("F", "True", "True")], "True", "True"),
                 ],
                 "ABCDEF",
             ),
@@ -423,9 +429,9 @@ class TestExecOrd:
                 "ordering_mix_dfs_bfs_parent3",
                 "ordering_mix_dfs_bfs_grandparent3",
                 [
-                    ([("A", "False"), ("B", "False"), ("C", "False")], "False"),
-                    ([], "False"),
-                    ([("D", "False"), ("E", "False"), ("F", "False")], "False"),
+                    ([("A", "False", "True"), ("B", "False", "True"), ("C", "False", "True")], "False", "True"),
+                    ([], "False", "True"),
+                    ([("D", "False", "True"), ("E", "False", "True"), ("F", "False", "True")], "False", "True"),
                 ],
                 "ABCDEF",
             ),
@@ -434,9 +440,9 @@ class TestExecOrd:
                 "ordering_mix_dfs_bfs_parent1",
                 "ordering_mix_dfs_bfs_grandparent1",
                 [
-                    ([("A", "True"), ("B", "False"), ("C", "False")], "True"),
-                    ([], "True"),
-                    ([("D", "True"), ("E", "False"), ("F", "False")], "False"),
+                    ([("A", "True", "True"), ("B", "False", "True"), ("C", "False", "True")], "True", "True"),
+                    ([], "True", "True"),
+                    ([("D", "True", "True"), ("E", "False", "True"), ("F", "False", "True")], "False", "True"),
                 ],
                 "DEFABC",
             ),
@@ -445,11 +451,35 @@ class TestExecOrd:
                 "ordering_mix_dfs_bfs_parent4",
                 "ordering_mix_dfs_bfs_grandparent4",
                 [
-                    ([("A", "True"), ("B", "False"), ("C", "True")], "False"),
-                    ([("C", "True"), ("D", "False")], "True"),
-                    ([("E", "False"), ("F", "True"), ("G", "False")], "False"),
+                    ([("A", "True", "True"), ("B", "False", "True"), ("C", "True", "True")], "False", "True"),
+                    ([("D", "True", "True"), ("E", "False", "True")], "True", "True"),
+                    ([("F", "False", "True"), ("G", "True", "True"), ("H", "False", "True")], "False", "True"),
                 ],
-                "ABCEFGCD",
+                "ABCFGHDE",
+            ),
+            # as same as ordering_mix_dfs_bfs_grandparent3's case, just allow_dfs_in_children = false
+            (
+                "ordering_concat_string_child5",
+                "ordering_mix_dfs_bfs_parent5",
+                "ordering_mix_dfs_bfs_grandparent5",
+                [
+                    ([("A", "True", "False"), ("B", "False", "False"), ("C", "False", "False")], "True", "False"),
+                    ([], "True", "False"),
+                    ([("D", "True", "False"), ("E", "False", "False"), ("F", "False", "False")], "False", "False"),
+                ],
+                "ABCDEF",
+            ),
+            # as same as ordering_mix_dfs_bfs_grandparent4's case, just allow_dfs_in_children = false
+            (
+                "ordering_concat_string_child6",
+                "ordering_mix_dfs_bfs_parent6",
+                "ordering_mix_dfs_bfs_grandparent6",
+                [
+                    ([("A", "True", "False"), ("B", "False", "False"), ("C", "True", "False")], "False", "False"),
+                    ([("D", "True", "False"), ("E", "False", "False")], "True", "False"),
+                    ([("F", "False", "False"), ("G", "True", "False"), ("H", "False", "False")], "False", "False"),
+                ],
+                "ABCDEFGH",
             ),
         ],
     )
@@ -517,19 +547,19 @@ class TestExecOrd:
             (
                 "ordering2_concat_string_child1",
                 "ordering2_mix_dfs_bfs_parent1",
-                [("A", "True"), ("B", "False"), ("C", "True"), ("D", "False")],
+                [("A", "True", "True"), ("B", "False", "True"), ("C", "True", "True"), ("D", "False", "True")],
                 "ABCD",
             ),
             (
                 "ordering2_concat_string_child2",
                 "ordering2_mix_dfs_bfs_parent2",
-                [("A", "False"), ("B", "False"), ("C", "True"), ("D", "False")],
+                [("A", "False", "True"), ("B", "False", "True"), ("C", "True", "True"), ("D", "False", "True")],
                 "ABCD",
             ),
             (
                 "ordering2_concat_string_child3",
                 "ordering2_mix_dfs_bfs_parent3",
-                [("A", "True"), ("B", "True"), ("C", "True"), ("D", "False")],
+                [("A", "True", "True"), ("B", "True", "True"), ("C", "True", "True"), ("D", "False", "True")],
                 "ABCD",
             ),
         ],

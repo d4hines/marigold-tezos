@@ -1,4 +1,4 @@
-{ parameter (list (pair (pair string address) bool)) ;
+{ parameter (list (pair (pair string address) (pair bool bool))) ;
   storage unit ;
   code { NIL operation ;
          SWAP ;
@@ -11,12 +11,21 @@
                 CDR ;
                 SWAP ;
                 CAR ;
+                DIG 2 ;
+                DUP ;
+                CDR ;
                 SWAP ;
+                CAR ;
+                DIG 3 ;
                 CONTRACT string ;
                 IF_NONE { PUSH string "Not a contract" ; FAILWITH } {} ;
-                DIG 2 ;
-                IF { DIG 2 ; SWAP ; PUSH mutez 0 ; DIG 3 ; TRANSFER_TOKENS ; CONS }
-                   { DIG 2 ; SWAP ; PUSH mutez 0 ; DIG 3 ; TRANSFER_TOKENS ; MAKE_DFS ; CONS } } ;
+                SWAP ;
+                IF { SWAP ;
+                     IF { DIG 2 ; SWAP ; PUSH mutez 0 ; DIG 3 ; TRANSFER_TOKENS ; ALLOW_DFS_IN_CHILDREN ; CONS }
+                        { DIG 2 ; SWAP ; PUSH mutez 0 ; DIG 3 ; TRANSFER_TOKENS ; CONS } }
+                   { SWAP ;
+                     IF { DIG 2 ; SWAP ; PUSH mutez 0 ; DIG 3 ; TRANSFER_TOKENS ; MAKE_DFS ; ALLOW_DFS_IN_CHILDREN ; CONS }
+                        { DIG 2 ; SWAP ; PUSH mutez 0 ; DIG 3 ; TRANSFER_TOKENS ; MAKE_DFS ; CONS } } } ;
          NIL operation ;
          SWAP ;
          PAIR ;
