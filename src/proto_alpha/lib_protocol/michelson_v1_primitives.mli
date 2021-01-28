@@ -47,6 +47,7 @@ type prim =
   | D_True
   | D_Unit
   | I_MAKE_DFS
+  | I_ALLOW_DFS_IN_CHILDREN
   | I_PACK
   | I_UNPACK
   | I_BLAKE2B

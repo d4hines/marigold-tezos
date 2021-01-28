@@ -168,6 +168,7 @@ type 'kind internal_operation = {
   operation : 'kind manager_operation;
   nonce : int;
   exec_ord : exec_ord;
+  allow_dfs_in_children : bool;
 }
 
 type packed_manager_operation =
@@ -690,15 +691,16 @@ module Encoding = struct
   let internal_operation_encoding =
     def "operation.alpha.internal_operation"
     @@ conv
-         (fun (Internal_operation {source; operation; nonce; exec_ord}) ->
-           ((source, nonce, exec_ord), Manager operation))
-         (fun ((source, nonce, exec_ord), Manager operation) ->
-           Internal_operation {source; operation; nonce; exec_ord})
+         (fun (Internal_operation {source; operation; nonce; exec_ord; allow_dfs_in_children}) ->
+           ((source, nonce, exec_ord, allow_dfs_in_children), Manager operation))
+         (fun ((source, nonce, exec_ord, allow_dfs_in_children), Manager operation) ->
+           Internal_operation {source; operation; nonce; exec_ord; allow_dfs_in_children})
          (merge_objs
-            (obj3
+            (obj4
                (req "source" Contract_repr.encoding)
                (req "nonce" uint16)
-               (req "exec_ord" exec_ord_encoding))
+               (req "exec_ord" exec_ord_encoding)
+               (req "allow_dfs_in_children" bool))
             Manager_operations.encoding)
 end
 

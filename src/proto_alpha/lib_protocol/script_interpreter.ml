@@ -451,6 +451,8 @@ let cost_of_instr : type b a. (b, a) descr -> b -> Gas.cost =
       Interp_costs.contract
   | (Make_dfs, _) ->
       Interp_costs.make_dfs
+  | (Allow_dfs_in_children, _) ->
+      Interp_costs.allow_dfs_in_children
   | (Transfer_tokens, _) ->
       Interp_costs.transfer_tokens
   | (Implicit_account, _) ->
@@ -1104,6 +1106,9 @@ let rec step_bounded :
   | (Make_dfs, ((Internal_operation op, s), rest)) ->
       logged_return
         (((Internal_operation {op with exec_ord = DFS}, s), rest), ctxt)
+  | (Allow_dfs_in_children, ((Internal_operation op, s), rest)) ->
+      logged_return
+        (((Internal_operation {op with allow_dfs_in_children = true}, s), rest), ctxt)
   | (Transfer_tokens, (p, (amount, ((tp, (destination, entrypoint)), rest))))
     ->
       collect_lazy_storage ctxt tp p
@@ -1140,6 +1145,7 @@ let rec step_bounded :
                   operation;
                   nonce;
                   exec_ord = default_exec_ord;
+                  allow_dfs_in_children = false;
                 },
               lazy_storage_diff ),
             rest ),
@@ -1206,6 +1212,7 @@ let rec step_bounded :
                   operation;
                   nonce;
                   exec_ord = default_exec_ord;
+                  allow_dfs_in_children = false;
                 },
               lazy_storage_diff ),
             ((contract, "default"), rest) ),
@@ -1221,6 +1228,7 @@ let rec step_bounded :
                   operation;
                   nonce;
                   exec_ord = default_exec_ord;
+                  allow_dfs_in_children = false;
                 },
               None ),
             rest ),
