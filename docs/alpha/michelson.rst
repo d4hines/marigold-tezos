@@ -97,7 +97,8 @@ internal operation. There is a structure, stack of queue of operation
 , to maintains the execution flow of operation (op for short).
 All emitted ops will be enqueued into a queue which is the top
 element of stack. If executed op is in DFS, this op will be enqueued
-into a new queue and the new queue will be pushed into stack.
+into a new queue and the new queue will be pushed into stack. Notice
+that permission of running DFS is required. Please see ``ALLOW_DFS_IN_CHILDREN``.
 
 Here is an example of the evaluation flow of operation, , `!` indicates the op is running in DFS:
 
@@ -1877,7 +1878,21 @@ The contract is returned as a first class value (to be dropped, passed
 as parameter or stored). The ``CONTRACT 'p`` instruction will fail
 until it is actually originated.
 
--  ``MAKE_DFS``: The default of evaluation sequence is BFS. This instruction allows operation turning into DFS.
+-  ``ALLOW_DFS_IN_CHILDREN``: This instruction offers permission of running DFS
+   to the applied operation. By default, the permission is absent. Once this
+   instruction is applied, it is transitive to all its children.
+
+::
+
+     :: operation : 'S -> operation : 'S
+
+     > ALLOW_DFS_IN_CHILDREN / operation : S => operation : S
+
+
+
+-  ``MAKE_DFS``: By default, the evaluation sequence is in BFS.
+   This instruction allows operation turning in DFS but the
+   permission of running DFS is required.
 
 ::
 
