@@ -5100,7 +5100,7 @@ and parse_instr :
       parse_ty
         ctxt
         ~allow_lazy_storage:true
-        ~allow_operation:true
+        ~allow_operation:false
         ~allow_contract:true
         ~allow_ticket:true
         ~legacy:false
