@@ -392,10 +392,13 @@ class TestExecOrd:
     # input_of_grandparent = [ input_of_parent ]
     #
     # For example:
-    #  contract_input
-    #    = [([("A","True", "True"), ("B","False", "True"), ("C","False", "True")], "True", "False"),
-    #       ([], "True", "False"),
-    #       ([("D", "True", "False"), ("E", "False", "True"), ("F","False", "True")], "False", "True")],
+    #  contract_input =
+    #    [([("A","True", "True"), ("B","False", "True"), ("C","False", "True")],
+    #      "True", "False"),
+    #     ([], "True", "False"),
+    #     ([("D", "True", "False"), ("E", "False", "True"),
+    #       ("F","False", "True")],
+    #      "False", "True")],
     #
     # Grandprent --> Parent in BFS --> Child* with "A" in BFS
     #            |                 |-> Child* with "B" in DFS
@@ -525,7 +528,8 @@ class TestExecOrd:
                 ],
                 "ABCFGHDE",
             ),
-            # as same as ordering_mix_dfs_bfs_grandparent3's case, just allow_dfs_in_children = false
+            # as same as ordering_mix_dfs_bfs_grandparent3's case,
+            # just allow_dfs_in_children = false
             (
                 "ordering_concat_string_child5",
                 "ordering_mix_dfs_bfs_parent5",
@@ -553,7 +557,8 @@ class TestExecOrd:
                 ],
                 "ABCDEF",
             ),
-            # as same as ordering_mix_dfs_bfs_grandparent4's case, just allow_dfs_in_children = false
+            # as same as ordering_mix_dfs_bfs_grandparent4's case,
+            # just allow_dfs_in_children = false
             (
                 "ordering_concat_string_child6",
                 "ordering_mix_dfs_bfs_parent6",
