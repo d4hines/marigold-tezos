@@ -800,22 +800,23 @@ let apply_internal_manager_operations ctxt mode ~payer ~chain_id ops =
           apply ctxt applied s
       | Internal_operation
           ({source; operation; nonce; exec_ord; allow_dfs_in_children} as op)
-          :: rest -> (
-            ( match (exec_ord, allow_dfs_in_children) with
-            | (DFS, false) -> fail (Internal_operation_replay (Internal_operation op))
-            | (_, _) -> (
-            if internal_nonce_already_recorded ctxt nonce then
-            fail (Internal_operation_replay (Internal_operation op))
-          else
-            let ctxt = record_internal_nonce ctxt nonce in
-            apply_manager_operation_content
-              ctxt
-              mode
-              ~source
-              ~payer
-              ~chain_id
-              ~internal:true
-              operation ))
+        :: rest -> (
+          ( match (exec_ord, allow_dfs_in_children) with
+          | (DFS, false) ->
+              fail (Internal_operation_replay (Internal_operation op))
+          | (_, _) ->
+              if internal_nonce_already_recorded ctxt nonce then
+                fail (Internal_operation_replay (Internal_operation op))
+              else
+                let ctxt = record_internal_nonce ctxt nonce in
+                apply_manager_operation_content
+                  ctxt
+                  mode
+                  ~source
+                  ~payer
+                  ~chain_id
+                  ~internal:true
+                  operation )
           >>= function
           | Error errors ->
               let result =
