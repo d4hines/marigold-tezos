@@ -93,16 +93,20 @@ are of three kinds:
 
 Smart contracts can also emit "internal operations".
 Smart contracts called by internal transactions can in turn also emit
-internal operation. There is a structure, stack of queue of operation
-, to maintains the execution flow of operation (op for short).
-All emitted ops will be enqueued into a queue which is the top
-element of stack. If executed op is in DFS, this op will be enqueued
-into a new queue and the new queue will be pushed into stack. Notice
+internal operation. An internal operation can be categorized into two types,
+the Depth First Search (DFS for short) and the Breadth First Search (BFS for short).
+When the difference of types of operations is applied, the evaluation flow
+will be changed accordingly. Therefore, there is a structure, stack of
+queues of operations, to manage the execution flow of operation.
+All emitted operations will be enqueued into a queue which is the top
+element of stack. If executed operation is in DFS, this operation will be enqueued
+into a new queue and the new queue will be pushed into the stack. Notice
 that permission of running DFS is required. Please see ``ALLOW_DFS_IN_CHILDREN``.
 
-Here is an example of the evaluation flow of operation, , `!` indicates the op is running in DFS:
+Here is an example of evaluation flow of operations, ``!`` indicates that
+operation is running in DFS:
 
-Example 1. All of the internal operations are in BFS.
+Example 1. All of the internal operations(op for short) are in BFS.
 
 ::
 
