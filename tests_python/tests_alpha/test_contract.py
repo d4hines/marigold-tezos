@@ -603,7 +603,7 @@ class TestExecOrd:
         grandparent_contract,
         contract_input,
         expected,
-        test_failure
+        test_failure,
     ):
         path = f'{CONTRACT_PATH}/opcodes/ordering_concat_string_child.tz'
         originate(client, session, path, '""', 0, contract_name=child_contract)
@@ -640,24 +640,25 @@ class TestExecOrd:
             + "}"
         )
 
-        if (test_failure) :
-          with utils.assert_run_failure("transfer simulation failed"):
+        if test_failure:
+            with utils.assert_run_failure("transfer simulation failed"):
+                client.transfer(
+                    0,
+                    'bootstrap2',
+                    grandparent_contract,
+                    ["--burn-cap", "5", "--arg", m_input],
+                )
+        else:
             client.transfer(
                 0,
                 'bootstrap2',
                 grandparent_contract,
                 ["--burn-cap", "5", "--arg", m_input],
             )
-        else :
-          client.transfer(
-              0,
-              'bootstrap2',
-              grandparent_contract,
-              ["--burn-cap", "5", "--arg", m_input],
-          )
-          client.bake('bootstrap3', ["--minimal-timestamp"])
-          assert client.get_storage(child_contract) == "\"{}\"".format(expected)
-
+            client.bake('bootstrap3', ["--minimal-timestamp"])
+            assert client.get_storage(child_contract) == "\"{}\"".format(
+                expected
+            )
 
     ##
     # This test case is like pervious one, but only 2 layers.
