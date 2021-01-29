@@ -417,9 +417,25 @@ class TestExecOrd:
                 "ordering_mix_dfs_bfs_parent2",
                 "ordering_mix_dfs_bfs_grandparent2",
                 [
-                    ([("A", "True", "True"), ("B", "True", "True"), ("C", "True", "True")], "True", "True"),
+                    (
+                        [
+                            ("A", "True", "True"),
+                            ("B", "True", "True"),
+                            ("C", "True", "True"),
+                        ],
+                        "True",
+                        "True",
+                    ),
                     ([], "True", "True"),
-                    ([("D", "True", "True"), ("E", "True", "True"), ("F", "True", "True")], "True", "True"),
+                    (
+                        [
+                            ("D", "True", "True"),
+                            ("E", "True", "True"),
+                            ("F", "True", "True"),
+                        ],
+                        "True",
+                        "True",
+                    ),
                 ],
                 "ABCDEF",
             ),
@@ -429,9 +445,25 @@ class TestExecOrd:
                 "ordering_mix_dfs_bfs_parent3",
                 "ordering_mix_dfs_bfs_grandparent3",
                 [
-                    ([("A", "False", "True"), ("B", "False", "True"), ("C", "False", "True")], "False", "True"),
+                    (
+                        [
+                            ("A", "False", "True"),
+                            ("B", "False", "True"),
+                            ("C", "False", "True"),
+                        ],
+                        "False",
+                        "True",
+                    ),
                     ([], "False", "True"),
-                    ([("D", "False", "True"), ("E", "False", "True"), ("F", "False", "True")], "False", "True"),
+                    (
+                        [
+                            ("D", "False", "True"),
+                            ("E", "False", "True"),
+                            ("F", "False", "True"),
+                        ],
+                        "False",
+                        "True",
+                    ),
                 ],
                 "ABCDEF",
             ),
@@ -440,9 +472,25 @@ class TestExecOrd:
                 "ordering_mix_dfs_bfs_parent1",
                 "ordering_mix_dfs_bfs_grandparent1",
                 [
-                    ([("A", "True", "True"), ("B", "False", "True"), ("C", "False", "True")], "True", "True"),
+                    (
+                        [
+                            ("A", "True", "True"),
+                            ("B", "False", "True"),
+                            ("C", "False", "True"),
+                        ],
+                        "True",
+                        "True",
+                    ),
                     ([], "True", "True"),
-                    ([("D", "True", "True"), ("E", "False", "True"), ("F", "False", "True")], "False", "True"),
+                    (
+                        [
+                            ("D", "True", "True"),
+                            ("E", "False", "True"),
+                            ("F", "False", "True"),
+                        ],
+                        "False",
+                        "True",
+                    ),
                 ],
                 "DEFABC",
             ),
@@ -451,9 +499,29 @@ class TestExecOrd:
                 "ordering_mix_dfs_bfs_parent4",
                 "ordering_mix_dfs_bfs_grandparent4",
                 [
-                    ([("A", "True", "True"), ("B", "False", "True"), ("C", "True", "True")], "False", "True"),
-                    ([("D", "True", "True"), ("E", "False", "True")], "True", "True"),
-                    ([("F", "False", "True"), ("G", "True", "True"), ("H", "False", "True")], "False", "True"),
+                    (
+                        [
+                            ("A", "True", "True"),
+                            ("B", "False", "True"),
+                            ("C", "True", "True"),
+                        ],
+                        "False",
+                        "True",
+                    ),
+                    (
+                        [("D", "True", "True"), ("E", "False", "True")],
+                        "True",
+                        "True",
+                    ),
+                    (
+                        [
+                            ("F", "False", "True"),
+                            ("G", "True", "True"),
+                            ("H", "False", "True"),
+                        ],
+                        "False",
+                        "True",
+                    ),
                 ],
                 "ABCFGHDE",
             ),
@@ -463,9 +531,25 @@ class TestExecOrd:
                 "ordering_mix_dfs_bfs_parent5",
                 "ordering_mix_dfs_bfs_grandparent5",
                 [
-                    ([("A", "True", "False"), ("B", "False", "False"), ("C", "False", "False")], "True", "False"),
+                    (
+                        [
+                            ("A", "True", "False"),
+                            ("B", "False", "False"),
+                            ("C", "False", "False"),
+                        ],
+                        "True",
+                        "False",
+                    ),
                     ([], "True", "False"),
-                    ([("D", "True", "False"), ("E", "False", "False"), ("F", "False", "False")], "False", "False"),
+                    (
+                        [
+                            ("D", "True", "False"),
+                            ("E", "False", "False"),
+                            ("F", "False", "False"),
+                        ],
+                        "False",
+                        "False",
+                    ),
                 ],
                 "ABCDEF",
             ),
@@ -475,9 +559,29 @@ class TestExecOrd:
                 "ordering_mix_dfs_bfs_parent6",
                 "ordering_mix_dfs_bfs_grandparent6",
                 [
-                    ([("A", "True", "False"), ("B", "False", "False"), ("C", "True", "False")], "False", "False"),
-                    ([("D", "True", "False"), ("E", "False", "False")], "True", "False"),
-                    ([("F", "False", "False"), ("G", "True", "False"), ("H", "False", "False")], "False", "False"),
+                    (
+                        [
+                            ("A", "True", "False"),
+                            ("B", "False", "False"),
+                            ("C", "True", "False"),
+                        ],
+                        "False",
+                        "False",
+                    ),
+                    (
+                        [("D", "True", "False"), ("E", "False", "False")],
+                        "True",
+                        "False",
+                    ),
+                    (
+                        [
+                            ("F", "False", "False"),
+                            ("G", "True", "False"),
+                            ("H", "False", "False"),
+                        ],
+                        "False",
+                        "False",
+                    ),
                 ],
                 "ABCDEFGH",
             ),
@@ -547,19 +651,34 @@ class TestExecOrd:
             (
                 "ordering2_concat_string_child1",
                 "ordering2_mix_dfs_bfs_parent1",
-                [("A", "True", "True"), ("B", "False", "True"), ("C", "True", "True"), ("D", "False", "True")],
+                [
+                    ("A", "True", "True"),
+                    ("B", "False", "True"),
+                    ("C", "True", "True"),
+                    ("D", "False", "True"),
+                ],
                 "ABCD",
             ),
             (
                 "ordering2_concat_string_child2",
                 "ordering2_mix_dfs_bfs_parent2",
-                [("A", "False", "True"), ("B", "False", "True"), ("C", "True", "True"), ("D", "False", "True")],
+                [
+                    ("A", "False", "True"),
+                    ("B", "False", "True"),
+                    ("C", "True", "True"),
+                    ("D", "False", "True"),
+                ],
                 "ABCD",
             ),
             (
                 "ordering2_concat_string_child3",
                 "ordering2_mix_dfs_bfs_parent3",
-                [("A", "True", "True"), ("B", "True", "True"), ("C", "True", "True"), ("D", "False", "True")],
+                [
+                    ("A", "True", "True"),
+                    ("B", "True", "True"),
+                    ("C", "True", "True"),
+                    ("D", "False", "True"),
+                ],
                 "ABCD",
             ),
         ],
