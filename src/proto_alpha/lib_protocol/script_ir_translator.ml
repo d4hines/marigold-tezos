@@ -5627,9 +5627,9 @@ and parse_instr :
       _ ) ->
       fail (Invalid_arity (loc, name, 2, List.length l))
   | ( Prim
-      (loc, I_LAMBDA, (([] | [_] | [_; _] | _ :: _ :: _ :: _ :: _) as l), _),
+        (loc, I_LAMBDA, (([] | [_] | [_; _] | _ :: _ :: _ :: _ :: _) as l), _),
       _ ) ->
-        fail (Invalid_arity (loc, I_LAMBDA, 3, List.length l))
+      fail (Invalid_arity (loc, I_LAMBDA, 3, List.length l))
   (* Stack errors *)
   | ( Prim
         ( loc,
@@ -6056,11 +6056,11 @@ and parse_toplevel :
             error (Invalid_arity (loc, name, 1, List.length args))
         | Prim (loc, K_view, [name; input_ty; output_ty; code], _) :: rest -> (
           match name with
-          | String (_, str) -> (
-            if SMap.mem str vs then error (Duplicated_view_name loc)
-            else (
-              let vs' = SMap.add str (input_ty, output_ty, code) vs in
-              find_fields p s c vs' rest))
+          | String (_, str) ->
+              if SMap.mem str vs then error (Duplicated_view_name loc)
+              else
+                let vs' = SMap.add str (input_ty, output_ty, code) vs in
+                find_fields p s c vs' rest
           | _ ->
               error (Bad_view_name loc) )
         | Prim
@@ -6203,10 +6203,12 @@ let parse_code :
     >>=? fun (judgement, ctxt) ->
     match judgement with
     | Failed {descr} ->
-        (let cur_view' =
-          Ex_view  (fun _ -> Lam (descr (Item_t (output_ty', Empty_t, None)), code )) in
-        return (SMap.add name cur_view' prev_views', ctxt))
-    | (Typed ({loc; aft = Item_t (tv, Empty_t, _); _} as descr) ) ->
+        let cur_view' =
+          Ex_view
+            (fun _ -> Lam (descr (Item_t (output_ty', Empty_t, None)), code))
+        in
+        return (SMap.add name cur_view' prev_views', ctxt)
+    | Typed ({loc; aft = Item_t (tv, Empty_t, _); _} as descr) ->
         record_trace_eval
           (fun () ->
             serialize_ty_for_error ctxt output_ty'
@@ -6215,11 +6217,10 @@ let parse_code :
         >>?= fun ctxt ->
         ty_eq ctxt loc tv output_ty'
         >>?= fun (Eq, ctxt) ->
-        let cur_view' = Ex_view (
-          fun _
-          -> Lam (descr, code)) in
+        let cur_view' = Ex_view (fun _ -> Lam (descr, code)) in
         return (SMap.add name cur_view' prev_views', ctxt)
-    | (Typed {loc}) -> Lwt.return (error (Bad_stack_item loc))
+    | Typed {loc} ->
+        Lwt.return (error (Bad_stack_item loc))
   in
   fold_left_s aux (SMap.empty, ctxt) (SMap.bindings views)
   >>=? fun (views, ctxt) ->

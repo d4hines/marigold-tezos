@@ -1149,26 +1149,33 @@ let rec step_bounded :
               logged_return ((None, rest), ctxt)
           | Some (Ex_view f) -> (
             match f storage_type with
-            | (Lam (({aft = Item_t (aft_tv, Empty_t, _);
-                      bef = (Item_t ( bef_tv, Empty_t, None )) } as view), _)) -> (
-               match
-                 ty_eq ctxt loc aft_tv output_ty
-               with
-                 | Ok (Eq, ctxt) -> (
-                     let bef_ty =
-                       ty_eq ctxt loc bef_tv
-                       ( Pair_t ((input_ty, None, None), (storage_type, None, None), None ))
-                     in
-                     match bef_ty with
-                     | Ok (Eq, ctxt) ->
-                         non_terminal_recursion ctxt view ((input, storage), ())
-                         >>=? fun ((output, ()), ctxt) ->
-                         logged_return ((Some output, rest), ctxt)
-                     | Error _ ->
-                         logged_return ((None, rest), ctxt) )
-                 | Error _ ->
-                     logged_return ((None, rest), ctxt) )
-              | _ -> logged_return ((None, rest), ctxt)) ))
+            | Lam
+                ( ( { aft = Item_t (aft_tv, Empty_t, _);
+                      bef = Item_t (bef_tv, Empty_t, None) } as view ),
+                  _ ) -> (
+              match ty_eq ctxt loc aft_tv output_ty with
+              | Ok (Eq, ctxt) -> (
+                  let bef_ty =
+                    ty_eq
+                      ctxt
+                      loc
+                      bef_tv
+                      (Pair_t
+                         ( (input_ty, None, None),
+                           (storage_type, None, None),
+                           None ))
+                  in
+                  match bef_ty with
+                  | Ok (Eq, ctxt) ->
+                      non_terminal_recursion ctxt view ((input, storage), ())
+                      >>=? fun ((output, ()), ctxt) ->
+                      logged_return ((Some output, rest), ctxt)
+                  | Error _ ->
+                      logged_return ((None, rest), ctxt) )
+              | Error _ ->
+                  logged_return ((None, rest), ctxt) )
+            | _ ->
+                logged_return ((None, rest), ctxt) ) ) )
   | (Implicit_account, (key, rest)) ->
       let contract = Contract.implicit_contract key in
       logged_return (((Unit_t None, (contract, "default")), rest), ctxt)
