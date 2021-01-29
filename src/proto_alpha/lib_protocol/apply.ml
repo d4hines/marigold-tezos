@@ -242,11 +242,10 @@ let () =
     ~title:"Internal Operation in DFS without Permission"
     ~description:"In internal operation in DFS without Permission"
     ~pp:(fun ppf () ->
-      Format.fprintf ppf
-        "Internal operation in DFS without Permission"
-        )
+      Format.fprintf ppf "Internal operation in DFS without Permission")
     Data_encoding.empty
-    (function Internal_operation_in_DFS_without_permission -> Some () | _ -> None)
+    (function
+      | Internal_operation_in_DFS_without_permission -> Some () | _ -> None)
     (fun () -> Internal_operation_in_DFS_without_permission) ;
   register_error_kind
     `Permanent
