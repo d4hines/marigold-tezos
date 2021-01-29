@@ -412,7 +412,7 @@ class TestExecOrd:
     ##
     @pytest.mark.parametrize(
         "child_contract, parent_contract, grandparent_contract,"
-        + "contract_input,expected",
+        + "contract_input,expected,test_failure",
         [
             # all in BFS
             (
@@ -441,6 +441,7 @@ class TestExecOrd:
                     ),
                 ],
                 "ABCDEF",
+                False,
             ),
             # all in DFS
             (
@@ -469,6 +470,7 @@ class TestExecOrd:
                     ),
                 ],
                 "ABCDEF",
+                False,
             ),
             (
                 "ordering_concat_string_child1",
@@ -496,6 +498,7 @@ class TestExecOrd:
                     ),
                 ],
                 "DEFABC",
+                False,
             ),
             (
                 "ordering_concat_string_child4",
@@ -527,9 +530,8 @@ class TestExecOrd:
                     ),
                 ],
                 "ABCFGHDE",
+                False,
             ),
-            # as same as ordering_mix_dfs_bfs_grandparent3's case,
-            # just allow_dfs_in_children = false
             (
                 "ordering_concat_string_child5",
                 "ordering_mix_dfs_bfs_parent5",
@@ -538,8 +540,8 @@ class TestExecOrd:
                     (
                         [
                             ("A", "True", "False"),
-                            ("B", "False", "False"),
-                            ("C", "False", "False"),
+                            ("B", "False", "True"),
+                            ("C", "False", "True"),
                         ],
                         "True",
                         "False",
@@ -548,17 +550,16 @@ class TestExecOrd:
                     (
                         [
                             ("D", "True", "False"),
-                            ("E", "False", "False"),
-                            ("F", "False", "False"),
+                            ("E", "False", "True"),
+                            ("F", "False", "True"),
                         ],
                         "False",
-                        "False",
+                        "True",
                     ),
                 ],
-                "ABCDEF",
+                "DEFABC",
+                False,
             ),
-            # as same as ordering_mix_dfs_bfs_grandparent4's case,
-            # just allow_dfs_in_children = false
             (
                 "ordering_concat_string_child6",
                 "ordering_mix_dfs_bfs_parent6",
@@ -588,7 +589,8 @@ class TestExecOrd:
                         "False",
                     ),
                 ],
-                "ABCDEFGH",
+                "",
+                True,
             ),
         ],
     )
@@ -601,6 +603,7 @@ class TestExecOrd:
         grandparent_contract,
         contract_input,
         expected,
+        test_failure
     ):
         path = f'{CONTRACT_PATH}/opcodes/ordering_concat_string_child.tz'
         originate(client, session, path, '""', 0, contract_name=child_contract)
@@ -637,16 +640,24 @@ class TestExecOrd:
             + "}"
         )
 
-        client.transfer(
-            0,
-            'bootstrap2',
-            grandparent_contract,
-            ["--burn-cap", "5", "--arg", m_input],
-        )
+        if (test_failure) :
+          with utils.assert_run_failure("transfer simulation failed"):
+            client.transfer(
+                0,
+                'bootstrap2',
+                grandparent_contract,
+                ["--burn-cap", "5", "--arg", m_input],
+            )
+        else :
+          client.transfer(
+              0,
+              'bootstrap2',
+              grandparent_contract,
+              ["--burn-cap", "5", "--arg", m_input],
+          )
+          client.bake('bootstrap3', ["--minimal-timestamp"])
+          assert client.get_storage(child_contract) == "\"{}\"".format(expected)
 
-        client.bake('bootstrap3', ["--minimal-timestamp"])
-
-        assert client.get_storage(child_contract) == "\"{}\"".format(expected)
 
     ##
     # This test case is like pervious one, but only 2 layers.
