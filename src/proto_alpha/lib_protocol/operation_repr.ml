@@ -691,10 +691,13 @@ module Encoding = struct
   let internal_operation_encoding =
     def "operation.alpha.internal_operation"
     @@ conv
-         (fun (Internal_operation {source; operation; nonce; exec_ord; allow_dfs_in_children}) ->
+         (fun (Internal_operation
+                {source; operation; nonce; exec_ord; allow_dfs_in_children}) ->
            ((source, nonce, exec_ord, allow_dfs_in_children), Manager operation))
-         (fun ((source, nonce, exec_ord, allow_dfs_in_children), Manager operation) ->
-           Internal_operation {source; operation; nonce; exec_ord; allow_dfs_in_children})
+         (fun ( (source, nonce, exec_ord, allow_dfs_in_children),
+                Manager operation ) ->
+           Internal_operation
+             {source; operation; nonce; exec_ord; allow_dfs_in_children})
          (merge_objs
             (obj4
                (req "source" Contract_repr.encoding)

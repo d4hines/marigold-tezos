@@ -397,7 +397,15 @@ let internal_operation_result_encoding :
         | None ->
             None)
       (fun (((), source, nonce, exec_ord, allow_dfs_in_children), (op, res)) ->
-        let op = {source; operation = op_case.inj op; nonce; exec_ord; allow_dfs_in_children} in
+        let op =
+          {
+            source;
+            operation = op_case.inj op;
+            nonce;
+            exec_ord;
+            allow_dfs_in_children;
+          }
+        in
         Internal_operation_result (op, res))
   in
   def "operation.alpha.internal_operation_result"

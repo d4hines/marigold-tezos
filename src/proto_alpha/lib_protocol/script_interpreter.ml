@@ -1108,7 +1108,8 @@ let rec step_bounded :
         (((Internal_operation {op with exec_ord = DFS}, s), rest), ctxt)
   | (Allow_dfs_in_children, ((Internal_operation op, s), rest)) ->
       logged_return
-        (((Internal_operation {op with allow_dfs_in_children = true}, s), rest), ctxt)
+        ( ((Internal_operation {op with allow_dfs_in_children = true}, s), rest),
+          ctxt )
   | (Transfer_tokens, (p, (amount, ((tp, (destination, entrypoint)), rest))))
     ->
       collect_lazy_storage ctxt tp p
