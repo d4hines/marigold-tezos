@@ -205,7 +205,11 @@ val parse_packable_ty :
   context -> legacy:bool -> Script.node -> (ex_ty * context) tzresult
 
 val parse_parameter_ty :
-  context -> legacy:bool -> Script.node -> (ex_ty * context) tzresult
+  context ->
+  legacy:bool ->
+  allow_ticket:bool ->
+  Script.node ->
+  (ex_ty * context) tzresult
 
 val parse_comparable_ty :
   context -> Script.node -> (ex_comparable_ty * context) tzresult

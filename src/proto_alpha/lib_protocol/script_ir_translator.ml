@@ -1843,15 +1843,19 @@ and parse_packable_ty :
     ~allow_ticket:false
 
 and parse_parameter_ty :
-    context -> legacy:bool -> Script.node -> (ex_ty * context) tzresult =
- fun ctxt ~legacy ->
+    context ->
+    legacy:bool ->
+    allow_ticket:bool ->
+    Script.node ->
+    (ex_ty * context) tzresult =
+ fun ctxt ~legacy ~allow_ticket ->
   parse_ty
     ctxt
     ~legacy
     ~allow_lazy_storage:true
     ~allow_operation:false
     ~allow_contract:true
-    ~allow_ticket:true
+    ~allow_ticket
 
 and parse_normal_storage_ty :
     context -> legacy:bool -> Script.node -> (ex_ty * context) tzresult =
@@ -1952,7 +1956,7 @@ and parse_ty :
       >>? fun ty_name -> ok (Ex_ty (Bls12_381_fr_t ty_name), ctxt)
   | Prim (loc, T_contract, [utl], annot) ->
       if allow_contract then
-        parse_parameter_ty ctxt ~legacy utl
+        parse_parameter_ty ctxt ~legacy ~allow_ticket:true utl
         >>? fun (Ex_ty tl, ctxt) ->
         parse_type_annot loc annot
         >>? fun ty_name -> ok (Ex_ty (Contract_t (tl, ty_name)), ctxt)
@@ -5067,7 +5071,7 @@ and parse_instr :
       typed ctxt loc Address (Item_t (Address_t None, rest, annot))
   | ( Prim (loc, I_CONTRACT, [ty], annot),
       Item_t (Address_t _, rest, addr_annot) ) ->
-      parse_parameter_ty ctxt ~legacy ty
+      parse_parameter_ty ctxt ~legacy ~allow_ticket:true ty
       >>?= fun (Ex_ty t, ctxt) ->
       parse_entrypoint_annot
         loc
@@ -5106,12 +5110,6 @@ and parse_instr :
         ~legacy:false
         output_ty
       >>?= fun (Ex_ty output_ty', ctxt) ->
-      record_trace_eval
-        (fun () ->
-          serialize_ty_for_error ctxt output_ty'
-          >|? fun (t, _ctxt) -> Non_dupable_type (loc, t))
-        (check_dupable_ty ctxt loc output_ty')
-      >>?= fun ctxt ->
       parse_var_annot
         loc
         annot
@@ -5158,7 +5156,7 @@ and parse_instr :
       >>?= fun (arg_type, storage_type, code_field, _, root_name) ->
       record_trace
         (Ill_formed_type (Some "parameter", canonical_code, location arg_type))
-        (parse_parameter_ty ctxt ~legacy arg_type)
+        (parse_parameter_ty ctxt ~legacy ~allow_ticket:true arg_type)
       >>?= fun (Ex_ty arg_type, ctxt) ->
       (if legacy then ok_unit else well_formed_entrypoints ~root_name arg_type)
       >>?= fun () ->
@@ -5900,7 +5898,7 @@ and parse_contract :
           >>? fun (code, ctxt) ->
           parse_toplevel ~legacy:true code
           >>? fun (arg_type, _, _, _, root_name) ->
-          parse_parameter_ty ctxt ~legacy:true arg_type
+          parse_parameter_ty ctxt ~legacy:true ~allow_ticket:true arg_type
           >>? fun (Ex_ty targ, ctxt) ->
           find_entrypoint_for_type
             ~legacy
@@ -5972,7 +5970,13 @@ and parse_contract_for_script :
                 | Error _ ->
                     error (Invalid_contract (loc, contract))
                 | Ok (arg_type, _, _, _, root_name) -> (
-                  match parse_parameter_ty ctxt ~legacy:true arg_type with
+                  match
+                    parse_parameter_ty
+                      ctxt
+                      ~legacy:true
+                      ~allow_ticket:true
+                      arg_type
+                  with
                   | Error _ ->
                       error (Invalid_contract (loc, contract))
                   | Ok (Ex_ty targ, ctxt) -> (
@@ -6138,7 +6142,7 @@ let parse_code :
   >>?= fun (arg_type, storage_type, code_field, views, root_name) ->
   record_trace
     (Ill_formed_type (Some "parameter", code, location arg_type))
-    (parse_parameter_ty ctxt ~legacy arg_type)
+    (parse_parameter_ty ctxt ~legacy ~allow_ticket:true arg_type)
   >>?= fun (Ex_ty arg_type, ctxt) ->
   (if legacy then ok_unit else well_formed_entrypoints ~root_name arg_type)
   >>?= fun () ->
@@ -6186,9 +6190,9 @@ let parse_code :
   >>=? fun (code, ctxt) ->
   let aux (prev_views', ctxt) (name, cur_view) =
     let (input_ty, output_ty, code) = cur_view in
-    parse_parameter_ty ctxt ~legacy input_ty
+    parse_parameter_ty ctxt ~legacy ~allow_ticket:true input_ty
     >>?= fun (Ex_ty input_ty', ctxt) ->
-    parse_parameter_ty ctxt ~legacy output_ty
+    parse_parameter_ty ctxt ~legacy ~allow_ticket:false output_ty
     >>?= fun (Ex_ty output_ty', ctxt) ->
     parse_instr
       ~stack_depth:0
@@ -6209,12 +6213,6 @@ let parse_code :
         in
         return (SMap.add name cur_view' prev_views', ctxt)
     | Typed ({loc; aft = Item_t (tv, Empty_t, _); _} as descr) ->
-        record_trace_eval
-          (fun () ->
-            serialize_ty_for_error ctxt output_ty'
-            >|? fun (t, _ctxt) -> Non_dupable_type (loc, t))
-          (check_dupable_ty ctxt loc output_ty')
-        >>?= fun ctxt ->
         ty_eq ctxt loc tv output_ty'
         >>?= fun (Eq, ctxt) ->
         let cur_view' = Ex_view (fun _ -> Lam (descr, code)) in
@@ -6283,7 +6281,7 @@ let typecheck_code :
   let type_map = ref [] in
   record_trace
     (Ill_formed_type (Some "parameter", code, location arg_type))
-    (parse_parameter_ty ctxt ~legacy arg_type)
+    (parse_parameter_ty ctxt ~legacy ~allow_ticket:true arg_type)
   >>?= fun (Ex_ty arg_type, ctxt) ->
   (if legacy then ok_unit else well_formed_entrypoints ~root_name arg_type)
   >>?= fun () ->

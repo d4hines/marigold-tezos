@@ -319,6 +319,7 @@ module Scripts = struct
       (Script_ir_translator.parse_parameter_ty
          ctxt
          ~legacy
+         ~allow_ticket:true
          (Micheline.root exp_ty))
     >>?= fun (Ex_ty exp_ty, ctxt) ->
     trace_eval
@@ -639,7 +640,7 @@ module Scripts = struct
         Lwt.return
           ( parse_toplevel ~legacy expr
           >>? (fun (arg_type, _, _, _, root_name) ->
-                parse_parameter_ty ctxt ~legacy arg_type
+                parse_parameter_ty ctxt ~legacy ~allow_ticket:true arg_type
                 >>? fun (Ex_ty arg_type, _) ->
                 Script_ir_translator.find_entrypoint
                   ~root_name
@@ -655,7 +656,7 @@ module Scripts = struct
         Lwt.return
           ( parse_toplevel ~legacy expr
           >>? fun (arg_type, _, _, _, root_name) ->
-          parse_parameter_ty ctxt ~legacy arg_type
+          parse_parameter_ty ctxt ~legacy ~allow_ticket:true arg_type
           >>? fun (Ex_ty arg_type, _) ->
           Script_ir_translator.list_entrypoints ~root_name arg_type ctxt
           >|? fun (unreachable_entrypoint, map) ->

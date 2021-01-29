@@ -298,7 +298,7 @@ let register () =
             >>? fun (expr, _) ->
             parse_toplevel ~legacy expr
             >>? (fun (arg_type, _, _, _, root_name) ->
-                  parse_parameter_ty ctxt ~legacy arg_type
+                  parse_parameter_ty ctxt ~legacy ~allow_ticket:true arg_type
                   >>? fun (Ex_ty arg_type, _) ->
                   Script_ir_translator.find_entrypoint
                     ~root_name
@@ -325,7 +325,7 @@ let register () =
             >>? fun (expr, _) ->
             parse_toplevel ~legacy expr
             >>? (fun (arg_type, _, _, _, root_name) ->
-                  parse_parameter_ty ctxt ~legacy arg_type
+                  parse_parameter_ty ctxt ~legacy ~allow_ticket:true arg_type
                   >>? fun (Ex_ty arg_type, _) ->
                   Script_ir_translator.list_entrypoints
                     ~root_name
