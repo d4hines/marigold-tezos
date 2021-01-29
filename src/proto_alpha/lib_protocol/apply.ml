@@ -47,6 +47,8 @@ type error += Invalid_commitment of {expected : bool}
 
 type error += Internal_operation_replay of packed_internal_operation
 
+type error += Internal_operation_in_DFS_without_permission
+
 type error += Invalid_double_endorsement_evidence (* `Permanent *)
 
 type error +=
@@ -234,6 +236,18 @@ let () =
     Data_encoding.(obj1 (req "expected" bool))
     (function Invalid_commitment {expected} -> Some expected | _ -> None)
     (fun expected -> Invalid_commitment {expected}) ;
+  register_error_kind
+    `Permanent
+    ~id:"internal_operation_in_DFS_without_permission"
+    ~title:"Internal Operation in DFS without Permission"
+    ~description:"In internal operation in DFS without Permission"
+    ~pp:(fun ppf () ->
+      Format.fprintf ppf
+        "Internal operation in DFS without Permission"
+        )
+    Data_encoding.empty
+    (function Internal_operation_in_DFS_without_permission -> Some () | _ -> None)
+    (fun () -> Internal_operation_in_DFS_without_permission) ;
   register_error_kind
     `Permanent
     ~id:"internal_operation_replay"
@@ -803,7 +817,7 @@ let apply_internal_manager_operations ctxt mode ~payer ~chain_id ops =
         :: rest -> (
           ( match (exec_ord, allow_dfs_in_children) with
           | (DFS, false) ->
-              fail (Internal_operation_replay (Internal_operation op))
+              fail Internal_operation_in_DFS_without_permission
           | (_, _) ->
               if internal_nonce_already_recorded ctxt nonce then
                 fail (Internal_operation_replay (Internal_operation op))
