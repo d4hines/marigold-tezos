@@ -125,7 +125,7 @@ and ('arg, 'ret) lambda =
 [@@coq_force_gadt]
 
 and ('input, 'output, 'storage) view =
-  'storage ty -> ('input * 'storage, 'output) lambda
+  unit -> ('input * 'storage, 'output) lambda
 
 and 'storage ex_view =
   | Ex_view : ('input, 'output, 'storage) view -> 'storage ex_view

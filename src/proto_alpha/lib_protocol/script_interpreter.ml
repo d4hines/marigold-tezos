@@ -1148,7 +1148,7 @@ let rec step_bounded :
           | None ->
               logged_return ((None, rest), ctxt)
           | Some (Ex_view f) -> (
-            match f storage_type with
+            match f () with
             | Lam
                 ( ( { aft = Item_t (aft_tv, Empty_t, _);
                       bef = Item_t (bef_tv, Empty_t, None) } as view ),
