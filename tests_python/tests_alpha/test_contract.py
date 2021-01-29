@@ -614,7 +614,7 @@ class TestView:
             ),
             (
                 'view_toplevel_dupable_type',
-                'non-dupable type ticket nat on the return of VIEW',
+                'Ticket in unauthorized position',
             ),
             ('view_op_invalid_arity', 'primitive VIEW expects 2 arguments'),
             (
@@ -627,7 +627,7 @@ class TestView:
             ),
             (
                 'view_op_dupable_type',
-                'non-dupable type ticket nat on the return of VIEW',
+                'Ticket in unauthorized position',
             ),
         ],
     )
