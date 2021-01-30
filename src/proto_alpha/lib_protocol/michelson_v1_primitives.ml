@@ -1032,7 +1032,6 @@ let prim_encoding =
          ("OR", I_OR);
          ("PAIR", I_PAIR);
          ("PUSH", I_PUSH);
-         ("GET_GLOBAL", I_GET_GLOBAL);
          ("RIGHT", I_RIGHT);
          ("SIZE", I_SIZE);
          (* /!\ NEW INSTRUCTIONS MUST BE ADDED AT THE END OF THE STRING_ENUM, FOR BACKWARD COMPATIBILITY OF THE ENCODING. *)
@@ -1118,7 +1117,9 @@ let prim_encoding =
          ("READ_TICKET", I_READ_TICKET);
          ("SPLIT_TICKET", I_SPLIT_TICKET);
          ("JOIN_TICKETS", I_JOIN_TICKETS);
-         ("GET_AND_UPDATE", I_GET_AND_UPDATE)
+         ("GET_AND_UPDATE", I_GET_AND_UPDATE);
+         (* Alpha_009 addition *)
+         ("GET_GLOBAL", I_GET_GLOBAL);
          (* New instructions must be added here, for backward compatibility of the encoding. *)
          (* Keep the comment above at the end of the list *)
         ]
