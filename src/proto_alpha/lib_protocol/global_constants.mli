@@ -50,11 +50,15 @@ val get_opt :
   that key. Consumes
   [Gas_repr.write_bytes_cost <size of the new value>].
   
+  DH 1/12/2021
   Note, this function makes no guarantee that the type represented
   by [ty] actually matches the value represented by [value]. This
   is not good, as we currently rely on Apply.ml to maintain this
   invariant for us. However, moving the invariant here will involve
   breaking several circular dependencies.
+  DH 1/30/2021
+  This isn't isolated to this function - see this comment:
+  https://gitlab.com/tezos/tezos/-/merge_requests/2474#note_484119636
 
   TODO: refactor Alpha_context, Script_typed_ir, and Global_constants
   so this can happen.
