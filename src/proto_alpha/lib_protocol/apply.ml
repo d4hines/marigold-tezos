@@ -845,20 +845,12 @@ let apply_internal_manager_operations ctxt mode ~payer ~chain_id ops =
               in
               Lwt.return (Failure, List.rev (skipped @ (result :: applied)))
           | Ok (ctxt, result, emitted) ->
-              let emitted' =
-                if allow_dfs_in_children then
-                  List.map
-                    (fun (Internal_operation o) ->
-                      Internal_operation {o with allow_dfs_in_children = true})
-                    emitted
-                else emitted
-              in
               let worklist' =
                 match (exec_ord, allow_dfs_in_children) with
                 | (DFS, true) ->
-                    emitted' :: rest :: s
+                    emitted :: rest :: s
                 | (_, _) ->
-                    (rest @ emitted') :: s
+                    (rest @ emitted) :: s
               in
               apply
                 ctxt
