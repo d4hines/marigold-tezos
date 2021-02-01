@@ -61,7 +61,7 @@ type raw = Operation.t = {shell : Operation.shell_header; proto : bytes}
 
 let raw_encoding = Operation.encoding
 
-type exec_ord = BFS | DFS
+type exececution_ordering = BFS | DFS
 
 type 'kind operation = {
   shell : Operation.shell_header;
@@ -167,7 +167,7 @@ type 'kind internal_operation = {
   source : Contract_repr.contract;
   operation : 'kind manager_operation;
   nonce : int;
-  exec_ord : exec_ord;
+  exececution_ordering : exececution_ordering;
   allow_dfs : bool;
 }
 
@@ -673,14 +673,14 @@ module Encoding = struct
          Operation.shell_header_encoding
          (obj1 (req "contents" contents_list_encoding))
 
-  let exec_ord_encoding =
+  let exececution_ordering_encoding =
     let of_int8 = function
       | 0 ->
           BFS
       | 1 ->
           DFS
       | _ ->
-          invalid_arg "exec_ord_of_int8"
+          invalid_arg "exececution_ordering_of_int8"
     in
     let to_int8 = function BFS -> 0 | DFS -> 1 in
     let open Data_encoding in
@@ -692,17 +692,17 @@ module Encoding = struct
     def "operation.alpha.internal_operation"
     @@ conv
          (fun (Internal_operation
-                {source; operation; nonce; exec_ord; allow_dfs}) ->
-           ((source, nonce, exec_ord, allow_dfs), Manager operation))
-         (fun ( (source, nonce, exec_ord, allow_dfs),
+                {source; operation; nonce; exececution_ordering; allow_dfs}) ->
+           ((source, nonce, exececution_ordering, allow_dfs), Manager operation))
+         (fun ( (source, nonce, exececution_ordering, allow_dfs),
                 Manager operation ) ->
            Internal_operation
-             {source; operation; nonce; exec_ord; allow_dfs})
+             {source; operation; nonce; exececution_ordering; allow_dfs})
          (merge_objs
             (obj4
                (req "source" Contract_repr.encoding)
                (req "nonce" uint16)
-               (req "exec_ord" exec_ord_encoding)
+               (req "exececution_ordering" exececution_ordering_encoding)
                (req "allow_dfs" bool))
             Manager_operations.encoding)
 end
@@ -717,7 +717,7 @@ let protocol_data_encoding = Encoding.protocol_data_encoding
 
 let unsigned_operation_encoding = Encoding.unsigned_operation_encoding
 
-let exec_ord_encoding = Encoding.exec_ord_encoding
+let exececution_ordering_encoding = Encoding.exececution_ordering_encoding
 
 let internal_operation_encoding = Encoding.internal_operation_encoding
 

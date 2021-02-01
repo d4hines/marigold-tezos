@@ -105,4 +105,4 @@ val execute :
   internal:bool ->
   execution_result tzresult Lwt.t
 
-val default_exec_ord : exec_ord
+val default_exececution_ordering : exececution_ordering

@@ -1334,13 +1334,13 @@ and _ manager_operation =
 
 and counter = Z.t
 
-and exec_ord = BFS | DFS
+and exececution_ordering = BFS | DFS
 
 type 'kind internal_operation = {
   source : Contract.contract;
   operation : 'kind manager_operation;
   nonce : int;
-  exec_ord : exec_ord;
+  exececution_ordering : exececution_ordering;
   allow_dfs : bool;
 }
 
@@ -1433,7 +1433,7 @@ module Operation : sig
   val check_signature :
     public_key -> Chain_id.t -> _ operation -> unit tzresult
 
-  val exec_ord_encoding : exec_ord Data_encoding.t
+  val exececution_ordering_encoding : exececution_ordering Data_encoding.t
 
   val internal_operation_encoding : packed_internal_operation Data_encoding.t
 

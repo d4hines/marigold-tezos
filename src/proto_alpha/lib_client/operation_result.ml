@@ -528,7 +528,7 @@ let pp_operation_result ppf
 
 let pp_internal_operation ppf
     (Internal_operation
-      {source; operation; nonce = _; exec_ord = _; allow_dfs = _})
+      {source; operation; nonce = _; exececution_ordering = _; allow_dfs = _})
     =
   pp_manager_operation_content
     source

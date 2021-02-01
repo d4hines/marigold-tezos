@@ -61,7 +61,7 @@ type raw = Operation.t = {shell : Operation.shell_header; proto : bytes}
 
 val raw_encoding : raw Data_encoding.t
 
-type exec_ord = BFS | DFS
+type exececution_ordering = BFS | DFS
 
 type 'kind operation = {
   shell : Operation.shell_header;
@@ -156,7 +156,7 @@ type 'kind internal_operation = {
   source : Contract_repr.contract;
   operation : 'kind manager_operation;
   nonce : int;
-  exec_ord : exec_ord;
+  exececution_ordering : exececution_ordering;
   allow_dfs : bool;
 }
 
@@ -215,7 +215,7 @@ type error += Invalid_signature (* `Permanent *)
 val check_signature :
   Signature.Public_key.t -> Chain_id.t -> _ operation -> unit tzresult
 
-val exec_ord_encoding : exec_ord Data_encoding.t
+val exececution_ordering_encoding : exececution_ordering Data_encoding.t
 
 val internal_operation_encoding : packed_internal_operation Data_encoding.t
 
