@@ -3,5 +3,5 @@
   "nonce": 0,
   "kind": "delegation",
   "delegate": "tz1KqTpEZ7Yob7QbPE4Hy4Wo8fHG8LhKxZSx",
-  "exec_ord": "DFS"
+  "execution_ordering": "DFS"
 }

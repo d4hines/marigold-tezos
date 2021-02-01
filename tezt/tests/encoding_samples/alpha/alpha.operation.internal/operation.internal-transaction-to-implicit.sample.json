@@ -4,5 +4,5 @@
   "kind": "transaction",
   "amount": "407",
   "destination": "tz1KqTpEZ7Yob7QbPE4Hy4Wo8fHG8LhKxZSx",
-  "exec_ord": "BFS"
+  "execution_ordering": "BFS"
 }
