@@ -251,7 +251,7 @@ module Cost_of = struct
     let cost_N_Make_dfs = Z.of_int 1
 
     (* TODO: benchmark *)
-    let cost_N_allow_dfs_in_children = Z.of_int 1
+    let cost_N_allow_dfs = Z.of_int 1
 
     (* model N_DipN *)
     let cost_N_DipN size = S.safe_int (100 + (4 * size))
@@ -944,7 +944,7 @@ module Cost_of = struct
 
     let make_dfs = atomic_step_cost cost_N_Make_dfs
 
-    let allow_dfs_in_children = atomic_step_cost cost_N_allow_dfs_in_children
+    let allow_dfs = atomic_step_cost cost_N_allow_dfs
 
     let check_signature (pkey : Signature.public_key) b =
       let cost =

@@ -812,9 +812,9 @@ let apply_internal_manager_operations ctxt mode ~payer ~chain_id ops =
       | [] ->
           apply ctxt applied s
       | Internal_operation
-          ({source; operation; nonce; exec_ord; allow_dfs_in_children} as op)
+          ({source; operation; nonce; exec_ord; allow_dfs} as op)
         :: rest -> (
-          ( match (exec_ord, allow_dfs_in_children) with
+          ( match (exec_ord, allow_dfs) with
           | (DFS, false) ->
               fail Internal_operation_in_DFS_without_permission
           | (_, _) ->
@@ -846,7 +846,7 @@ let apply_internal_manager_operations ctxt mode ~payer ~chain_id ops =
               Lwt.return (Failure, List.rev (skipped @ (result :: applied)))
           | Ok (ctxt, result, emitted) ->
               let worklist' =
-                match (exec_ord, allow_dfs_in_children) with
+                match (exec_ord, allow_dfs) with
                 | (DFS, true) ->
                     emitted :: rest :: s
                 | (_, _) ->

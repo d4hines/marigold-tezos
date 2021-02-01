@@ -271,7 +271,7 @@ module Script : sig
     | D_True
     | D_Unit
     | I_MAKE_DFS
-    | I_ALLOW_DFS_IN_CHILDREN
+    | I_ALLOW_DFS
     | I_PACK
     | I_UNPACK
     | I_BLAKE2B
@@ -1341,7 +1341,7 @@ type 'kind internal_operation = {
   operation : 'kind manager_operation;
   nonce : int;
   exec_ord : exec_ord;
-  allow_dfs_in_children : bool;
+  allow_dfs : bool;
 }
 
 type packed_manager_operation =

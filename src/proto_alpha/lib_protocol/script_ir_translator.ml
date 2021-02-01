@@ -247,7 +247,7 @@ let number_of_generated_growing_types : type b a. (b, a) instr -> int =
      - etc. *)
   | Make_dfs ->
       0
-  | Allow_dfs_in_children ->
+  | Allow_dfs ->
       0
   | Drop ->
       0
@@ -5094,14 +5094,14 @@ and parse_instr :
       parse_var_annot loc annot
       >>?= fun annot ->
       typed ctxt loc Make_dfs (Item_t (Operation_t None, rest, annot))
-  | ( Prim (loc, I_ALLOW_DFS_IN_CHILDREN, [], annot),
+  | ( Prim (loc, I_ALLOW_DFS, [], annot),
       Item_t (Operation_t None, rest, _) ) ->
       parse_var_annot loc annot
       >>?= fun annot ->
       typed
         ctxt
         loc
-        Allow_dfs_in_children
+        Allow_dfs
         (Item_t (Operation_t None, rest, annot))
   | ( Prim (loc, I_TRANSFER_TOKENS, [], annot),
       Item_t (p, Item_t (Mutez_t _, Item_t (Contract_t (cp, _), rest, _), _), _)
