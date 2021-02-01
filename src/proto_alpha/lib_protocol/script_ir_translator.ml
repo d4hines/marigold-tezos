@@ -29,7 +29,7 @@ open Micheline
 open Script
 open Script_tc_errors
 open Script_ir_annot
-open Script_typed_cps_ir
+open Script_typed_ir
 module Typecheck_costs = Michelson_v1_gas.Cost_of.Typechecking
 module Unparse_costs = Michelson_v1_gas.Cost_of.Unparsing
 
@@ -261,16 +261,14 @@ let check_kind kinds expr =
 
 (* ---- Lists, Sets and Maps ----------------------------------------------- *)
 
-let list_empty : 'a Script_typed_cps_ir.boxed_list =
-  let open Script_typed_cps_ir in
+let list_empty : 'a Script_typed_ir.boxed_list =
+  let open Script_typed_ir in
   {elements = []; length = 0}
 
 let list_cons :
-    'a ->
-    'a Script_typed_cps_ir.boxed_list ->
-    'a Script_typed_cps_ir.boxed_list =
+    'a -> 'a Script_typed_ir.boxed_list -> 'a Script_typed_ir.boxed_list =
  fun elt l ->
-  let open Script_typed_cps_ir in
+  let open Script_typed_ir in
   {length = 1 + l.length; elements = elt :: l.elements}
 
 let wrap_compare compare a b =

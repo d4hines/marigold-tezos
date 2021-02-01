@@ -94,7 +94,7 @@
 
 open Alpha_context
 open Script
-open Script_typed_cps_ir
+open Script_typed_ir
 open Script_ir_translator
 module S = Saturation_repr
 
@@ -207,7 +207,7 @@ let () =
   =============
 
   The stack of control is a list of [kinstr]. This type is documented
-  in the module [Script_typed_cps_ir].
+  in the module [Script_typed_ir].
 
   Since [kinstr] denotes a list  of instructions, the stack of control
   can be seen as a list  of instruction sequences, each representing a

@@ -90,12 +90,12 @@ let read_file filename =
 
 (* Confront the Michelson interpreter to deep recursions. *)
 let test_stack_overflow () =
-  let open Script_typed_cps_ir in
+  let open Script_typed_ir in
   test_context ()
   >>=? fun ctxt ->
-  let stack = Script_typed_cps_ir.Bot_t in
+  let stack = Script_typed_ir.Bot_t in
   let descr kinstr =
-    Script_typed_cps_ir.{kloc = 0; kbef = stack; kaft = stack; kinstr}
+    Script_typed_ir.{kloc = 0; kbef = stack; kaft = stack; kinstr}
   in
   let kinfo = {iloc = -1; kstack_ty = stack} in
   let enorme_et_seq n =

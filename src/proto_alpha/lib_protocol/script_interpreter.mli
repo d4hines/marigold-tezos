@@ -33,7 +33,7 @@
 *)
 
 open Alpha_context
-open Script_typed_cps_ir
+open Script_typed_ir
 
 type execution_trace =
   (Script.location * Gas.t * (Script.expr * string option) list) list
@@ -120,10 +120,10 @@ type (_, _, _, _) continuation =
       -> ('c, 'd * 's, 'r, 'f) continuation
 
 type ('a, 's, 'b, 'f, 'c, 'u) logging_function =
-  ('a, 's, 'b, 'f) Script_typed_cps_ir.kinstr ->
+  ('a, 's, 'b, 'f) Script_typed_ir.kinstr ->
   context ->
   Script.location ->
-  ('c, 'u) Script_typed_cps_ir.stack_ty ->
+  ('c, 'u) Script_typed_ir.stack_ty ->
   'c * 'u ->
   unit
 
@@ -160,7 +160,7 @@ val step :
   logger option ->
   context ->
   step_constants ->
-  ('a, 's, 'r, 'f) Script_typed_cps_ir.kdescr ->
+  ('a, 's, 'r, 'f) Script_typed_ir.kdescr ->
   'a ->
   's ->
   ('r * 'f * context) tzresult Lwt.t
@@ -187,7 +187,7 @@ val kstep :
   logger option ->
   context ->
   step_constants ->
-  ('a, 's, 'r, 'f) Script_typed_cps_ir.kinstr ->
+  ('a, 's, 'r, 'f) Script_typed_ir.kinstr ->
   'a ->
   's ->
   ('r * 'f * context) tzresult Lwt.t
