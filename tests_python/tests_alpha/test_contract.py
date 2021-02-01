@@ -345,7 +345,7 @@ class TestManager:
 
 @pytest.mark.contract
 @pytest.mark.incremental
-class TestExecOrd:
+class TestExececutionOrdering:
     def child_input(self, contract_input, c_addr):
         return ("Pair (Pair \"{}\" \"{}\") (Pair {} {})").format(
             contract_input[0], c_addr, contract_input[1], contract_input[2]
