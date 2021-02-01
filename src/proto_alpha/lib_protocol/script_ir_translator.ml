@@ -5094,15 +5094,10 @@ and parse_instr :
       parse_var_annot loc annot
       >>?= fun annot ->
       typed ctxt loc Make_dfs (Item_t (Operation_t None, rest, annot))
-  | ( Prim (loc, I_ALLOW_DFS, [], annot),
-      Item_t (Operation_t None, rest, _) ) ->
+  | (Prim (loc, I_ALLOW_DFS, [], annot), Item_t (Operation_t None, rest, _)) ->
       parse_var_annot loc annot
       >>?= fun annot ->
-      typed
-        ctxt
-        loc
-        Allow_dfs
-        (Item_t (Operation_t None, rest, annot))
+      typed ctxt loc Allow_dfs (Item_t (Operation_t None, rest, annot))
   | ( Prim (loc, I_TRANSFER_TOKENS, [], annot),
       Item_t (p, Item_t (Mutez_t _, Item_t (Contract_t (cp, _), rest, _), _), _)
     ) ->

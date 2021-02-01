@@ -1105,11 +1105,11 @@ let rec step_bounded :
         logged_return ((None, rest), ctxt) )
   | (Make_dfs, ((Internal_operation op, s), rest)) ->
       logged_return
-        (((Internal_operation {op with exececution_ordering = DFS}, s), rest), ctxt)
+        ( ((Internal_operation {op with exececution_ordering = DFS}, s), rest),
+          ctxt )
   | (Allow_dfs, ((Internal_operation op, s), rest)) ->
       logged_return
-        ( ((Internal_operation {op with allow_dfs = true}, s), rest),
-          ctxt )
+        (((Internal_operation {op with allow_dfs = true}, s), rest), ctxt)
   | (Transfer_tokens, (p, (amount, ((tp, (destination, entrypoint)), rest))))
     ->
       collect_lazy_storage ctxt tp p
