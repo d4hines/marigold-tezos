@@ -404,11 +404,11 @@ class TestExececutionOrdering:
     #            |                 |-> Child* with "B" in DFS
     #            |                 |-> Child* with "C" in DFS
     #            --> Parent in BFS
-    #            --> Parent* in DFS --> Child** with "D" in BFS
+    #            --> Parent* in DFS --> Child with "D" in BFS
     #                               |-> Child* with "E" in BFS
-    #                               |-> Child** with "F" in BFS
+    #                               |-> Child with "F" in BFS
     # * the node is allowed to run in DFS order by its parent.
-    # ** allow_dfs is transitive
+    # `allow_dfs` is not transitive
     ##
     @pytest.mark.parametrize(
         "child_contract, parent_contract, grandparent_contract,"

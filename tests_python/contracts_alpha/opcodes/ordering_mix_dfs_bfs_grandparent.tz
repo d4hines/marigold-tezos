@@ -1,3 +1,21 @@
+# This contract intends to call "opcodes/ordering_mix_dfs_bfs_parent.tz".
+#
+# Given a list, each elements of the list present the way to operation "opcodes/ordering_mix_dfs_bfs_parent.tz"
+#
+# list (pair
+#         (pair
+#             # This list in the input of "ordering_mix_dfs_bfs_parent.tz"
+#             # For more details, please see "ordering_mix_dfs_bfs_parent.tz"
+#             (list (pair (pair string address) (pair bool bool)))
+#
+#             # The address is the address of ordering_mix_dfs_bfs_parent.tz
+#             address)
+#
+#         # The first bool is to control the order of in BFS(True) or DFS(False) by ALLOW_DFS
+#         # The second bool is to offer permission to run DFS by `ALLOW_DFS`
+#         (pair bool bool))
+#
+
 { parameter
     (list (pair (pair (list (pair (pair string address) (pair bool bool))) address) (pair bool bool))) ;
   storage unit ;

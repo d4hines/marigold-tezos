@@ -1,3 +1,19 @@
+# This contract intends to call "opcodes/ordering_concat_string_child.tz".
+#
+# Given a list, each elements of the list present the way to operation "opcodes/ordering_concat_string_child.tz"
+#
+# list (
+#     pair
+#        # the string is the input of ordering_concat_string_child.tz 
+#        # and address is the address of ordering_concat_string_child.tz
+#        (pair string address)
+#
+#        # The first bool is to control the order in BFS(True) or DFS(False) by ALLOW_DFS
+#        # The second bool is to offer permission to run DFS by `ALLOW_DFS`
+#        (pair bool bool) 
+# )
+
+
 { parameter (list (pair (pair string address) (pair bool bool))) ;
   storage unit ;
   code { NIL operation ;
