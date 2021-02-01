@@ -146,7 +146,7 @@ let () =
 
 (* ---- interpreter ---------------------------------------------------------*)
 
-let default_exececution_ordering = BFS
+let default_execution_ordering = BFS
 
 module Interp_costs = Michelson_v1_gas.Cost_of.Interpreter
 
@@ -1105,7 +1105,7 @@ let rec step_bounded :
         logged_return ((None, rest), ctxt) )
   | (Make_dfs, ((Internal_operation op, s), rest)) ->
       logged_return
-        ( ((Internal_operation {op with exececution_ordering = DFS}, s), rest),
+        ( ((Internal_operation {op with execution_ordering = DFS}, s), rest),
           ctxt )
   | (Allow_dfs, ((Internal_operation op, s), rest)) ->
       logged_return
@@ -1145,7 +1145,7 @@ let rec step_bounded :
                   source = step_constants.self;
                   operation;
                   nonce;
-                  exececution_ordering = default_exececution_ordering;
+                  execution_ordering = default_execution_ordering;
                   allow_dfs = false;
                 },
               lazy_storage_diff ),
@@ -1212,7 +1212,7 @@ let rec step_bounded :
                   source = step_constants.self;
                   operation;
                   nonce;
-                  exececution_ordering = default_exececution_ordering;
+                  execution_ordering = default_execution_ordering;
                   allow_dfs = false;
                 },
               lazy_storage_diff ),
@@ -1228,7 +1228,7 @@ let rec step_bounded :
                   source = step_constants.self;
                   operation;
                   nonce;
-                  exececution_ordering = default_exececution_ordering;
+                  execution_ordering = default_execution_ordering;
                   allow_dfs = false;
                 },
               None ),
