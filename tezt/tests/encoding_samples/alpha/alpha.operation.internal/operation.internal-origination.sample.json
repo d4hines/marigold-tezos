@@ -5,6 +5,7 @@
   "balance": "84143",
   "delegate": "tz1KqTpEZ7Yob7QbPE4Hy4Wo8fHG8LhKxZSx",
   "execution_ordering": "BFS",
+  "allow_dfs": false,
   "script": {
     "code": [{
         "prim": "parameter",
