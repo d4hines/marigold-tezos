@@ -1883,8 +1883,7 @@ as parameter or stored). The ``CONTRACT 'p`` instruction will fail
 until it is actually originated.
 
 -  ``ALLOW_DFS_IN_CHILDREN``: This instruction offers permission of running DFS
-   to the applied operation. By default, the permission is absent. Once this
-   instruction is applied, it is transitive to all its children.
+   to the applied operation. By default, the permission is absent.
 
 ::
 
