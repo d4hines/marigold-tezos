@@ -382,10 +382,10 @@ class TestExecOrd:
     #
     # (* Ture: run operation in BFS, False run operation in DFS *)
     # flow = True | False
-    # allow_dfs_in_children = True | False
+    # allow_dfs = True | False
     #
     # (* The `flow` is the flow of child *)
-    # input_of_child = string * flow * allow_dfs_in_children
+    # input_of_child = string * flow * allow_dfs
     #
     # (* The `flow` is the flow of parent *)
     # input_of_parent = input_of_child * flow
@@ -408,7 +408,7 @@ class TestExecOrd:
     #                               |-> Child* with "E" in BFS
     #                               |-> Child** with "F" in BFS
     # * the node is allowed to run in DFS order by its parent.
-    # ** allow_dfs_in_children is transitive
+    # ** allow_dfs is transitive
     ##
     @pytest.mark.parametrize(
         "child_contract, parent_contract, grandparent_contract,"
