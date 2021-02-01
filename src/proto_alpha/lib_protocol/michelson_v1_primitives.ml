@@ -1124,6 +1124,7 @@ let prim_encoding =
          ("SPLIT_TICKET", I_SPLIT_TICKET);
          ("JOIN_TICKETS", I_JOIN_TICKETS);
          ("GET_AND_UPDATE", I_GET_AND_UPDATE);
+         (* Alpha_009 addition *)
          ("MAKE_DFS", I_MAKE_DFS);
          ("ALLOW_DFS_IN_CHILDREN", I_ALLOW_DFS_IN_CHILDREN)
          (* New instructions must be added here, for backward compatibility of the encoding. *)
