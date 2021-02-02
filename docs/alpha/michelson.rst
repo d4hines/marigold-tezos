@@ -1878,7 +1878,10 @@ as parameter or stored). The ``CONTRACT 'p`` instruction will fail
 until it is actually originated.
 
 -  ``ALLOW_DFS``: This instruction offers permission of running DFS
-   to the applied operation. By default, the permission is absent.
+   to the applied operation. Notice that it requires the operation
+   of its parent has permission, otherwise the permission will be
+   absented, even ``ALLOW_DFS`` is applied. If the permission is
+   absent in current operation, it's not possible to pass through.
 
 ::
 
@@ -1890,7 +1893,10 @@ until it is actually originated.
 
 -  ``MAKE_DFS``: By default, the evaluation sequence is in BFS.
    This instruction allows operation turning in DFS but the
-   permission of running DFS is required.
+   permission of running DFS is required. The permission of
+   initial operation (also known as an external operation) is
+   set. The permission of emitted operations will be absented
+   if ``ALLOW_DFS`` isn't applied.
 
 ::
 
