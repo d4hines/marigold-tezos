@@ -851,8 +851,10 @@ let apply_internal_manager_operations ctxt mode ~payer ~chain_id ops =
                 | true ->
                     emitted
                 | false ->
-                    List.map (fun ((Internal_operation o))
-                    -> (Internal_operation {o with allow_dfs = false})) emitted
+                    List.map
+                      (fun (Internal_operation o) ->
+                        Internal_operation {o with allow_dfs = false})
+                      emitted
               in
               let emitted_w_permission =
                 List.map (fun x -> (x, allow_dfs)) emitted'
