@@ -409,7 +409,7 @@ class TestExecutionOrdering:
     # call the Contract Parent several times and the Contract Parent will
     # call the Contract Child several times. It looks like the following:
     #
-    # Grandprent --> Parent --> Child
+    # Grandparent --> Parent --> Child
     #            |          |-> Child
     #            |          |-> Child
     #            --> Parent --> Child
@@ -438,7 +438,7 @@ class TestExecutionOrdering:
     #       ("F","False", "True")],
     #      "False", "True")],
     #
-    # Grandprent --> Parent in BFS --> Child* with "A" in BFS
+    # Grandparent --> Parent in BFS --> Child* with "A" in BFS
     #            |                 |-> Child* with "B" in DFS
     #            |                 |-> Child* with "C" in DFS
     #            --> Parent in BFS
@@ -508,6 +508,21 @@ class TestExecutionOrdering:
                 "",
                 True,
             ),
+            # Test the Contract Grandparent set Contract Parent in DFS
+            (
+                "ordering_child5",
+                "ordering_parent5",
+                "ordering_grandparent5",
+                [
+                    (
+                        [("A", "True", "False")],
+                        "False",
+                        "False",
+                    ),
+                ],
+                "A",
+                False,
+            ),
         ],
     )
     def test_allow_dfs(
@@ -565,6 +580,80 @@ class TestExecutionOrdering:
             client.bake('bootstrap3', ["--minimal-timestamp"])
             assert client.get_storage(child_contract) == "\"{}\"".format(
                 expected
+            )
+
+    @pytest.mark.parametrize(
+        "child_contract, parent_contract, grandparent_contract,root_contract,"
+        + "contract_input",
+        [
+            (
+                "ordering2_child1",
+                "ordering2_parent1",
+                "ordering2_grandparent1",
+                "ordering2_root1",
+                [
+                    (
+                        [
+                            ("A", "False", "True"),
+                        ],
+                        "True",
+                        "False",
+                    ),
+                ],
+            ),
+        ],
+    )
+    # the top contract just pass arguments to the second
+    # contract (i.e Grandparent) but doesn't grant it permission
+    #
+    def test_allow_dfs2_4layer(
+        self,
+        client,
+        session,
+        child_contract,
+        parent_contract,
+        grandparent_contract,
+        root_contract,
+        contract_input,
+    ):
+
+        self.deploy_root(client, session, root_contract)
+
+        self.deploy_three_layer_tree(
+            client,
+            session,
+            child_contract,
+            parent_contract,
+            grandparent_contract,
+        )
+
+        g_addr = session[grandparent_contract]
+        c_addr = session[child_contract]
+        p_addr = session[parent_contract]
+
+        m_input = (
+            "Pair {"
+            + ";".join(
+                map(
+                    self.parent_input,
+                    contract_input,
+                    itertools.repeat(p_addr),
+                    itertools.repeat(c_addr),
+                )
+            )
+            + "} (Pair \""
+            + g_addr
+            + "\" False)"
+        )
+
+        with utils.assert_run_failure(
+            "Internal operation in DFS without permission"
+        ):
+            client.transfer(
+                0,
+                'bootstrap2',
+                root_contract,
+                ["--burn-cap", "5", "--arg", m_input],
             )
 
     @pytest.mark.parametrize(
@@ -691,7 +780,9 @@ class TestExecutionOrdering:
             ),
         ],
     )
-    def test_ordering_3layer(
+    # the top contract just grant permission of running DFS
+    # and pass arguments to the second contract (i.e Grandparent)
+    def test_ordering_4layer(
         self,
         client,
         session,
@@ -727,9 +818,9 @@ class TestExecutionOrdering:
                     itertools.repeat(c_addr),
                 )
             )
-            + "} \""
+            + "} (Pair \""
             + g_addr
-            + "\""
+            + "\" True)"
         )
 
         client.transfer(

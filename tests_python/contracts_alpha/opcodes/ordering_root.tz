@@ -1,9 +1,9 @@
 # This contract intends to call "opcodes/ordering_mix_dfs_bfs_grandparent.tz".
-# and grant it permission to run in DFS.
+# and control whether to permit it to run in DFS or not.
 
 { parameter
     (pair (list (pair (pair (list (pair (pair string address) (pair bool bool))) address) (pair bool bool)))
-          address) ;
+          (pair address bool)) ;
   storage unit ;
   code { CAR ;
          DUP ;
@@ -11,13 +11,16 @@
          SWAP ;
          CAR ;
          SWAP ;
+         DUP ;
+         CDR ;
+         SWAP ;
+         CAR ;
          CONTRACT
            (list (pair (pair (list (pair (pair string address) (pair bool bool))) address) (pair bool bool))) ;
          IF_NONE { PUSH string "Not a contract" ; FAILWITH } {} ;
-         PUSH mutez 0 ;
-         DIG 2 ;
-         TRANSFER_TOKENS ;
-         ALLOW_DFS ;
+         SWAP ;
+         IF { PUSH mutez 0 ; DIG 2 ; TRANSFER_TOKENS ; ALLOW_DFS }
+            { PUSH mutez 0 ; DIG 2 ; TRANSFER_TOKENS } ;
          PUSH unit Unit ;
          NIL operation ;
          DIG 2 ;
