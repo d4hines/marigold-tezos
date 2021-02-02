@@ -846,20 +846,30 @@ let apply_internal_manager_operations ctxt mode ~payer ~chain_id ops =
               in
               Lwt.return (Failure, List.rev (skipped @ (result :: applied)))
           | Ok (ctxt, result, emitted) ->
-              let emitted' = List.map (fun x -> (x, allow_dfs)) emitted in
+              let emitted' =
+                match allow_dfs with
+                | true ->
+                    emitted
+                | false ->
+                    List.map (fun ((Internal_operation o))
+                    -> (Internal_operation {o with allow_dfs = false})) emitted
+              in
+              let emitted_w_permission =
+                List.map (fun x -> (x, allow_dfs)) emitted'
+              in
               let worklist' =
                 match (execution_ordering, permission) with
                 | (DFS, true) ->
-                    emitted' :: rest :: s
+                    emitted_w_permission :: rest :: s
                 | (_, _) ->
-                    (rest @ emitted') :: s
+                    (rest @ emitted_w_permission) :: s
               in
               apply
                 ctxt
                 (Internal_operation_result (op, Applied result) :: applied)
                 worklist' ) )
   in
-  let init_stack = [List.map (fun x -> (x, false)) ops] in
+  let init_stack = [List.map (fun x -> (x, true)) ops] in
   apply ctxt [] init_stack
 
 let precheck_manager_contents (type kind) ctxt
