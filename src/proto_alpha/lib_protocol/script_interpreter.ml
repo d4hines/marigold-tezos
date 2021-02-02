@@ -697,6 +697,8 @@ let cost_of_control : type a s r f. (a, s, r, f) continuation -> Gas.cost =
       Gas.free
   | KCons (_, _) ->
       Gas.free
+  | KReturn _ ->
+      Gas.free
   | KUndip (_, _) ->
       Gas.free
   | KLoop_in (_, _) ->
