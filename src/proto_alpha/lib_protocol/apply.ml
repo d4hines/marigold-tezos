@@ -811,10 +811,10 @@ let apply_internal_manager_operations ctxt mode ~payer ~chain_id ops =
       match q with
       | [] ->
           apply ctxt applied s
-      | Internal_operation
-          ({source; operation; nonce; execution_ordering; allow_dfs} as op)
+      | (Internal_operation
+          ({source; operation; nonce; execution_ordering; allow_dfs} as op), permission)
         :: rest -> (
-          ( match (execution_ordering, allow_dfs) with
+          ( match (execution_ordering, permission) with
           | (DFS, false) ->
               fail Internal_operation_in_DFS_without_permission
           | (_, _) ->
@@ -841,23 +841,26 @@ let apply_internal_manager_operations ctxt mode ~payer ~chain_id ops =
                   (fun (Internal_operation op) ->
                     Internal_operation_result
                       (op, Skipped (manager_kind op.operation)))
-                  rest
+                  (List.map (fun (x,_) -> x) rest)
               in
               Lwt.return (Failure, List.rev (skipped @ (result :: applied)))
           | Ok (ctxt, result, emitted) ->
+              let emitted' =
+                  List.map (fun x -> (x, allow_dfs)) emitted
+              in
               let worklist' =
-                match (execution_ordering, allow_dfs) with
+                match (execution_ordering, permission) with
                 | (DFS, true) ->
-                    emitted :: rest :: s
+                    emitted' :: rest :: s
                 | (_, _) ->
-                    (rest @ emitted) :: s
+                    (rest @ emitted') :: s
               in
               apply
                 ctxt
                 (Internal_operation_result (op, Applied result) :: applied)
                 worklist' ) )
   in
-  let initStack = [ops] in
+  let initStack = [List.map (fun x -> (x, false)) ops] in
   apply ctxt [] initStack
 
 let precheck_manager_contents (type kind) ctxt
