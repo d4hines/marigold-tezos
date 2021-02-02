@@ -345,7 +345,7 @@ class TestManager:
 
 @pytest.mark.contract
 @pytest.mark.incremental
-class TestExececutionOrdering:
+class TestExecutionOrdering:
     def child_input(self, contract_input, c_addr):
         return ("Pair (Pair \"{}\" \"{}\") (Pair {} {})").format(
             contract_input[0], c_addr, contract_input[1], contract_input[2]
@@ -364,6 +364,45 @@ class TestExececutionOrdering:
             + "}}\"{}\") (Pair {} {})"
         ).format(p_addr, contract_input[1], contract_input[2])
 
+    def deploy_root (
+        self,
+        client,
+        session,
+        root_contract,
+
+    ):
+        path = f'{CONTRACT_PATH}/opcodes/ordering_root.tz'
+        originate(client, session, path, 'Unit', 0, contract_name=root_contract)
+        session[root_contract] = session['contract']
+        client.bake('bootstrap3', ["--minimal-timestamp"])
+
+    def deploy_three_layer_tree (
+        self,
+        client,
+        session,
+        child_contract,
+        parent_contract,
+        grandparent_contract,
+    ):
+        path = f'{CONTRACT_PATH}/opcodes/ordering_concat_string_child.tz'
+        originate(client, session, path, '""', 0, contract_name=child_contract)
+        session[child_contract] = session['contract']
+        client.bake('bootstrap3', ["--minimal-timestamp"])
+
+        path = f'{CONTRACT_PATH}/opcodes/ordering_mix_dfs_bfs_parent.tz'
+        originate(
+            client, session, path, 'Unit', 0, contract_name=parent_contract
+        )
+        session[parent_contract] = session['contract']
+        client.bake('bootstrap3', ["--minimal-timestamp"])
+
+        path = f'{CONTRACT_PATH}/opcodes/ordering_mix_dfs_bfs_grandparent.tz'
+        originate(
+            client, session, path, 'Unit', 0, contract_name=grandparent_contract
+        )
+        session[grandparent_contract] = session['contract']
+        client.bake('bootstrap3', ["--minimal-timestamp"])
+
     ##
     # This test case uses string concatenation to verify the execution flow
     # of operations. There are 3 contracts, called Contract Grandparent,
@@ -380,7 +419,7 @@ class TestExececutionOrdering:
     # The `contract_input` is the input of contract grandparent which defines
     # how parents call its children.
     #
-    # (* Ture: run operation in BFS, False run operation in DFS *)
+    # (* Ture run operation in BFS, False run operation in DFS *)
     # flow = True | False
     # allow_dfs = True | False
     #
@@ -414,11 +453,129 @@ class TestExececutionOrdering:
         "child_contract, parent_contract, grandparent_contract,"
         + "contract_input,expected,test_failure",
         [
+            (
+                "ordering_child1",
+                "ordering_parent1",
+                "ordering_grandparent1",
+                [
+                    (
+                        [("A", "False", "False")],
+                        "True",
+                        "True",
+                    ),
+                ],
+                "A",
+                False,
+            ),
+            (
+                "ordering_child2",
+                "ordering_parent2",
+                "ordering_grandparent2",
+                [
+                    (
+                        [("A", "False", "True")],
+                        "True",
+                        "True",
+                    ),
+                ],
+                "A",
+                False,
+            ),
+            (
+                "ordering_child3",
+                "ordering_parent3",
+                "ordering_grandparent3",
+                [
+                    (
+                        [("A", "False", "False")],
+                        "True",
+                        "False",
+                    ),
+                ],
+                "",
+                True,
+            ),
+            (
+                "ordering_child4",
+                "ordering_parent4",
+                "ordering_grandparent4",
+                [
+                    (
+                        [("A", "False", "True")],
+                        "True",
+                        "False",
+                    ),
+                ],
+                "",
+                True,
+            ),
+        ],
+    )
+    def test_allow_dfs(
+        self,
+        client,
+        session,
+        child_contract,
+        parent_contract,
+        grandparent_contract,
+        contract_input,
+        expected,
+        test_failure,
+    ):
+        self.deploy_three_layer_tree(
+        client,
+        session,
+        child_contract,
+        parent_contract,
+        grandparent_contract,
+                )
+
+        c_addr = session[child_contract]
+        p_addr = session[parent_contract]
+
+        m_input = (
+            "{"
+            + ";".join(
+                map(
+                    self.parent_input,
+                    contract_input,
+                    itertools.repeat(p_addr),
+                    itertools.repeat(c_addr),
+                )
+            )
+            + "}"
+        )
+
+        if test_failure:
+            with utils.assert_run_failure("Internal operation in DFS without Permission"):
+                client.transfer(
+                    0,
+                    'bootstrap2',
+                    grandparent_contract,
+                    ["--burn-cap", "5", "--arg", m_input],
+                )
+        else:
+            client.transfer(
+                0,
+                'bootstrap2',
+                grandparent_contract,
+                ["--burn-cap", "5", "--arg", m_input],
+            )
+            client.bake('bootstrap3', ["--minimal-timestamp"])
+            assert client.get_storage(child_contract) == "\"{}\"".format(
+                expected
+            )
+
+    @pytest.mark.parametrize(
+        "child_contract, parent_contract, grandparent_contract,root_contract,"
+        + "contract_input,expected",
+        [
             # all in BFS
             (
-                "ordering_concat_string_child2",
-                "ordering_mix_dfs_bfs_parent2",
-                "ordering_mix_dfs_bfs_grandparent2",
+                "ordering_child1_",
+                "ordering_parent1_",
+                "ordering_grandparent1_",
+                "ordering_root1_",
                 [
                     (
                         [
@@ -441,13 +598,13 @@ class TestExececutionOrdering:
                     ),
                 ],
                 "ABCDEF",
-                False,
             ),
             # all in DFS
             (
-                "ordering_concat_string_child3",
-                "ordering_mix_dfs_bfs_parent3",
-                "ordering_mix_dfs_bfs_grandparent3",
+                "ordering_child2_",
+                "ordering_parent2_",
+                "ordering_grandparent2_",
+                "ordering_root2_",
                 [
                     (
                         [
@@ -470,12 +627,12 @@ class TestExececutionOrdering:
                     ),
                 ],
                 "ABCDEF",
-                False,
             ),
             (
-                "ordering_concat_string_child1",
-                "ordering_mix_dfs_bfs_parent1",
-                "ordering_mix_dfs_bfs_grandparent1",
+                "ordering_child3_",
+                "ordering_parent3_",
+                "ordering_grandparent3_",
+                "ordering_root3_",
                 [
                     (
                         [
@@ -498,12 +655,12 @@ class TestExececutionOrdering:
                     ),
                 ],
                 "DEFABC",
-                False,
             ),
             (
-                "ordering_concat_string_child4",
-                "ordering_mix_dfs_bfs_parent4",
-                "ordering_mix_dfs_bfs_grandparent4",
+                "ordering_child4_",
+                "ordering_parent4_",
+                "ordering_grandparent4_",
+                "ordering_root4_",
                 [
                     (
                         [
@@ -530,105 +687,38 @@ class TestExececutionOrdering:
                     ),
                 ],
                 "ABCFGHDE",
-                False,
-            ),
-            (
-                "ordering_concat_string_child5",
-                "ordering_mix_dfs_bfs_parent5",
-                "ordering_mix_dfs_bfs_grandparent5",
-                [
-                    (
-                        [
-                            ("A", "True", "False"),
-                            ("B", "False", "True"),
-                            ("C", "False", "True"),
-                        ],
-                        "True",
-                        "False",
-                    ),
-                    ([], "True", "False"),
-                    (
-                        [
-                            ("D", "True", "False"),
-                            ("E", "False", "True"),
-                            ("F", "False", "True"),
-                        ],
-                        "False",
-                        "True",
-                    ),
-                ],
-                "DEFABC",
-                False,
-            ),
-            (
-                "ordering_concat_string_child6",
-                "ordering_mix_dfs_bfs_parent6",
-                "ordering_mix_dfs_bfs_grandparent6",
-                [
-                    (
-                        [
-                            ("A", "True", "False"),
-                            ("B", "False", "False"),
-                            ("C", "True", "False"),
-                        ],
-                        "False",
-                        "False",
-                    ),
-                    (
-                        [("D", "True", "False"), ("E", "False", "False")],
-                        "True",
-                        "False",
-                    ),
-                    (
-                        [
-                            ("F", "False", "False"),
-                            ("G", "True", "False"),
-                            ("H", "False", "False"),
-                        ],
-                        "False",
-                        "False",
-                    ),
-                ],
-                "",
-                True,
             ),
         ],
     )
-    def test_bfs_dfs_3layers(
+
+    def test_ordering_3layer (
         self,
         client,
         session,
         child_contract,
         parent_contract,
         grandparent_contract,
+        root_contract,
         contract_input,
         expected,
-        test_failure,
-    ):
-        path = f'{CONTRACT_PATH}/opcodes/ordering_concat_string_child.tz'
-        originate(client, session, path, '""', 0, contract_name=child_contract)
-        session[child_contract] = session['contract']
-        client.bake('bootstrap3', ["--minimal-timestamp"])
+        ):
 
-        path = f'{CONTRACT_PATH}/opcodes/ordering_mix_dfs_bfs_parent.tz'
-        originate(
-            client, session, path, 'Unit', 0, contract_name=parent_contract
-        )
-        session[parent_contract] = session['contract']
-        client.bake('bootstrap3', ["--minimal-timestamp"])
+        self.deploy_root (client,session,root_contract)
 
-        path = f'{CONTRACT_PATH}/opcodes/ordering_mix_dfs_bfs_grandparent.tz'
-        originate(
-            client, session, path, 'Unit', 0, contract_name=grandparent_contract
-        )
-        session[grandparent_contract] = session['contract']
-        client.bake('bootstrap3', ["--minimal-timestamp"])
+        self.deploy_three_layer_tree(
+        client,
+        session,
+        child_contract,
+        parent_contract,
+        grandparent_contract,
+                )
 
+        g_addr = session[grandparent_contract]
         c_addr = session[child_contract]
         p_addr = session[parent_contract]
 
         m_input = (
-            "{"
+            "Pair {"
             + ";".join(
                 map(
                     self.parent_input,
@@ -637,110 +727,19 @@ class TestExececutionOrdering:
                     itertools.repeat(c_addr),
                 )
             )
-            + "}"
-        )
-
-        if test_failure:
-            with utils.assert_run_failure("transfer simulation failed"):
-                client.transfer(
-                    0,
-                    'bootstrap2',
-                    grandparent_contract,
-                    ["--burn-cap", "5", "--arg", m_input],
-                )
-        else:
-            client.transfer(
-                0,
-                'bootstrap2',
-                grandparent_contract,
-                ["--burn-cap", "5", "--arg", m_input],
-            )
-            client.bake('bootstrap3', ["--minimal-timestamp"])
-            assert client.get_storage(child_contract) == "\"{}\"".format(
-                expected
-            )
-
-    ##
-    # This test case is like pervious one, but only 2 layers.
-    @pytest.mark.parametrize(
-        "child_contract, parent_contract, contract_input,expected",
-        [
-            (
-                "ordering2_concat_string_child1",
-                "ordering2_mix_dfs_bfs_parent1",
-                [
-                    ("A", "True", "True"),
-                    ("B", "False", "True"),
-                    ("C", "True", "True"),
-                    ("D", "False", "True"),
-                ],
-                "ABCD",
-            ),
-            (
-                "ordering2_concat_string_child2",
-                "ordering2_mix_dfs_bfs_parent2",
-                [
-                    ("A", "False", "True"),
-                    ("B", "False", "True"),
-                    ("C", "True", "True"),
-                    ("D", "False", "True"),
-                ],
-                "ABCD",
-            ),
-            (
-                "ordering2_concat_string_child3",
-                "ordering2_mix_dfs_bfs_parent3",
-                [
-                    ("A", "True", "True"),
-                    ("B", "True", "True"),
-                    ("C", "True", "True"),
-                    ("D", "False", "True"),
-                ],
-                "ABCD",
-            ),
-        ],
-    )
-    def test_bfs_dfs_mix_2layer(
-        self,
-        client,
-        session,
-        child_contract,
-        parent_contract,
-        contract_input,
-        expected,
-    ):
-        path = f'{CONTRACT_PATH}/opcodes/ordering_concat_string_child.tz'
-        originate(client, session, path, '""', 0, contract_name=child_contract)
-        session[child_contract] = session['contract']
-        client.bake('bootstrap3', ["--minimal-timestamp"])
-
-        path = f'{CONTRACT_PATH}/opcodes/ordering_mix_dfs_bfs_parent.tz'
-        originate(
-            client, session, path, 'Unit', 0, contract_name=parent_contract
-        )
-        session[parent_contract] = session['contract']
-        client.bake('bootstrap3', ["--minimal-timestamp"])
-
-        c_addr = session[child_contract]
-
-        m_input = (
-            "{"
-            + ";".join(
-                map(self.child_input, contract_input, itertools.repeat(c_addr))
-            )
-            + "}"
+            + "} \"" + g_addr + "\""
         )
 
         client.transfer(
             0,
             'bootstrap2',
-            parent_contract,
+            root_contract,
             ["--burn-cap", "5", "--arg", m_input],
         )
-
         client.bake('bootstrap3', ["--minimal-timestamp"])
-
-        assert client.get_storage(child_contract) == "\"{}\"".format(expected)
+        assert client.get_storage(child_contract) == "\"{}\"".format(
+           expected
+        )
 
 
 @pytest.mark.slow
