@@ -238,11 +238,11 @@ let () =
     (fun expected -> Invalid_commitment {expected}) ;
   register_error_kind
     `Permanent
-    ~id:"internal_operation_in_DFS_without_permission"
-    ~title:"Internal Operation in DFS without Permission"
-    ~description:"In internal operation in DFS without Permission"
+    ~id:"operation.internal_DFS_without_permission"
+    ~title:"Internal operation in DFS without permission"
+    ~description:"Internal operation in DFS without permission"
     ~pp:(fun ppf () ->
-      Format.fprintf ppf "Internal operation in DFS without Permission")
+      Format.fprintf ppf "Internal operation in DFS without permission")
     Data_encoding.empty
     (function
       | Internal_operation_in_DFS_without_permission -> Some () | _ -> None)
