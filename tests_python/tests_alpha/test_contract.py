@@ -547,7 +547,7 @@ class TestExecutionOrdering:
 
         if test_failure:
             with utils.assert_run_failure(
-                "Internal operation in DFS without Permission"
+                "Internal operation in DFS without permission"
             ):
                 client.transfer(
                     0,
