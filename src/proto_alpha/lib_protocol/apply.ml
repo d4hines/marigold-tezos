@@ -859,8 +859,8 @@ let apply_internal_manager_operations ctxt mode ~payer ~chain_id ops =
                 (Internal_operation_result (op, Applied result) :: applied)
                 worklist' ) )
   in
-  let initStack = [List.map (fun x -> (x, false)) ops] in
-  apply ctxt [] initStack
+  let init_stack = [List.map (fun x -> (x, false)) ops] in
+  apply ctxt [] init_stack
 
 let precheck_manager_contents (type kind) ctxt
     (op : kind Kind.manager contents) : context tzresult Lwt.t =
