@@ -364,19 +364,18 @@ class TestExecutionOrdering:
             + "}}\"{}\") (Pair {} {})"
         ).format(p_addr, contract_input[1], contract_input[2])
 
-    def deploy_root (
+    def deploy_root(
         self,
         client,
         session,
         root_contract,
-
     ):
         path = f'{CONTRACT_PATH}/opcodes/ordering_root.tz'
         originate(client, session, path, 'Unit', 0, contract_name=root_contract)
         session[root_contract] = session['contract']
         client.bake('bootstrap3', ["--minimal-timestamp"])
 
-    def deploy_three_layer_tree (
+    def deploy_three_layer_tree(
         self,
         client,
         session,
@@ -523,12 +522,12 @@ class TestExecutionOrdering:
         test_failure,
     ):
         self.deploy_three_layer_tree(
-        client,
-        session,
-        child_contract,
-        parent_contract,
-        grandparent_contract,
-                )
+            client,
+            session,
+            child_contract,
+            parent_contract,
+            grandparent_contract,
+        )
 
         c_addr = session[child_contract]
         p_addr = session[parent_contract]
@@ -547,7 +546,9 @@ class TestExecutionOrdering:
         )
 
         if test_failure:
-            with utils.assert_run_failure("Internal operation in DFS without Permission"):
+            with utils.assert_run_failure(
+                "Internal operation in DFS without Permission"
+            ):
                 client.transfer(
                     0,
                     'bootstrap2',
@@ -690,8 +691,7 @@ class TestExecutionOrdering:
             ),
         ],
     )
-
-    def test_ordering_3layer (
+    def test_ordering_3layer(
         self,
         client,
         session,
@@ -701,17 +701,17 @@ class TestExecutionOrdering:
         root_contract,
         contract_input,
         expected,
-        ):
+    ):
 
-        self.deploy_root (client,session,root_contract)
+        self.deploy_root(client, session, root_contract)
 
         self.deploy_three_layer_tree(
-        client,
-        session,
-        child_contract,
-        parent_contract,
-        grandparent_contract,
-                )
+            client,
+            session,
+            child_contract,
+            parent_contract,
+            grandparent_contract,
+        )
 
         g_addr = session[grandparent_contract]
         c_addr = session[child_contract]
@@ -727,7 +727,9 @@ class TestExecutionOrdering:
                     itertools.repeat(c_addr),
                 )
             )
-            + "} \"" + g_addr + "\""
+            + "} \""
+            + g_addr
+            + "\""
         )
 
         client.transfer(
@@ -737,9 +739,7 @@ class TestExecutionOrdering:
             ["--burn-cap", "5", "--arg", m_input],
         )
         client.bake('bootstrap3', ["--minimal-timestamp"])
-        assert client.get_storage(child_contract) == "\"{}\"".format(
-           expected
-        )
+        assert client.get_storage(child_contract) == "\"{}\"".format(expected)
 
 
 @pytest.mark.slow
