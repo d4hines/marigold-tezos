@@ -93,12 +93,7 @@ are of three kinds:
 
 Smart contracts can also emit "internal operations".
 Smart contracts called by internal transactions can in turn also emit
-internal operation. An internal operation can be categorized into two types,
-the Depth First Search (DFS for short) and the Breadth First Search (BFS for short).
-When the difference of types of operations is applied, the evaluation flow
-will be changed accordingly. Therefore, there is a structure, stack of
-queues of operations, to manage the execution flow of operation.
-All emitted operations will be enqueued into a queue which is the top
+internal operations. The order in which internal operations are applied depends on a parameter called the operation execution order. This parameter has two possible values named by analogy with the algorithms to search values in tree data structures: ``BFS`` (named after the breadth-first search algorithm) and ``DFS`` (named after the depth-first search algorithm). The ``BFS`` order corresponds to putting operations in queue whereas the ``DFS`` corresponds to putting them in a stack. In order to support both execution orders, operations are placed in a stack of queues. All emitted operations will be enqueued into a queue which is the top
 element of stack. If executed operation is in DFS, this operation will be enqueued
 into a new queue and the new queue will be pushed into the stack. Notice
 that permission of running DFS is required. Please see ``ALLOW_DFS``.
