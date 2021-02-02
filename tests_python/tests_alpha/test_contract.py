@@ -418,7 +418,7 @@ class TestExecutionOrdering:
     # The `contract_input` is the input of contract grandparent which defines
     # how parents call its children.
     #
-    # (* Ture run operation in BFS, False run operation in DFS *)
+    # (* True run operation in BFS, False run operation in DFS *)
     # flow = True | False
     # allow_dfs = True | False
     #
