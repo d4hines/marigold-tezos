@@ -101,7 +101,7 @@ queues of operations, to manage the execution flow of operation.
 All emitted operations will be enqueued into a queue which is the top
 element of stack. If executed operation is in DFS, this operation will be enqueued
 into a new queue and the new queue will be pushed into the stack. Notice
-that permission of running DFS is required. Please see ``ALLOW_DFS_IN_CHILDREN``.
+that permission of running DFS is required. Please see ``ALLOW_DFS``.
 
 Here is an example of evaluation flow of operations, ``!`` indicates that
 operation is running in DFS:
@@ -1882,14 +1882,14 @@ The contract is returned as a first class value (to be dropped, passed
 as parameter or stored). The ``CONTRACT 'p`` instruction will fail
 until it is actually originated.
 
--  ``ALLOW_DFS_IN_CHILDREN``: This instruction offers permission of running DFS
+-  ``ALLOW_DFS``: This instruction offers permission of running DFS
    to the applied operation. By default, the permission is absent.
 
 ::
 
      :: operation : 'S -> operation : 'S
 
-     > ALLOW_DFS_IN_CHILDREN / operation : S => operation : S
+     > ALLOW_DFS / operation : S => operation : S
 
 
 
