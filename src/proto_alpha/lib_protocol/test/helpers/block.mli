@@ -105,14 +105,13 @@ val genesis_with_parameters : Parameters.t -> block tzresult Lwt.t
     given constants [<opts>] and initializes [accounts] with their
     associated amounts.
 *)
-
 val alpha_context :
   ?with_commitments:bool ->
   ?endorsers_per_block:int ->
   ?initial_endorsers:int ->
   ?min_proposal_quorum:int32 ->
-  (Account.t * Tez_repr.tez) list ->
-  Alpha_context.t Environment.Error_monad.tzresult Lwt.t
+  (Account.t * Tez.tez) list ->
+  (Alpha_context.t, Environment.Error_monad.error list) result Lwt.t
 
 (** applies a signed header and its operations to a block and
     obtains a new block *)
@@ -159,9 +158,10 @@ val prepare_initial_context_params :
   ?endorsers_per_block:int ->
   ?initial_endorsers:int ->
   ?min_proposal_quorum:int32 ->
-  (Account.t * Tez_repr.t) list ->
-  ( Tezos_protocol_alpha.Protocol.Constants_repr.parametric
-  * Block_header.shell_header
-  * Block_hash.t )
-  Error_monad.tzresult
+  (Account.t * Alpha_context.Tez.tez) list ->
+  ( Tezos_raw_protocol_alpha.Alpha_context.Constants.parametric
+    * Block_header.shell_header
+    * Block_hash.t,
+    tztrace )
+  result
   Lwt.t

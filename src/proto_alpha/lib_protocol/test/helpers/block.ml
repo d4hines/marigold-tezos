@@ -352,26 +352,26 @@ let genesis_with_parameters parameters =
 
 (* if no parameter file is passed we check in the current directory
    where the test is run *)
-let genesis ?with_commitments ?endorsers_per_block ?initial_endorsers
-    ?min_proposal_quorum (initial_accounts : (Account.t * Tez.t) list) =
+let genesis (initial_accounts : (Account.t * Tez.t) list) =
+  let open Tezos_protocol_alpha_parameters in
   if initial_accounts = [] then
     Stdlib.failwith "Must have one account with a roll to bake" ;
   (* Check there is at least one roll *)
+  let tokens_per_roll = Default_parameters.constants_test.tokens_per_roll in
   Lwt.catch
     (fun () ->
       List.fold_left_es
         (fun acc (_, amount) ->
-          Environment.wrap_error @@ Tez_repr.( +? ) acc amount
+          Environment.wrap_error @@ Tez.( +? ) acc amount
           >>?= fun acc ->
           if acc >= tokens_per_roll then raise Exit else return acc)
-        Tez_repr.zero
+        Tez.zero
         initial_accounts
       >>=? fun _ ->
       failwith "Insufficient tokens in initial accounts to create one roll")
     (function Exit -> return_unit | exc -> raise exc)
 
-let unwrap_error : 'a tzresult -> 'a Environment.Error_monad.tzresult =
-  function
+let unwrap_error = function
   | Ok _ as ok ->
       ok
   | Error es ->
@@ -434,14 +434,14 @@ let prepare_initial_context_params ?endorsers_per_block ?initial_endorsers
       ~fitness:(Fitness.from_int64 0L)
       ~operations_hash:Operation_list_list_hash.zero
   in
-  validate_initial_accounts initial_accounts constants.tokens_per_roll
+  genesis initial_accounts
   (* Perhaps this could return a new type  signifying its name *)
   >|=? fun _initial_accounts -> (constants, shell, hash)
 
 (* if no parameter file is passed we check in the current directory
    where the test is run *)
 let genesis ?with_commitments ?endorsers_per_block ?initial_endorsers
-    ?min_proposal_quorum (initial_accounts : (Account.t * Tez_repr.t) list) =
+    ?min_proposal_quorum (initial_accounts : (Account.t * Tez.t) list) =
   prepare_initial_context_params
     ?endorsers_per_block
     ?initial_endorsers
@@ -459,7 +459,7 @@ let genesis ?with_commitments ?endorsers_per_block ?initial_endorsers
   }
 
 let alpha_context ?with_commitments ?endorsers_per_block ?initial_endorsers
-    ?min_proposal_quorum (initial_accounts : (Account.t * Tez_repr.t) list) =
+    ?min_proposal_quorum (initial_accounts : (Account.t * Tez.t) list) =
   prepare_initial_context_params
     ?endorsers_per_block
     ?initial_endorsers
