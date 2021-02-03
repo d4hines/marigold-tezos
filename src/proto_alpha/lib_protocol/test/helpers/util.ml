@@ -30,7 +30,7 @@ let force x =
       x
   | Error es ->
       Format.printf "Errors :\n" ;
-      Format.printf "- %a\n" Protocol.Environment.Error_monad.pp_trace es;
+      Format.printf "- %a\n" Protocol.Environment.Error_monad.pp_trace es ;
       raise (Failure "force")
 
 let force_global x =

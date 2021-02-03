@@ -1119,7 +1119,7 @@ let prim_encoding =
          ("JOIN_TICKETS", I_JOIN_TICKETS);
          ("GET_AND_UPDATE", I_GET_AND_UPDATE);
          (* Alpha_009 addition *)
-         ("GET_GLOBAL", I_GET_GLOBAL);
+         ("GET_GLOBAL", I_GET_GLOBAL)
          (* New instructions must be added here, for backward compatibility of the encoding. *)
          (* Keep the comment above at the end of the list *)
         ]
