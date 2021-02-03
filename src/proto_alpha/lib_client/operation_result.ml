@@ -27,9 +27,18 @@ open Protocol
 open Alpha_context
 open Apply_results
 
-let pp_manager_operation_content (type kind) source internal pp_result ppf
-    ((operation, result) : kind manager_operation * _) =
+let pp_manager_operation_content (type kind) ?execution_ordering_info source
+    internal pp_result ppf ((operation, result) : kind manager_operation * _) =
   Format.fprintf ppf "@[<v 0>" ;
+  Option.iter
+    (fun (execution_ordering, allows_dfs) ->
+      Format.fprintf
+        ppf
+        "@[<v 0>Execution ordering: %s@,Allows DFS: %a@,@]"
+        (match execution_ordering with DFS -> "DFS" | BFS -> "BFS")
+        Format.pp_print_bool
+        allows_dfs)
+    execution_ordering_info ;
   ( match operation with
   | Transaction {destination; amount; parameters; entrypoint} ->
       Format.fprintf
@@ -528,8 +537,9 @@ let pp_operation_result ppf
 
 let pp_internal_operation ppf
     (Internal_operation
-      {source; operation; nonce = _; execution_ordering = _; allow_dfs = _}) =
+      {source; operation; nonce = _; execution_ordering; allow_dfs}) =
   pp_manager_operation_content
+    ~execution_ordering_info:(execution_ordering, allow_dfs)
     source
     true
     (fun _ppf () -> ())
