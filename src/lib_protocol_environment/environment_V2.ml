@@ -776,15 +776,16 @@ struct
         None
 
   let unwrap_tztrace trace =
-    List.fold_left
-      (fun acc error ->
-        match (acc, error) with
-        | (Some errors, Ecoproto_error error) ->
-            Some (error :: errors)
-        | (None, _) | (Some _, _) ->
-            None)
-      (Some [])
-      trace
+    Option.map List.rev
+    @@ List.fold_left
+         (fun acc error ->
+           match (acc, error) with
+           | (Some errors, Ecoproto_error error) ->
+               Some (error :: errors)
+           | (None, _) | (Some _, _) ->
+               None)
+         (Some [])
+         trace
 
   let unwrap_tzresult = function
     | Ok _ as ok ->
