@@ -60,9 +60,29 @@ let not_equal_tez ~loc (a : Alpha_context.Tez.t) (b : Alpha_context.Tez.t) =
   let open Alpha_context in
   not_equal ~loc Tez.( = ) "Tez are equal" Tez.pp a b
 
+module Int32 = struct
+  include Int32
+
+  let pp pp v = Format.pp_print_int pp (Int32.to_int v)
+end
+
+module Int64 = struct
+  include Int64
+
+  let pp pp v = Format.pp_print_int pp (Int64.to_int v)
+end
+
 (* int *)
 let equal_int ~loc (a : int) (b : int) =
   equal ~loc ( = ) "Integers aren't equal" Format.pp_print_int a b
+
+(* int32 *)
+let equal_int32 ~loc (a : int32) (b : int32) =
+  equal ~loc Int32.equal "int32s (%a and %a) aren't equal" Int32.pp a b
+
+(* int64 *)
+let equal_int64 ~loc (a : int64) (b : int64) =
+  equal ~loc Int64.equal "int64s (%a and %a) aren't equal" Int64.pp a b
 
 let not_equal_int ~loc (a : int) (b : int) =
   not_equal ~loc ( = ) "Integers are equal" Format.pp_print_int a b

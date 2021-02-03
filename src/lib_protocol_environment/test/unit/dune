@@ -1,0 +1,20 @@
+(executable
+ (name main)
+ (libraries tezos-protocol-environment
+            tezos-base
+            alcotest-lwt
+            tezos-stdlib-unix)
+ (flags (:standard -open Tezos_base__TzPervasives
+                   -open Tezos_base
+                   -open Tezos_protocol_environment)))
+
+(rule
+ (alias unittests)
+ (package tezos-protocol-environment)
+ (deps main.exe)
+ (action (run ./main.exe)))
+
+(rule
+ (alias runtest_lint)
+ (deps (glob_files *.ml{,i}))
+ (action (run %{lib:tezos-tooling:lint.sh} %{deps})))
