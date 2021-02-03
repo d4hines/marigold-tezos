@@ -839,7 +839,7 @@ let apply_internal_manager_operations ctxt mode ~payer ~chain_id ops =
               in
               let skipped =
                 List.rev_map
-                  (fun ((Internal_operation op, _)) ->
+                  (fun (Internal_operation op, _) ->
                     Internal_operation_result
                       (op, Skipped (manager_kind op.operation)))
                   (rest @ List.flatten s)
