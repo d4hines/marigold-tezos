@@ -272,7 +272,7 @@ let initial_context ?(with_commitments = false) constants header
     initial_accounts =
   prepare_main_init_params with_commitments constants initial_accounts
   >>= fun ctxt ->
-  Main.init ctxt header >|= Environment.wrap_error
+  Main.init ctxt header >|= Environment.wrap_tzresult
   >|=? fun {context; _} -> context
 
 let initial_alpha_context ?(with_commitments = false) constants
@@ -341,7 +341,7 @@ let genesis_with_parameters parameters =
     add empty ["version"] (Bytes.of_string "genesis")
     >>= fun ctxt -> add ctxt protocol_param_key proto_params)
   >>= fun ctxt ->
-  Main.init ctxt shell >|= Environment.wrap_error
+  Main.init ctxt shell >|= Environment.wrap_tzresult
   >|=? fun {context; _} ->
   {
     hash;
@@ -411,7 +411,7 @@ let prepare_initial_context_params ?endorsers_per_block ?initial_endorsers
     (fun () ->
       List.fold_left_es
         (fun acc (_, amount) ->
-          Environment.wrap_error @@ Tez.( +? ) acc amount
+          Environment.wrap_tzresult @@ Tez.( +? ) acc amount
           >>?= fun acc ->
           if acc >= constants.tokens_per_roll then raise Exit else return acc)
         Tez.zero
@@ -492,7 +492,7 @@ let apply header ?(operations = []) pred =
   >>=? fun vstate ->
   Main.finalize_block vstate
   >|=? fun (validation, _result) -> validation.context)
-  >|= Environment.wrap_error
+  >|= Environment.wrap_tzresult
   >|=? fun context ->
   let hash = Block_header.hash header in
   {hash; header; operations; context}

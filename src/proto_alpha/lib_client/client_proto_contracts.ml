@@ -32,12 +32,9 @@ module ContractEntity = struct
   let encoding = Contract.encoding
 
   let of_source s =
-    match Contract.of_b58check s with
-    | Error _ as err ->
-        Lwt.return (Environment.wrap_error err)
-        |> trace (failure "bad contract notation")
-    | Ok s ->
-        return s
+    Environment.wrap_tzresult (Contract.of_b58check s)
+    |> record_trace (failure "bad contract notation")
+    |> Lwt.return
 
   let to_source s = return (Contract.to_b58check s)
 

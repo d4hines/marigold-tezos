@@ -379,9 +379,9 @@ let estimated_gas_single (type kind)
     | Backtracked (_, None) ->
         Ok Gas.Arith.zero (* there must be another error for this to happen *)
     | Backtracked (_, Some errs) ->
-        Environment.wrap_error (Error errs)
+        Error (Environment.wrap_tztrace errs)
     | Failed (_, errs) ->
-        Environment.wrap_error (Error errs)
+        Error (Environment.wrap_tztrace errs)
   in
   List.fold_left
     (fun acc (Internal_operation_result (_, r)) ->
@@ -415,9 +415,9 @@ let estimated_storage_single (type kind) origination_size
     | Backtracked (_, None) ->
         Ok Z.zero (* there must be another error for this to happen *)
     | Backtracked (_, Some errs) ->
-        Environment.wrap_error (Error errs)
+        Error (Environment.wrap_tztrace errs)
     | Failed (_, errs) ->
-        Environment.wrap_error (Error errs)
+        Error (Environment.wrap_tztrace errs)
   in
   List.fold_left
     (fun acc (Internal_operation_result (_, r)) ->
@@ -462,9 +462,9 @@ let originated_contracts_single (type kind)
     | Backtracked (_, None) ->
         Ok [] (* there must be another error for this to happen *)
     | Backtracked (_, Some errs) ->
-        Environment.wrap_error (Error errs)
+        Error (Environment.wrap_tztrace errs)
     | Failed (_, errs) ->
-        Environment.wrap_error (Error errs)
+        Error (Environment.wrap_tztrace errs)
   in
   List.fold_left
     (fun acc (Internal_operation_result (_, r)) ->
@@ -506,11 +506,11 @@ let detect_script_failure : type kind. kind operation_metadata -> _ =
         | Backtracked (_, Some errs) ->
             record_trace
               (failure "The transfer simulation failed.")
-              (Environment.wrap_error (Error errs))
+              (Error (Environment.wrap_tztrace errs))
         | Failed (_, errs) ->
             record_trace
               (failure "The transfer simulation failed.")
-              (Environment.wrap_error (Error errs))
+              (Error (Environment.wrap_tztrace errs))
       in
       List.fold_left
         (fun acc (Internal_operation_result (_, r)) ->
@@ -720,7 +720,7 @@ let may_patch_limits (type kind) (cctxt : #Protocol_client_context.full)
         (estimated_storage (Z.of_int origination_size) result.contents)
       >>=? (fun storage ->
              Lwt.return
-               (Environment.wrap_error
+               (Environment.wrap_tzresult
                   Tez.(cost_per_byte *? Z.to_int64 storage))
              >>=? fun burn ->
              if Tez.(burn > fee_parameter.burn_cap) then
