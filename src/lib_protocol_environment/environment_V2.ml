@@ -84,7 +84,18 @@ module type V2 = sig
 
   type error += Ecoproto_error of Error_monad.error
 
-  val wrap_error : 'a Error_monad.tzresult -> 'a tzresult
+  val wrap_tzerror : Error_monad.error -> error
+
+  val wrap_tztrace : Error_monad.error Error_monad.trace -> error trace
+
+  val wrap_tzresult : 'a Error_monad.tzresult -> 'a tzresult
+
+  val unwrap_tzerror : error -> Error_monad.error option
+
+  val unwrap_tztrace :
+    error trace -> Error_monad.error Error_monad.trace option
+
+  val unwrap_tzresult : 'a tzresult -> 'a Error_monad.tzresult option
 
   module Lift (P : Updater.PROTOCOL) :
     PROTOCOL
@@ -748,11 +759,42 @@ struct
       ~title:("Error returned by protocol " ^ Param.name)
       ~description:("Wrapped error for economic protocol " ^ Param.name ^ ".")
 
-  let wrap_error = function
+  let wrap_tzerror error = Ecoproto_error error
+
+  let wrap_tztrace trace = List.map (fun error -> Ecoproto_error error) trace
+
+  let wrap_tzresult = function
     | Ok _ as ok ->
         ok
     | Error errors ->
         Error (List.map (fun error -> Ecoproto_error error) errors)
+
+  let unwrap_tzerror = function
+    | Ecoproto_error error ->
+        Some error
+    | _ ->
+        None
+
+  let unwrap_tztrace trace =
+    List.fold_left
+      (fun acc error ->
+        match (acc, error) with
+        | (Some errors, Ecoproto_error error) ->
+            Some (error :: errors)
+        | (None, _) | (Some _, _) ->
+            None)
+      (Some [])
+      trace
+
+  let unwrap_tzresult = function
+    | Ok _ as ok ->
+        Some ok
+    | Error errors -> (
+      match unwrap_tztrace errors with
+      | Some errors ->
+          Some (Error errors)
+      | None ->
+          None )
 
   module Chain_id = Chain_id
   module Block_hash = Block_hash
@@ -1082,7 +1124,7 @@ struct
         ~predecessor_timestamp
         ~predecessor_fitness
         raw_block
-      >|= wrap_error
+      >|= wrap_tzresult
 
     let begin_application ~chain_id ~predecessor_context ~predecessor_timestamp
         ~predecessor_fitness raw_block =
@@ -1092,7 +1134,7 @@ struct
         ~predecessor_timestamp
         ~predecessor_fitness
         raw_block
-      >|= wrap_error
+      >|= wrap_tzresult
 
     let begin_construction ~chain_id ~predecessor_context
         ~predecessor_timestamp ~predecessor_level ~predecessor_fitness
@@ -1107,15 +1149,15 @@ struct
         ~timestamp
         ?protocol_data
         ()
-      >|= wrap_error
+      >|= wrap_tzresult
 
-    let current_context c = current_context c >|= wrap_error
+    let current_context c = current_context c >|= wrap_tzresult
 
-    let apply_operation c o = apply_operation c o >|= wrap_error
+    let apply_operation c o = apply_operation c o >|= wrap_tzresult
 
-    let finalize_block c = finalize_block c >|= wrap_error
+    let finalize_block c = finalize_block c >|= wrap_tzresult
 
-    let init c bh = init c bh >|= wrap_error
+    let init c bh = init c bh >|= wrap_tzresult
 
     let environment_version = Protocol.V2
   end

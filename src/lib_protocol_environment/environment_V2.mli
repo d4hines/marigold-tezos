@@ -83,7 +83,18 @@ module type V2 = sig
 
   type error += Ecoproto_error of Error_monad.error
 
-  val wrap_error : 'a Error_monad.tzresult -> 'a tzresult
+  val wrap_tzerror : Error_monad.error -> error
+
+  val wrap_tztrace : Error_monad.error Error_monad.trace -> error trace
+
+  val wrap_tzresult : 'a Error_monad.tzresult -> 'a tzresult
+
+  val unwrap_tzerror : error -> Error_monad.error option
+
+  val unwrap_tztrace :
+    error trace -> Error_monad.error Error_monad.trace option
+
+  val unwrap_tzresult : 'a tzresult -> 'a Error_monad.tzresult option
 
   module Lift (P : Updater.PROTOCOL) :
     PROTOCOL
