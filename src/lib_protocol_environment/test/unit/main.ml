@@ -38,6 +38,5 @@ end
 let () =
   Alcotest_lwt.run
     "lib_protocol_environment unit tests"
-    [ Unit_test.spec "Memory_context.ml" Test_memory_context.tests;
-      Unit_test.spec "Context.ml" Test_environment_context.tests ]
+    [Unit_test.spec "Memory_context.ml" Test_memory_context.tests]
   |> Lwt_main.run
