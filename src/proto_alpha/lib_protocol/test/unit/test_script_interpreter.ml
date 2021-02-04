@@ -111,7 +111,7 @@ module Test_script_interpreter = struct
       assert_strings_equal expected results ;
       return_unit
     in
-    results >|= Environment.wrap_error
+    results >|= Environment.wrap_tzresult
     >>= fun x ->
     match x with
     | Ok _ ->

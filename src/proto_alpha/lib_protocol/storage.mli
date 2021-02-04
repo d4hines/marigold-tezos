@@ -507,13 +507,6 @@ module Global_constants : sig
   val mem : context -> key -> (Raw_context.t * bool) tzresult Lwt.t
 
   (** Retrieve a value from the storage bucket at a given key ;
-      returns {!Storage_error Missing_key} if the key is not set ;
-      returns {!Storage_error Corrupted_data} if the deserialisation
-      fails.
-      Consumes [Gas_repr.read_bytes_cost <size of the value>]. *)
-  val get : context -> key -> (Raw_context.t * Script_repr.expr) tzresult Lwt.t
-
-  (** Retrieve a value from the storage bucket at a given key ;
       returns [None] if the value is not set ; returns {!Storage_error
       Corrupted_data} if the deserialisation fails.
       Consumes [Gas_repr.read_bytes_cost <size of the value>] if present
@@ -523,17 +516,6 @@ module Global_constants : sig
     key ->
     (Raw_context.t * (Script_repr.expr * Script_repr.expr) option) tzresult
     Lwt.t
-
-  (** Updates the content of a bucket ; returns A {!Storage_Error
-      Missing_key} if the value does not exists.
-      Consumes serialization cost.
-      Consumes [Gas_repr.write_bytes_cost <size of the new value>].
-      Returns the difference from the old to the new size. *)
-  val set :
-    context ->
-    key ->
-    Script_repr.expr * Script_repr.expr ->
-    (Raw_context.t * int) tzresult Lwt.t
 
   (** Allocates a storage bucket at the given key and initializes it ;
       returns a {!Storage_error Existing_key} if the bucket exists.
@@ -545,43 +527,4 @@ module Global_constants : sig
     key ->
     Script_repr.expr * Script_repr.expr ->
     (Raw_context.t * int) tzresult Lwt.t
-
-  (** Allocates a storage bucket at the given key and initializes it
-      with a value ; just updates it if the bucket exists.
-      Consumes serialization cost.
-      Consumes [Gas_repr.write_bytes_cost <size of the new value>].
-      Returns the difference from the old (maybe 0) to the new size, and a boolean
-      indicating if a value was already associated to this key. *)
-  val init_set :
-    context ->
-    key ->
-    Script_repr.expr * Script_repr.expr ->
-    (Raw_context.t * int * bool) tzresult Lwt.t
-
-  (** When the value is [Some v], allocates the data and initializes
-      it with [v] ; just updates it if the bucket exists. When the
-      value is [None], delete the storage bucket when the value ; does
-      nothing if the bucket does not exists.
-      Consumes serialization cost.
-      Consumes the same gas cost as either {!remove} or {!init_set}.
-      Returns the difference from the old (maybe 0) to the new size, and a boolean
-      indicating if a value was already associated to this key. *)
-  val set_option :
-    context ->
-    key ->
-    (Script_repr.expr * Script_repr.expr) option ->
-    (Raw_context.t * int * bool) tzresult Lwt.t
-
-  (** Delete a storage bucket and its contents ; returns a
-      {!Storage_error Missing_key} if the bucket does not exists.
-      Consumes [Gas_repr.write_bytes_cost Z.zero].
-      Returns the freed size. *)
-  val delete : context -> key -> (Raw_context.t * int) tzresult Lwt.t
-
-  (** Removes a storage bucket and its contents ; does nothing if the
-      bucket does not exists.
-      Consumes [Gas_repr.write_bytes_cost Z.zero].
-      Returns the freed size, and a boolean
-      indicating if a value was already associated to this key. *)
-  val remove : context -> key -> (Raw_context.t * int * bool) tzresult Lwt.t
 end

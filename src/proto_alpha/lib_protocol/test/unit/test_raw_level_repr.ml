@@ -40,13 +40,13 @@ module Test_raw_level_repr = struct
   let int32_interop () =
     let int32v = 100l in
     Lwt.return (Raw_level_repr.of_int32 int32v)
-    >|= Environment.wrap_error
+    >|= Environment.wrap_tzresult
     >>=? fun raw_level ->
     Assert.equal_int32 ~loc:__LOC__ (Raw_level_repr.to_int32 raw_level) int32v
     >>=? fun () ->
     let int32v = -1l in
     Lwt.return (Raw_level_repr.of_int32 int32v)
-    >|= Environment.wrap_error
+    >|= Environment.wrap_tzresult
     >>= function
     | Ok _ ->
         failwith "Negative int32s should not be coerced into raw_level"

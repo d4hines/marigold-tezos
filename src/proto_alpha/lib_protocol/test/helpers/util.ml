@@ -24,14 +24,19 @@ let write_file filename str =
   if not @@ Sys.file_exists filename then
     raise @@ Failure "Something went wrong creating benchmark regression"
 
-let force x =
+let force_std x =
   match x with
   | Ok x ->
       x
-  | Error es ->
-      Format.printf "Errors :\n" ;
-      Format.printf "- %a\n" Protocol.Environment.Error_monad.pp_trace es ;
-      raise (Failure "force")
+  | Error _err ->
+      raise (Failure "Attempted force a non-Ok result.")
+
+let force x =
+  match Protocol.Environment.wrap_tzresult x with
+  | Ok x ->
+      x
+  | Error _err ->
+      raise (Failure "Attempted force a non-Ok tzresult.")
 
 let force_global x =
   match x with
@@ -44,9 +49,12 @@ let force_global x =
 
 let force_global_lwt x = force_global (Lwt_main.run x)
 
+let force_std_lwt x = force_std @@ Lwt_main.run x
+
 let force_lwt x = force (Lwt_main.run x)
 
-let ( >>=?? ) x k = x >>= fun x -> Lwt.return (Environment.wrap_error x) >>=? k
+let ( >>=?? ) x k =
+  x >>= fun x -> Lwt.return (Environment.wrap_tzresult x) >>=? k
 
 let of_mutez x = Tez.of_mutez (Int64.of_int x) |> Option.get
 

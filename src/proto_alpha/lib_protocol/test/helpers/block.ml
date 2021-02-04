@@ -315,7 +315,7 @@ let initial_alpha_context ?(with_commitments = false) constants
     (({script with storage}, lazy_storage_diff), ctxt)
   in
   Alpha_context.prepare_first_block ~typecheck ~level ~timestamp ~fitness ctxt
-  >|= Environment.wrap_error
+  >|= Environment.wrap_tzresult
 
 let genesis_with_parameters parameters =
   let hash =
@@ -362,7 +362,7 @@ let genesis (initial_accounts : (Account.t * Tez.t) list) =
     (fun () ->
       List.fold_left_es
         (fun acc (_, amount) ->
-          Environment.wrap_error @@ Tez.( +? ) acc amount
+          Environment.wrap_tzresult @@ Tez.( +? ) acc amount
           >>?= fun acc ->
           if acc >= tokens_per_roll then raise Exit else return acc)
         Tez.zero
@@ -370,20 +370,6 @@ let genesis (initial_accounts : (Account.t * Tez.t) list) =
       >>=? fun _ ->
       failwith "Insufficient tokens in initial accounts to create one roll")
     (function Exit -> return_unit | exc -> raise exc)
-
-let unwrap_error = function
-  | Ok _ as ok ->
-      ok
-  | Error es ->
-      Error
-        (List.map
-           (function
-             | Environment.Ecoproto_error err ->
-                 err
-             | _ ->
-                 Stdlib.failwith
-                   "unwrap_error: Was expecting an Ecoproto_error")
-           es)
 
 let prepare_initial_context_params ?endorsers_per_block ?initial_endorsers
     ?min_proposal_quorum initial_accounts =
@@ -465,13 +451,8 @@ let alpha_context ?with_commitments ?endorsers_per_block ?initial_endorsers
     ?initial_endorsers
     ?min_proposal_quorum
     initial_accounts
-  >>=? (fun (constants, shell, _hash) ->
-         initial_alpha_context
-           ?with_commitments
-           constants
-           shell
-           initial_accounts)
-  >|= unwrap_error
+  >>=? fun (constants, shell, _hash) ->
+  initial_alpha_context ?with_commitments constants shell initial_accounts
 
 (********* Baking *************)
 

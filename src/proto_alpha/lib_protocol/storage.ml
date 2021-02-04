@@ -368,29 +368,13 @@ module Global_constants = struct
 
   let mem = Map.mem
 
-  let delete = Map.delete
-
-  let remove = Map.remove
-
-  let set = Map.set
-
-  let set_option = Map.set_option
-
   let init = Map.init
-
-  let init_set = Map.init_set
 
   let consume_deserialize_gas ctxt value =
     Raw_context.consume_gas ctxt (Script_repr.deserialized_cost value)
 
-  let get ctxt contract =
-    Map.get ctxt contract
-    >>=? fun (ctxt, (_, value)) ->
-    Lwt.return
-      (consume_deserialize_gas ctxt value >|? fun ctxt -> (ctxt, value))
-
   let get_option ctxt contract =
-    Map.get_option ctxt contract
+    Map.find ctxt contract
     >>=? fun (ctxt, value_opt) ->
     Lwt.return
     @@

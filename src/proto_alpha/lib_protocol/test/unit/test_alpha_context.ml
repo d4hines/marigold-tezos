@@ -10,9 +10,6 @@ open Alpha_context
                   in alpha_context.ml as individual units, particularly
                   failure cases. Superficial goal: increase coverage percentage.
 *)
-module Obj = struct
-  external magic : 'a -> 'b = "%identity"
-end
 
 (** Creates and Alpha_context without creating a full-fledged block *)
 let create () =
@@ -23,13 +20,12 @@ module Test_Script = struct
   (** Force serialise of lazy [Big_map.t] in a give [alpha_context] *)
   let force_bytes_in_context () =
     create ()
-    >|= Obj.magic Environment.wrap_error
     >>=? fun alpha_context ->
     let mbytes_pp ppf t =
       Format.pp_print_string ppf (Environment.Bytes.to_string t)
     in
     let open Alpha_context.Script in
-    Environment.wrap_error
+    Environment.wrap_tzresult
     @@ force_bytes_in_context alpha_context
     @@ lazy_expr @@ Micheline.strip_locations
     @@ Prim (0, D_Unit, [], [])
@@ -45,7 +41,10 @@ end
 
 module Test_Global_constants = struct
   (** A default [Alpha_context.t] to work with.  *)
-  let context = create () |> Util.force_lwt |> Fees.start_counting_storage_fees
+  let context =
+    create ()
+    >>=? (fun x -> Lwt.return @@ ok @@ Fees.start_counting_storage_fees x)
+    |> Util.force_std_lwt
 
   (** Should be able to store a pair of ints and retrieve
   them successfully. *)
@@ -56,7 +55,7 @@ module Test_Global_constants = struct
     in
     Global_constants.set context "some constant" ty_expr expr
     >>=? (fun (context, _) -> Global_constants.get_opt context "some constant")
-    >|= Environment.wrap_error
+    >|= Environment.wrap_tzresult
     >>=? fun (_, value) ->
     match value with
     | Some (_, value) ->
@@ -71,7 +70,7 @@ module Test_Global_constants = struct
     let (context, ty_expr) = Expr.ty_from_string context "string" in
     Global_constants.set context "some constant" ty_expr expr
     >>=? (fun (context, _) -> Global_constants.get_opt context "some constant")
-    >|= Environment.wrap_error
+    >|= Environment.wrap_tzresult
     >>=? fun (_, value) ->
     match value with
     | Some (_, value) ->
@@ -89,7 +88,7 @@ module Test_Global_constants = struct
     >>=? (fun (context, _) ->
            (* Try setting a second time. *)
            Global_constants.set context "some constant" ty_expr expr)
-    >|= Environment.wrap_error
+    >|= Environment.wrap_tzresult
     >>= fun result ->
     match result with
     | Ok _ ->
@@ -104,28 +103,29 @@ module Test_Big_map = struct
   let mem () =
     create ()
     >>=? (fun alpha_context ->
-           Obj.magic
-             ( Big_map.fresh ~temporary:true alpha_context
-             >>=? fun (alpha_context, big_map_id) ->
-             Big_map.mem
-               alpha_context
-               big_map_id
-               (Script_expr_hash.hash_string ["0"; "0"]) ))
-    >|= Obj.magic Environment.wrap_error
+           Big_map.fresh ~temporary:true alpha_context
+           >|= Environment.wrap_tzresult
+           >>=? fun (alpha_context, big_map_id) ->
+           Big_map.mem
+             alpha_context
+             big_map_id
+             (Script_expr_hash.hash_string ["0"; "0"])
+           >|= Environment.wrap_tzresult)
     >>=? fun (_alpha_context, is_member) ->
     Assert.equal_bool ~loc:__LOC__ is_member false
 
   (** Test failure code path of [get_opt] by looking for missing key in a [Big_map.t] *)
   let get_opt () =
     create ()
-    >>=? Obj.magic (fun alpha_context ->
-             Big_map.fresh ~temporary:true alpha_context
-             >>=? fun (alpha_context, big_map_id) ->
-             Big_map.get_opt
-               alpha_context
-               big_map_id
-               (Script_expr_hash.hash_string ["0"; "0"]))
-    >|= Obj.magic Environment.wrap_error
+    >>=? (fun alpha_context ->
+           Big_map.fresh ~temporary:true alpha_context
+           >|= Environment.wrap_tzresult
+           >>=? fun (alpha_context, big_map_id) ->
+           Big_map.get_opt
+             alpha_context
+             big_map_id
+             (Script_expr_hash.hash_string ["0"; "0"])
+           >|= Environment.wrap_tzresult)
     >>=? fun (_alpha_context, value) ->
     match value with
     | Some _ ->
@@ -136,11 +136,12 @@ module Test_Big_map = struct
   (** Test existence of a non-existent [Big_map] in an [Alpha_context.t] *)
   let exists () =
     create ()
-    >>=? Obj.magic (fun alpha_context ->
-             Big_map.fresh ~temporary:true alpha_context
-             >>=? fun (alpha_context, big_map_id) ->
-             Big_map.exists alpha_context big_map_id)
-    >|= Obj.magic Environment.wrap_error
+    >>=? (fun alpha_context ->
+           Big_map.fresh ~temporary:true alpha_context
+           >|= Environment.wrap_tzresult
+           >>=? fun (alpha_context, big_map_id) ->
+           Big_map.exists alpha_context big_map_id
+           >|= Environment.wrap_tzresult)
     >>=? fun (_alpha_context, value) ->
     match value with
     | Some _ ->

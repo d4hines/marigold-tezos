@@ -110,8 +110,8 @@ val alpha_context :
   ?endorsers_per_block:int ->
   ?initial_endorsers:int ->
   ?min_proposal_quorum:int32 ->
-  (Account.t * Tez.tez) list ->
-  (Alpha_context.t, Environment.Error_monad.error list) result Lwt.t
+  (Account.t * Tezos_raw_protocol_alpha.Alpha_context.Tez.tez) list ->
+  (Tezos_raw_protocol_alpha.Alpha_context.t, tztrace) result Lwt.t
 
 (** applies a signed header and its operations to a block and
     obtains a new block *)
