@@ -265,8 +265,8 @@ let prepare_main_init_params with_commitments constants initial_accounts =
   in
   Tezos_protocol_environment.Context.(
     let empty = Memory_context.empty in
-    set empty ["version"] (Bytes.of_string "genesis")
-    >>= fun ctxt -> set ctxt protocol_param_key proto_params)
+    add empty ["version"] (Bytes.of_string "genesis")
+    >>= fun ctxt -> add ctxt protocol_param_key proto_params)
 
 let initial_context ?(with_commitments = false) constants header
     initial_accounts =
