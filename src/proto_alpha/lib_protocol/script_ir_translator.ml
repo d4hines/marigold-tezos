@@ -1409,6 +1409,12 @@ let merge_memo_sizes ms1 ms2 =
   if Sapling.Memo_size.equal ms1 ms2 then ok ms1
   else error (Inconsistent_memo_sizes (ms1, ms2))
 
+(* DH: 1/30/2021
+Careful! In failure cases, this function throws away
+its gas consumption calculations, creating a potential
+"leak" of computation.
+
+TODO: refactor to always return correctly updated context. *)
 let merge_types :
     type a b.
     legacy:bool ->
@@ -7370,7 +7376,47 @@ let get_global_constant :
       | Ok (Eq, ty, ctxt) ->
           parse_global_constant_value ctxt ty (Micheline.root value)
           >|=? fun (value, ctxt) -> (Some value, ctxt)
-      | Error _ ->
-          return (None, ctxt) )
+      | Error _ -> (
+        (* DH 1/30/2021
+          In this branch, the user has provided an incorrect
+          type for the data stored at the given address. Unfortunately,
+          the `merge_types` function throws away its gas consumption
+          calculations. This should be refactored so we can consume gas
+          correctly even in failure cases. In the meantime, as a safe
+          approximation, we charge `c * bytes`, where c equals
+          `Typecheck_costs.merge_cycle`.
+          
+          As an informal justification of the safety of this cost,
+          consider that `merge_types` consumes `c` gas per iteration.
+          Because there is no aliasing or other way to encode "big"
+          types in Michelson, the number of iterations must be less than
+          or equal to the number of bytes in the type. The Data_encoding
+          of the type is strictly larger in bytes than the in-memory
+          representation. Therefore `c * bytes` where bytes is the number
+          of bytes in the Data_encoding is guaranteed to be larger than
+          the gas consumed by `merge_types`. This overcharging is ok,
+          because it should happen very rarely and only in failure
+          modes.*)
+        (* TODO: should be able to fix the assert falses with a better
+        operator *)
+        match unparse_ty ctxt ty with
+        | Ok (node, ctxt) -> (
+            let bytes_result =
+              Micheline.strip_locations node
+              |> Script.lazy_expr
+              |> force_bytes_in_context ctxt
+            in
+            match bytes_result with
+            | Ok (b, ctxt) ->
+                let length = Bytes.length b |> Z.of_int in
+                let cost = Gas.( *@ ) length Typecheck_costs.merge_cycle in
+                Lwt.return
+                @@ (Gas.consume ctxt cost >>? fun ctxt -> ok (None, ctxt))
+            (* This branch should be unreachable *)
+            | Error _ ->
+                assert false )
+        | Error _ ->
+            (* This branch should be unreachable *)
+            assert false ) )
   | None ->
       return (None, ctxt)
