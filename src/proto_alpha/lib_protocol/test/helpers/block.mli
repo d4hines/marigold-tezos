@@ -111,8 +111,8 @@ val alpha_context :
   ?endorsers_per_block:int ->
   ?initial_endorsers:int ->
   ?min_proposal_quorum:int32 ->
-  (Account.t * Tez_repr.tez) list ->
-  Alpha_context.t Environment.Error_monad.tzresult Lwt.t
+  (Account.t * Tez.tez) list ->
+  Alpha_context.t tzresult Lwt.t
 
 (** applies a signed header and its operations to a block and
     obtains a new block *)
@@ -159,9 +159,8 @@ val prepare_initial_context_params :
   ?endorsers_per_block:int ->
   ?initial_endorsers:int ->
   ?min_proposal_quorum:int32 ->
-  (Account.t * Tez_repr.t) list ->
-  ( Tezos_protocol_alpha.Protocol.Constants_repr.parametric
-  * Block_header.shell_header
-  * Block_hash.t )
-  Error_monad.tzresult
+  (Account.t * Tez.t) list ->
+  ( Constants.parametric * Block_header.shell_header * Block_hash.t,
+    tztrace )
+  result
   Lwt.t

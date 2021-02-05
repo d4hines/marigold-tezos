@@ -315,7 +315,7 @@ let initial_alpha_context ?(with_commitments = false) constants
     (({script with storage}, lazy_storage_diff), ctxt)
   in
   Alpha_context.prepare_first_block ~typecheck ~level ~timestamp ~fitness ctxt
-  >|= Environment.wrap_error
+  >|= Environment.wrap_tzresult
 
 let genesis_with_parameters parameters =
   let hash =
@@ -350,8 +350,8 @@ let genesis_with_parameters parameters =
     context;
   }
 
-let validate_initial_accounts
-    (initial_accounts : (Account.t * Tez_repr.t) list) tokens_per_roll =
+let validate_initial_accounts (initial_accounts : (Account.t * Tez.t) list)
+    tokens_per_roll =
   if initial_accounts = [] then
     Stdlib.failwith "Must have one account with a roll to bake" ;
   (* Check there is at least one roll *)
@@ -359,29 +359,14 @@ let validate_initial_accounts
     (fun () ->
       List.fold_left_es
         (fun acc (_, amount) ->
-          Environment.wrap_error @@ Tez_repr.( +? ) acc amount
+          Environment.wrap_tzresult @@ Tez.( +? ) acc amount
           >>?= fun acc ->
           if acc >= tokens_per_roll then raise Exit else return acc)
-        Tez_repr.zero
+        Tez.zero
         initial_accounts
       >>=? fun _ ->
       failwith "Insufficient tokens in initial accounts to create one roll")
     (function Exit -> return_unit | exc -> raise exc)
-
-let unwrap_error : 'a tzresult -> 'a Environment.Error_monad.tzresult =
-  function
-  | Ok _ as ok ->
-      ok
-  | Error es ->
-      Error
-        (List.map
-           (function
-             | Environment.Ecoproto_error err ->
-                 err
-             | _ ->
-                 Stdlib.failwith
-                   "unwrap_error: Was expecting an Ecoproto_error")
-           es)
 
 let prepare_initial_context_params ?endorsers_per_block ?initial_endorsers
     ?min_proposal_quorum initial_accounts =
@@ -439,7 +424,7 @@ let prepare_initial_context_params ?endorsers_per_block ?initial_endorsers
 (* if no parameter file is passed we check in the current directory
    where the test is run *)
 let genesis ?with_commitments ?endorsers_per_block ?initial_endorsers
-    ?min_proposal_quorum (initial_accounts : (Account.t * Tez_repr.t) list) =
+    ?min_proposal_quorum (initial_accounts : (Account.t * Tez.t) list) =
   prepare_initial_context_params
     ?endorsers_per_block
     ?initial_endorsers
@@ -457,19 +442,14 @@ let genesis ?with_commitments ?endorsers_per_block ?initial_endorsers
   }
 
 let alpha_context ?with_commitments ?endorsers_per_block ?initial_endorsers
-    ?min_proposal_quorum (initial_accounts : (Account.t * Tez_repr.t) list) =
+    ?min_proposal_quorum (initial_accounts : (Account.t * Tez.t) list) =
   prepare_initial_context_params
     ?endorsers_per_block
     ?initial_endorsers
     ?min_proposal_quorum
     initial_accounts
-  >>=? (fun (constants, shell, _hash) ->
-         initial_alpha_context
-           ?with_commitments
-           constants
-           shell
-           initial_accounts)
-  >|= unwrap_error
+  >>=? fun (constants, shell, _hash) ->
+  initial_alpha_context ?with_commitments constants shell initial_accounts
 
 (********* Baking *************)
 
