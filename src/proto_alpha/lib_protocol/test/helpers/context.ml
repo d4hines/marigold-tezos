@@ -293,7 +293,8 @@ end
 
 let init ?endorsers_per_block ?with_commitments ?(initial_balances = [])
     ?initial_endorsers ?min_proposal_quorum n =
-  let accounts = Account.generate_accounts ~initial_balances n in
+  let rng_state = Random.State.make [|0x1337533D; 0x1337533D|] in
+  let accounts = Account.generate_accounts ~rng_state ~initial_balances n in
   let contracts =
     List.map
       (fun (a, _) -> Alpha_context.Contract.implicit_contract Account.(a.pkh))

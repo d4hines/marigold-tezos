@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
+(* Copyright (c) 2021 Marigold <team@marigold.dev>                           *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,43 +23,64 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Protocol
+open Tezos_raw_protocol_alpha
 open Alpha_context
 
-type t = {
-  pkh : Signature.Public_key_hash.t;
-  pk : Signature.Public_key.t;
-  sk : Signature.Secret_key.t;
-}
+module Option = struct
+  include Option
 
-type account = t
+  let get opt =
+    match opt with
+    | Some x ->
+        x
+    | None ->
+        raise @@ Invalid_argument "Option.get called on None"
+end
 
-val known_accounts : t Signature.Public_key_hash.Table.t
+let read_file filename =
+  let ch = open_in filename in
+  let s = really_input_string ch (in_channel_length ch) in
+  close_in ch ; s
 
-val activator_account : account
+let write_file filename str =
+  let ch = open_out_gen [Open_creat; Open_wronly] 0o666 filename in
+  output_string ch str ;
+  close_out_noerr ch ;
+  if not @@ Sys.file_exists filename then
+    raise @@ Failure "Something went wrong creating benchmark regression"
 
-val dummy_account : account
+let force x =
+  match x with
+  | Ok x ->
+      x
+  | Error es ->
+      Format.printf "Errors :\n" ;
+      List.iter (Format.printf "- %a\n" Protocol.Environment.Error_monad.pp) es ;
+      raise (Failure "force")
 
-val new_account : ?seed:Bytes.t -> unit -> account
+let force_global x =
+  match x with
+  | Ok x ->
+      x
+  | Error es ->
+      Format.printf "Errors :\n" ;
+      List.iter (Format.printf "- %a\n" pp) es ;
+      raise (Failure "force")
 
-val add_account : t -> unit
+let force_global_lwt x = force_global (Lwt_main.run x)
 
-val find : Signature.Public_key_hash.t -> t tzresult Lwt.t
+let force_lwt x = force (Lwt_main.run x)
 
-val find_alternate : Signature.Public_key_hash.t -> t
+let ( >>=?? ) x k = x >>= fun x -> Lwt.return (Environment.wrap_error x) >>=? k
 
-(** [generate_accounts ?initial_balances n] : generates [n] random
-    accounts with the initial balance of the [i]th account given by the
-    [i]th value in the list [initial_balances] or otherwise
-    4.000.000.000 tz (if the list is too short); and add them to the
-    global account state *)
-val generate_accounts :
-  ?rng_state:Random.State.t ->
-  ?initial_balances:int64 list ->
-  int ->
-  (t * Tez.t) list
+let of_mutez x = Tez.of_mutez_exn (Int64.of_int x)
 
-val commitment_secret : Blinded_public_key_hash.activation_code
+let logid label x =
+  print_endline (label ^ ": " ^ x) ;
+  x
 
-val new_commitment :
-  ?seed:Bytes.t -> unit -> (account * Commitment.t) tzresult Lwt.t
+let micheline_canonical_to_string c =
+  Fmt.str
+    "%a"
+    Micheline_printer.print_expr
+    (Micheline_printer.printable Michelson_v1_primitives.string_of_prim c)

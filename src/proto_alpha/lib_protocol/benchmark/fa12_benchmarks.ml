@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
+(* Copyright (c) 2021 Marigold <team@marigold.dev>                           *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,43 +23,84 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Protocol
+open Tezos_raw_protocol_alpha
 open Alpha_context
+open Printf
+open Util
+open Pipeline
 
-type t = {
-  pkh : Signature.Public_key_hash.t;
-  pk : Signature.Public_key.t;
-  sk : Signature.Secret_key.t;
-}
+let set_up_fa12 :
+    unit -> Block.t * (Contract.t * Contract.t * Contract.t) Pipeline.operation
+    =
+ fun () ->
+  let (b, contracts) = Context.init 2 |> force_global_lwt in
+  let alice = List.nth contracts 0 |> Option.get in
+  let bob = List.nth contracts 1 |> Option.get in
+  let initial_storage =
+    sprintf
+      {|Pair {Elt "%s" (Pair {} 100000000000000)} 100000000000000|}
+      (Contract.to_b58check alice)
+  in
+  let pipeline =
+    Origination
+      {
+        originator = alice;
+        amount = 100;
+        contract = read_file "./contracts/fa1.2.tz";
+        initial_storage;
+      }
+    >>| fun (_, fa12) -> (fa12, alice, bob)
+  in
+  (b, pipeline)
 
-type account = t
+let approve_fa12 token approver spender amount =
+  let parameters =
+    sprintf
+      {|
+        Pair "%s" %d
+    |}
+      (Contract.to_b58check spender)
+      amount
+  in
+  Transfer
+    {
+      sender = approver;
+      recipient = token;
+      entrypoint = "approve";
+      amount = 0;
+      parameters;
+    }
 
-val known_accounts : t Signature.Public_key_hash.Table.t
+let approve_fa12_benchmark () =
+  set_up_fa12 ()
+  >>=! fun (_, (token, alice, bob)) ->
+  let parameters =
+    sprintf {|Left (Left (Left (Pair "%s" 100)))|} (Contract.to_b58check bob)
+  in
+  Transfer
+    {
+      sender = alice;
+      recipient = token;
+      entrypoint = "approve";
+      amount = 0;
+      parameters;
+    }
 
-val activator_account : account
-
-val dummy_account : account
-
-val new_account : ?seed:Bytes.t -> unit -> account
-
-val add_account : t -> unit
-
-val find : Signature.Public_key_hash.t -> t tzresult Lwt.t
-
-val find_alternate : Signature.Public_key_hash.t -> t
-
-(** [generate_accounts ?initial_balances n] : generates [n] random
-    accounts with the initial balance of the [i]th account given by the
-    [i]th value in the list [initial_balances] or otherwise
-    4.000.000.000 tz (if the list is too short); and add them to the
-    global account state *)
-val generate_accounts :
-  ?rng_state:Random.State.t ->
-  ?initial_balances:int64 list ->
-  int ->
-  (t * Tez.t) list
-
-val commitment_secret : Blinded_public_key_hash.activation_code
-
-val new_commitment :
-  ?seed:Bytes.t -> unit -> (account * Commitment.t) tzresult Lwt.t
+let transfer_benchmark : unit -> Pipeline.goal =
+ fun () ->
+  set_up_fa12 ()
+  >>=! fun (_, (token, alice, bob)) ->
+  let parameters =
+    sprintf
+      {|Right (Pair "%s" (Pair "%s" 10))|}
+      (Contract.to_b58check alice)
+      (Contract.to_b58check bob)
+  in
+  Transfer
+    {
+      sender = alice;
+      recipient = token;
+      entrypoint = "transfer";
+      amount = 0;
+      parameters;
+    }

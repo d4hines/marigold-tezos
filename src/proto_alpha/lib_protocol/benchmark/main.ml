@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
+(* Copyright (c) 2021 Marigold <team@marigold.dev>                           *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,43 +23,51 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Protocol
-open Alpha_context
+open Util
 
-type t = {
-  pkh : Signature.Public_key_hash.t;
-  pk : Signature.Public_key.t;
-  sk : Signature.Secret_key.t;
-}
+let () = Printexc.record_backtrace true
 
-type account = t
+exception RegressionDifference of string * string * string
 
-val known_accounts : t Signature.Public_key_hash.Table.t
+let create_benchmark name f =
+  try
+    let (eval, closure) = f () in
+    let new_results = Lwt_main.run @@ eval () |> String.trim in
+    let path = Sys.getcwd () in
+    let path = Str.replace_first (Str.regexp "_build/default/") "" path in
+    let path = path ^ "/regression_results/" ^ name in
+    let () =
+      match Sys.file_exists path with
+      | true -> (
+          let old_results = read_file path |> String.trim in
+          match old_results <> new_results with
+          | true ->
+              raise @@ RegressionDifference (name, old_results, new_results)
+          | false ->
+              () )
+      | false ->
+          write_file path new_results
+    in
+    Core_bench.Bench.Test.create ~name (fun () -> Lwt_main.run @@ closure ())
+  with RegressionDifference (name, old_results, new_results) ->
+    print_endline
+      ( "Evaluation of " ^ name
+      ^ " produced different results than regression records."
+      ^ "\n========== Old results ==========\n" ^ old_results
+      ^ "\n========== New results ==========\n" ^ new_results ) ;
+    assert false
 
-val activator_account : account
+let benchmarks =
+  [ create_benchmark "Fact" Fact_benchmarks.fact_benchmark;
+    create_benchmark "FA1.2_Approve" Fa12_benchmarks.approve_fa12_benchmark;
+    create_benchmark "FA1.2_Transfer" Fa12_benchmarks.transfer_benchmark;
+    create_benchmark "Dexter_xtzToToken" Dexter_benchmarks.xtzToToken_benchmark
+  ]
 
-val dummy_account : account
-
-val new_account : ?seed:Bytes.t -> unit -> account
-
-val add_account : t -> unit
-
-val find : Signature.Public_key_hash.t -> t tzresult Lwt.t
-
-val find_alternate : Signature.Public_key_hash.t -> t
-
-(** [generate_accounts ?initial_balances n] : generates [n] random
-    accounts with the initial balance of the [i]th account given by the
-    [i]th value in the list [initial_balances] or otherwise
-    4.000.000.000 tz (if the list is too short); and add them to the
-    global account state *)
-val generate_accounts :
-  ?rng_state:Random.State.t ->
-  ?initial_balances:int64 list ->
-  int ->
-  (t * Tez.t) list
-
-val commitment_secret : Blinded_public_key_hash.activation_code
-
-val new_commitment :
-  ?seed:Bytes.t -> unit -> (account * Commitment.t) tzresult Lwt.t
+let () =
+  let devmode =
+    Array.length Sys.argv >= 2 && String.equal Sys.argv.(1) "--devmode"
+  in
+  if not devmode then
+    Core.Command.run (Core_bench.Bench.make_command benchmarks)
+  else print_endline "👍 All regression tests pass 👍"

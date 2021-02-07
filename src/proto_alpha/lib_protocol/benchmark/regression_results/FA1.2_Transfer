@@ -1,0 +1,4 @@
+(Pair (Pair 0
+            { Elt "tz1TAN9oBiGe7RoAReMZUi4c1CfvDMjbrz3x" (Some (Pair {} 10)) ;
+              Elt "tz1TTAuzs8A1Mm4aDncHexodqNoAcKd7JRfg" (Some (Pair {} 99999999999990)) })
+      100000000000000)
