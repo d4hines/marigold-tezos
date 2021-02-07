@@ -1,0 +1,26 @@
+
+{
+parameter int ;
+storage int ;
+code { DROP;                          # Ignore the initial store, stack = [n]
+       PUSH int 1000000;
+       PUSH @acc int 1;              # We will accumulate the result on top, stack = [1; n]
+       SWAP;                         # Put n on top, stack = [n; accu]
+       PUSH bool True;               # It is a do-while loop.
+       LOOP { DUP;                   # stack = [n; n; accu]
+              PUSH int 1;            # stack = [1; n; n; accu]
+              SWAP;                  # stack = [n; 1; n; accu]
+              SUB;                   # stack = [n - 1; n; accu]
+              SWAP;                  # stack = [n; n - 1; accu]
+              DIP 1 { SWAP };        # stack = [n; accu; n - 1]
+              ADD;                   # stack = [n * accu; n - 1]
+              SWAP;                  # stack = [n - 1; n * accu]
+              DUP;                   # stack = [n - 1; n - 1; n * accu]
+              PUSH int 0;            # stack = [0; n - 1; n - 1; n * accu]
+              COMPARE;               # stack = [cmp 0 (n - 1); n - 1; n * accu]
+              NEQ };                # stack = [n - 1 <> 0; n - 1; n * accu]
+       SWAP;                       # stack = [fact n; 0]
+       DIP 1 { DROP };             # stack = [fact n]
+       NIL operation ;             # stack = [ []; fact n ]
+       PAIR }                      # stack = [ ([], fact n) ]
+}

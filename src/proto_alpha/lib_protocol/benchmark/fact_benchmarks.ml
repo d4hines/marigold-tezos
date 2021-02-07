@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
+(* Copyright (c) 2021 Marigold <team@marigold.dev>                           *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,43 +23,36 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Protocol
-open Alpha_context
+open Util
+open Pipeline
 
-type t = {
-  pkh : Signature.Public_key_hash.t;
-  pk : Signature.Public_key.t;
-  sk : Signature.Secret_key.t;
-}
-
-type account = t
-
-val known_accounts : t Signature.Public_key_hash.Table.t
-
-val activator_account : account
-
-val dummy_account : account
-
-val new_account : ?seed:Bytes.t -> unit -> account
-
-val add_account : t -> unit
-
-val find : Signature.Public_key_hash.t -> t tzresult Lwt.t
-
-val find_alternate : Signature.Public_key_hash.t -> t
-
-(** [generate_accounts ?initial_balances n] : generates [n] random
-    accounts with the initial balance of the [i]th account given by the
-    [i]th value in the list [initial_balances] or otherwise
-    4.000.000.000 tz (if the list is too short); and add them to the
-    global account state *)
-val generate_accounts :
-  ?rng_state:Random.State.t ->
-  ?initial_balances:int64 list ->
-  int ->
-  (t * Tez.t) list
-
-val commitment_secret : Blinded_public_key_hash.activation_code
-
-val new_commitment :
-  ?seed:Bytes.t -> unit -> (account * Commitment.t) tzresult Lwt.t
+let fact_benchmark : unit -> Pipeline.goal =
+ fun () ->
+  let (b, op) = Fa12_benchmarks.set_up_fa12 () in
+  let (b, x) =
+    ( b,
+      op
+      >>= fun (_, (_, alice, _)) ->
+      (* Originate the Fact Contract *)
+      let fact_contract = read_file "./contracts/fact.tz" in
+      let initial_storage = "0" in
+      Origination
+        {
+          originator = alice;
+          amount = 0;
+          contract = fact_contract;
+          initial_storage;
+        }
+      >>| fun (b, fact) -> (b, alice, fact) )
+  in
+  (b, x)
+  >>=! fun (_, (_, alice, fact)) ->
+  let parameters = "100" in
+  Transfer
+    {
+      sender = alice;
+      recipient = fact;
+      entrypoint = "default";
+      amount = 1_000_000;
+      parameters;
+    }
