@@ -30,6 +30,8 @@ __pycache__
 /tezos-codec
 /tezos-snoop
 
+/benchmark_data
+
 /src/proto_*/parameters/*-parameters.json
 
 /scripts/opam-test-all.sh.DONE

@@ -12,6 +12,7 @@ include:
   - .gitlab/ci/opam.yml
   - .gitlab/ci/publish.yml
   - .gitlab/ci/coverage.yml
+  - .gitlab/ci/benchmark.yml
 
 variables:
   ## Please update `scripts/version.sh` accordingly
@@ -28,6 +29,7 @@ stages:
   - build
   - sanity_ci
   - test
+  - benchmark
   - doc
   - packaging
   - build_release

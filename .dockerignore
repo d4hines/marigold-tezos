@@ -23,6 +23,8 @@ tezos-endorser-*
 tezos-accuser-*
 tezos-signer
 
+/benchmark_data
+
 scripts/opam-test-all.sh.DONE
 scripts/create_genesis/src
 
