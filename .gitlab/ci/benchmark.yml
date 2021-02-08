@@ -1,0 +1,15 @@
+snipe_benchmarks:
+  tags:
+    - benchmark
+  stage: benchmark
+  before_script: 
+  - eval $(opam env) && make clean
+  - eval $(opam env) && make build-deps
+  # Add the default repository back in so we  can install
+  # core and core_bench (this is temporary unitl we add
+  # these libs to the tezos repository).
+  - opam repository add default --rank=-1 > /dev/null 2>&1 || true
+  - eval $(opam env) && opam install core core_bench -y
+  - eval $(opam env) && make
+  script: 
+  - . ./scripts/benchmark.sh --publish

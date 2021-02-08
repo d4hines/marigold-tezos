@@ -40,6 +40,7 @@ endif
 		src/bin_codec/codec.exe \
 		src/lib_protocol_compiler/main_native.exe \
 		src/bin_snoop/main_snoop.exe \
+		src/proto_alpha/lib_protocol/benchmark/main.exe \
 		$(foreach p, $(active_protocol_directories), src/proto_$(p)/bin_baker/main_baker_$(p).exe) \
 		$(foreach p, $(active_protocol_directories), src/proto_$(p)/bin_endorser/main_endorser_$(p).exe) \
 		$(foreach p, $(active_protocol_directories), src/proto_$(p)/bin_accuser/main_accuser_$(p).exe) \
