@@ -47,8 +47,6 @@ type error += Invalid_commitment of {expected : bool}
 
 type error += Internal_operation_replay of packed_internal_operation
 
-type error += Internal_operation_in_DFS_without_permission
-
 type error += Invalid_double_endorsement_evidence (* `Permanent *)
 
 type error +=
@@ -236,17 +234,6 @@ let () =
     Data_encoding.(obj1 (req "expected" bool))
     (function Invalid_commitment {expected} -> Some expected | _ -> None)
     (fun expected -> Invalid_commitment {expected}) ;
-  register_error_kind
-    `Permanent
-    ~id:"operation.internal_DFS_without_permission"
-    ~title:"Internal operation in DFS without permission"
-    ~description:"Internal operation in DFS without permission"
-    ~pp:(fun ppf () ->
-      Format.fprintf ppf "Internal operation in DFS without permission")
-    Data_encoding.empty
-    (function
-      | Internal_operation_in_DFS_without_permission -> Some () | _ -> None)
-    (fun () -> Internal_operation_in_DFS_without_permission) ;
   register_error_kind
     `Permanent
     ~id:"internal_operation_replay"
@@ -803,6 +790,17 @@ let apply_manager_operation_content :
 type success_or_failure = Success of context | Failure
 
 let apply_internal_manager_operations ctxt mode ~payer ~chain_id ops =
+  let rec ording ops bfs_list dfs_stack =
+    match ops with
+    | [] ->
+        (bfs_list, dfs_stack)
+    | (Internal_operation i as op) :: rest -> (
+      match i.execution_ordering with
+      | BFS ->
+          ording rest (bfs_list @ [op]) dfs_stack
+      | DFS ->
+          ording rest bfs_list (dfs_stack @ [[op]]) )
+  in
   let rec apply ctxt applied worklist =
     match worklist with
     | [] ->
@@ -811,14 +809,9 @@ let apply_internal_manager_operations ctxt mode ~payer ~chain_id ops =
       match q with
       | [] ->
           apply ctxt applied s
-      | ( Internal_operation
-            ({source; operation; nonce; execution_ordering; allow_dfs} as op),
-          permission )
+      | Internal_operation
+            ({source; operation; nonce; execution_ordering = _} as op)
         :: rest -> (
-          ( match (execution_ordering, permission) with
-          | (DFS, false) ->
-              fail Internal_operation_in_DFS_without_permission
-          | (_, _) ->
               if internal_nonce_already_recorded ctxt nonce then
                 fail (Internal_operation_replay (Internal_operation op))
               else
@@ -839,39 +832,22 @@ let apply_internal_manager_operations ctxt mode ~payer ~chain_id ops =
               in
               let skipped =
                 List.rev_map
-                  (fun (Internal_operation op, _) ->
+                  (fun (Internal_operation op) ->
                     Internal_operation_result
                       (op, Skipped (manager_kind op.operation)))
                   (rest @ List.flatten s)
               in
               Lwt.return (Failure, List.rev (skipped @ (result :: applied)))
-          | Ok (ctxt, result, emitted) ->
-              let emitted' =
-                match allow_dfs with
-                | true ->
-                    emitted
-                | false ->
-                    List.map
-                      (fun (Internal_operation o) ->
-                        Internal_operation {o with allow_dfs = false})
-                      emitted
-              in
-              let emitted_w_permission =
-                List.map (fun x -> (x, allow_dfs)) emitted'
-              in
-              let worklist' =
-                match (execution_ordering, permission) with
-                | (DFS, true) ->
-                    emitted_w_permission :: rest :: s
-                | (_, _) ->
-                    (rest @ emitted_w_permission) :: s
-              in
+          | Ok (ctxt, result, emitted) -> (
+              let (b, d) = ording emitted rest [] in
+              let nl = d @ (b :: s) in
               apply
                 ctxt
                 (Internal_operation_result (op, Applied result) :: applied)
-                worklist' ) )
+                nl ) )
   in
-  let init_stack = [List.map (fun x -> (x, true)) ops] in
+  let (iniBfs, iniDfs) = ording ops [] [] in
+  let init_stack = iniDfs @ [iniBfs] in
   apply ctxt [] init_stack
 
 let precheck_manager_contents (type kind) ctxt

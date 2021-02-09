@@ -31,13 +31,11 @@ let pp_manager_operation_content (type kind) ?execution_ordering_info source
     internal pp_result ppf ((operation, result) : kind manager_operation * _) =
   Format.fprintf ppf "@[<v 0>" ;
   Option.iter
-    (fun (execution_ordering, allows_dfs) ->
+    (fun (execution_ordering) ->
       Format.fprintf
         ppf
-        "@[<v 0>Execution ordering: %s@,Allows DFS: %a@,@]"
-        (match execution_ordering with DFS -> "DFS" | BFS -> "BFS")
-        Format.pp_print_bool
-        allows_dfs)
+        "@[<v 0>Execution ordering: %s@,@]"
+        (match execution_ordering with DFS -> "DFS" | BFS -> "BFS"))
     execution_ordering_info ;
   ( match operation with
   | Transaction {destination; amount; parameters; entrypoint} ->
@@ -537,9 +535,9 @@ let pp_operation_result ppf
 
 let pp_internal_operation ppf
     (Internal_operation
-      {source; operation; nonce = _; execution_ordering; allow_dfs}) =
+      {source; operation; nonce = _; execution_ordering}) =
   pp_manager_operation_content
-    ~execution_ordering_info:(execution_ordering, allow_dfs)
+    ~execution_ordering_info:execution_ordering
     source
     true
     (fun _ppf () -> ())

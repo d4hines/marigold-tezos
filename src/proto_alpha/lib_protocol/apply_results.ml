@@ -381,29 +381,27 @@ let internal_operation_result_encoding :
       (Tag op_case.tag)
       ~title:op_case.name
       (merge_objs
-         (obj5
+         (obj4
             (req "kind" (constant op_case.name))
             (req "source" Contract.encoding)
             (req "nonce" uint16)
-            (req "execution_ordering" Operation.execution_ordering_encoding)
-            (req "allow_dfs" bool))
+            (req "execution_ordering" Operation.execution_ordering_encoding))
          (merge_objs op_case.encoding (obj1 (req "result" res_case.t))))
       (fun op ->
         match res_case.iselect op with
         | Some (op, res) ->
             Some
-              ( ((), op.source, op.nonce, op.execution_ordering, op.allow_dfs),
+              ( ((), op.source, op.nonce, op.execution_ordering),
                 (op_case.proj op.operation, res) )
         | None ->
             None)
-      (fun (((), source, nonce, execution_ordering, allow_dfs), (op, res)) ->
+      (fun (((), source, nonce, execution_ordering), (op, res)) ->
         let op =
           {
             source;
             operation = op_case.inj op;
             nonce;
             execution_ordering;
-            allow_dfs;
           }
         in
         Internal_operation_result (op, res))

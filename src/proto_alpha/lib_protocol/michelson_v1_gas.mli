@@ -261,8 +261,6 @@ module Cost_of : sig
 
     val make_dfs : Gas.cost
 
-    val allow_dfs : Gas.cost
-
     val transfer_tokens : Gas.cost
 
     val implicit_account : Gas.cost

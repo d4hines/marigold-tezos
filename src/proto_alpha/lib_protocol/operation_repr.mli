@@ -157,7 +157,6 @@ type 'kind internal_operation = {
   operation : 'kind manager_operation;
   nonce : int;
   execution_ordering : execution_ordering;
-  allow_dfs : bool;
 }
 
 type packed_manager_operation =

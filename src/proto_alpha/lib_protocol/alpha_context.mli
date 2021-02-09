@@ -271,7 +271,6 @@ module Script : sig
     | D_True
     | D_Unit
     | I_MAKE_DFS
-    | I_ALLOW_DFS
     | I_PACK
     | I_UNPACK
     | I_BLAKE2B
@@ -1341,7 +1340,6 @@ type 'kind internal_operation = {
   operation : 'kind manager_operation;
   nonce : int;
   execution_ordering : execution_ordering;
-  allow_dfs : bool;
 }
 
 type packed_manager_operation =

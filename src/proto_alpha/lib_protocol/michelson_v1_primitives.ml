@@ -48,7 +48,6 @@ type prim =
   | D_True
   | D_Unit
   | I_MAKE_DFS
-  | I_ALLOW_DFS
   | I_PACK
   | I_UNPACK
   | I_BLAKE2B
@@ -256,7 +255,6 @@ let namespace = function
   | I_LSR
   | I_LT
   | I_MAKE_DFS
-  | I_ALLOW_DFS
   | I_MAP
   | I_MEM
   | I_MUL
@@ -375,8 +373,6 @@ let string_of_prim = function
       "Unit"
   | I_MAKE_DFS ->
       "MAKE_DFS"
-  | I_ALLOW_DFS ->
-      "ALLOW_DFS"
   | I_PACK ->
       "PACK"
   | I_UNPACK ->
@@ -663,8 +659,6 @@ let prim_of_string = function
       ok D_Unit
   | "MAKE_DFS" ->
       ok I_MAKE_DFS
-  | "ALLOW_DFS" ->
-      ok I_ALLOW_DFS
   | "PACK" ->
       ok I_PACK
   | "UNPACK" ->
@@ -1126,7 +1120,6 @@ let prim_encoding =
          ("GET_AND_UPDATE", I_GET_AND_UPDATE);
          (* Alpha_009 addition *)
          ("MAKE_DFS", I_MAKE_DFS);
-         ("ALLOW_DFS", I_ALLOW_DFS)
          (* New instructions must be added here, for backward compatibility of the encoding. *)
          (* Keep the comment above at the end of the list *)
         ]
