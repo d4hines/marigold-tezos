@@ -47,3 +47,15 @@ to Edo.
   The reference endorser forges an `endorsement`, sends it to the
   signer, and then wraps the result in an `endorsement_with_slot`
   before injection.
+
+=======
+Changelog
+---------
+
+List of Merge Requests
+~~~~~~~~~~~~~~~~~~~~~~
+
+This is the full list of Merge Requests that compose the Alpha protocol.
+
+* `Add new Michelson instructions: MAKE_DFS <gitlab.com/tezos/tezos/-/merge_requests/2420>`_
+
