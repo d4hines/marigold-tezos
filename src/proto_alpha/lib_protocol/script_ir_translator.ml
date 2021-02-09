@@ -3947,8 +3947,7 @@ and parse_instr :
       in
       typed ctxt loc instr (Item_t (Map_t (tk, tv, ty_name), stack, annot))
   | ( Prim (loc, I_MAP, [body], annot),
-      Item_t (Map_t (ck, elt, _), (Item_t _ as starting_rest), _map_annot) )
-    -> (
+      Item_t (Map_t (ck, elt, _), starting_rest, _map_annot) ) -> (
       let k = ty_of_comparable_ty ck in
       check_kind [Seq_kind] body
       >>?= fun () ->
