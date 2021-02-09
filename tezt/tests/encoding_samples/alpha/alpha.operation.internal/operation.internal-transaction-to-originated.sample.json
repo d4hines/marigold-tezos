@@ -5,7 +5,6 @@
   "amount": "407",
   "destination": "KT1DieU51jzXLerQx5AqMCiLC1SsCeM8yRat",
   "execution_ordering": "DFS",
-  "allow_dfs" : true,
   "parameters": {
     "entrypoint": "action",
     "value": [{

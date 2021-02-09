@@ -2,6 +2,5 @@
   "source": "tz1KqTpEZ7Yob7QbPE4Hy4Wo8fHG8LhKxZSx",
   "nonce": 0,
   "kind": "delegation",
-  "execution_ordering": "BFS",
-  "allow_dfs": true
+  "execution_ordering": "BFS"
 }
