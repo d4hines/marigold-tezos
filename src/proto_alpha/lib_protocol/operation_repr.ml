@@ -693,10 +693,8 @@ module Encoding = struct
          (fun (Internal_operation
                 {source; operation; nonce; execution_ordering}) ->
            ((source, nonce, execution_ordering), Manager operation))
-         (fun ( (source, nonce, execution_ordering),
-                Manager operation ) ->
-           Internal_operation
-             {source; operation; nonce; execution_ordering})
+         (fun ((source, nonce, execution_ordering), Manager operation) ->
+           Internal_operation {source; operation; nonce; execution_ordering})
          (merge_objs
             (obj3
                (req "source" Contract_repr.encoding)

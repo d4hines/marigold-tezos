@@ -31,7 +31,7 @@ let pp_manager_operation_content (type kind) ?execution_ordering_info source
     internal pp_result ppf ((operation, result) : kind manager_operation * _) =
   Format.fprintf ppf "@[<v 0>" ;
   Option.iter
-    (fun (execution_ordering) ->
+    (fun execution_ordering ->
       Format.fprintf
         ppf
         "@[<v 0>Execution ordering: %s@,@]"
@@ -534,8 +534,7 @@ let pp_operation_result ppf
   Format.fprintf ppf "@]@."
 
 let pp_internal_operation ppf
-    (Internal_operation
-      {source; operation; nonce = _; execution_ordering}) =
+    (Internal_operation {source; operation; nonce = _; execution_ordering}) =
   pp_manager_operation_content
     ~execution_ordering_info:execution_ordering
     source

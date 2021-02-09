@@ -397,12 +397,7 @@ let internal_operation_result_encoding :
             None)
       (fun (((), source, nonce, execution_ordering), (op, res)) ->
         let op =
-          {
-            source;
-            operation = op_case.inj op;
-            nonce;
-            execution_ordering;
-          }
+          {source; operation = op_case.inj op; nonce; execution_ordering}
         in
         Internal_operation_result (op, res))
   in

@@ -810,20 +810,20 @@ let apply_internal_manager_operations ctxt mode ~payer ~chain_id ops =
       | [] ->
           apply ctxt applied s
       | Internal_operation
-            ({source; operation; nonce; execution_ordering = _} as op)
+          ({source; operation; nonce; execution_ordering = _} as op)
         :: rest -> (
-              if internal_nonce_already_recorded ctxt nonce then
-                fail (Internal_operation_replay (Internal_operation op))
-              else
-                let ctxt = record_internal_nonce ctxt nonce in
-                apply_manager_operation_content
-                  ctxt
-                  mode
-                  ~source
-                  ~payer
-                  ~chain_id
-                  ~internal:true
-                  operation )
+          ( if internal_nonce_already_recorded ctxt nonce then
+            fail (Internal_operation_replay (Internal_operation op))
+          else
+            let ctxt = record_internal_nonce ctxt nonce in
+            apply_manager_operation_content
+              ctxt
+              mode
+              ~source
+              ~payer
+              ~chain_id
+              ~internal:true
+              operation )
           >>= function
           | Error errors ->
               let result =
@@ -838,7 +838,7 @@ let apply_internal_manager_operations ctxt mode ~payer ~chain_id ops =
                   (rest @ List.flatten s)
               in
               Lwt.return (Failure, List.rev (skipped @ (result :: applied)))
-          | Ok (ctxt, result, emitted) -> (
+          | Ok (ctxt, result, emitted) ->
               let (b, d) = ording emitted rest [] in
               let nl = d @ (b :: s) in
               apply
