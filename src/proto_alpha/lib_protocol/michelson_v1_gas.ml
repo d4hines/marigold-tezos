@@ -248,7 +248,7 @@ module Cost_of = struct
     let cost_N_Dip = S.safe_int 100
 
     (* TODO: benchmark *)
-    let cost_N_Make_dfs = Z.of_int 1000000
+    let cost_N_Make_dfs = S.safe_int 1000000
 
     (* model N_DipN *)
     let cost_N_DipN size = S.safe_int (100 + (4 * size))

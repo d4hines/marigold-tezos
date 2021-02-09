@@ -846,8 +846,8 @@ let apply_internal_manager_operations ctxt mode ~payer ~chain_id ops =
                 (Internal_operation_result (op, Applied result) :: applied)
                 nl ) )
   in
-  let (iniBfs, iniDfs) = ording ops [] [] in
-  let init_stack = iniDfs @ [iniBfs] in
+  let (init_bfs, init_dfs) = ording ops [] [] in
+  let init_stack = init_dfs @ [init_bfs] in
   apply ctxt [] init_stack
 
 let precheck_manager_contents (type kind) ctxt
