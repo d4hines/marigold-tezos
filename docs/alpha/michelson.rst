@@ -93,10 +93,18 @@ are of three kinds:
 
 Smart contracts can also emit "internal operations".
 Smart contracts called by internal transactions can in turn also emit
-internal operations. The order in which internal operations are applied depends on a parameter called the operation execution order. This parameter has two possible values named by analogy with the algorithms to search values in tree data structures: ``BFS`` (named after the breadth-first search algorithm) and ``DFS`` (named after the depth-first search algorithm). The ``BFS`` order corresponds to putting operations in queue whereas the ``DFS`` corresponds to putting them in a stack. In order to support both execution orders, operations are placed in a stack of queues. All emitted operations will be enqueued into a queue which is the top
-element of stack. If executed operation is in DFS, this operation will be enqueued
-into a new queue and the new queue will be pushed into the stack. Notice
-that permission of running DFS is required. Please see ``ALLOW_DFS``.
+internal operations. The order in which internal operations are applied
+depends on a parameter called the operation execution order. This
+parameter has two possible values named by analogy with the algorithms
+to search values in tree data structures: ``BFS`` (named after the
+breadth-first search algorithm) and ``DFS`` (named after the depth-first
+search algorithm). The ``BFS`` order corresponds to putting operations
+in queue whereas the ``DFS`` corresponds to putting them in a stack.
+In order to support both execution orders, operations are placed in
+a stack of queues. If an emitted operation is ``DFS`` order, then this
+operation will be enqueued into a new queue which will be pushed into
+stack. If an emitted operation is ``BFS`` order, then this operation
+will be enqueued into a queue which is the top element of stack.
 
 Here is an example of evaluation flow of operations, ``!`` indicates that
 operation is running in DFS:
@@ -142,12 +150,12 @@ Example 3. The internal operations, !3b, !3d, are in DFS. The others are in BFS.
     +------------+------------------+-------------------------------------+
     | executing  | emissions        | resulting stack of queue of op      |
     +------------+------------------+-------------------------------------+
-    | op 3       | 3a, !3b, 3c, !3d | [[3a, !3b, 3c, !3d]]                |
-    | op 3a      | 3ai, 3aj         | [[!3b, 3c, !3d, 3ai, 3aj]]          |
-    | op !3b     | 3bi              | [[3bi], [3c, !3d, 3ai, 3aj]]        |
-    | op 3bi     |                  | [[3c, !3d, 3ai, 3aj]]               |
-    | op 3c      |                  | [[!3d, 3ai, 3aj]]                   |
-    | op !3d     |                  | [[3ai, 3aj]]                        |
+    | op 3       | 3a, !3b, 3c, !3d | [[!3b], [!3d], [3a, 3c]]            |
+    | op !3b     | 3bi              | [[3bi], [!3d], [3a, 3c]]            |
+    | op 3bi     |                  | [[!3d], [3a, 3c]]                   |
+    | op !3d     |                  | [[3a, 3c]]                          |
+    | op 3a      | 3ai, 3aj         | [[3c, 3ai, 3aj]]                    |
+    | op 3c      |                  | [[3ai, 3aj]]                        |
     | op 3ai     |                  | [[3aj]]                             |
     | op 3aj     |                  | [[]]                                |
     +------------+------------------+-------------------------------------+
@@ -1877,26 +1885,8 @@ The contract is returned as a first class value (to be dropped, passed
 as parameter or stored). The ``CONTRACT 'p`` instruction will fail
 until it is actually originated.
 
--  ``ALLOW_DFS``: This instruction offers permission of running DFS
-   to the applied operation. Notice that it requires the operation
-   of its parent has permission, otherwise the permission will be
-   absented, even ``ALLOW_DFS`` is applied. If the permission is
-   absent in current operation, it's not possible to pass through.
-
-::
-
-     :: operation : 'S -> operation : 'S
-
-     > ALLOW_DFS / operation : S => operation : S
-
-
-
 -  ``MAKE_DFS``: By default, the evaluation sequence is in BFS.
-   This instruction allows operation turning in DFS but the
-   permission of running DFS is required. The permission of
-   initial operation (also known as an external operation) is
-   set. The permission of emitted operations will be absented
-   if ``ALLOW_DFS`` isn't applied.
+   This instruction allows operation turning 
 
 ::
 

@@ -57,4 +57,4 @@ List of Merge Requests
 
 This is the full list of Merge Requests that compose the Alpha protocol.
 
-* `Add new Michelson instructions: MAKE_DFS and ALLOW_DFS <gitlab.com/tezos/tezos/-/merge_requests/2420>`_
+* `Add new Michelson instructions: MAKE_DFS <gitlab.com/tezos/tezos/-/merge_requests/2420>`_
