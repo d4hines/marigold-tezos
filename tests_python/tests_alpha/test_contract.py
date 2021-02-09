@@ -342,13 +342,12 @@ class TestManager:
         )
         assert balance_bootstrap3 + amount_mutez_3 == new_balance_bootstrap3
 
+
 @pytest.mark.contract
 @pytest.mark.incremental
 class TestExecutionOrdering:
     def child_input(self, contract_input, c_addr):
-        return ("Pair \"{}\" \"{}\"").format(
-            contract_input[0], c_addr
-        )
+        return ("Pair \"{}\" \"{}\"").format(contract_input[0], c_addr)
 
     def parent_input(self, contract_input, p_addr, c_addr):
         return (
