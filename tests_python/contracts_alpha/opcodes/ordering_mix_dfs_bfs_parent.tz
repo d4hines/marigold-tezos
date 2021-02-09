@@ -10,11 +10,10 @@
 #
 #        # The first bool is to control the order in BFS(True) or DFS(False) by ALLOW_DFS
 #        # The second bool is to offer permission to run DFS by `ALLOW_DFS`
-#        (pair bool bool) 
+#        bool )
 # )
 
-
-{ parameter (list (pair (pair string address) (pair bool bool))) ;
+{ parameter (list (pair (pair string address) bool)) ;
   storage unit ;
   code { NIL operation ;
          SWAP ;
@@ -27,21 +26,12 @@
                 CDR ;
                 SWAP ;
                 CAR ;
-                DIG 2 ;
-                DUP ;
-                CDR ;
                 SWAP ;
-                CAR ;
-                DIG 3 ;
                 CONTRACT string ;
                 IF_NONE { PUSH string "Not a contract" ; FAILWITH } {} ;
-                SWAP ;
-                IF { SWAP ;
-                     IF { DIG 2 ; SWAP ; PUSH mutez 0 ; DIG 3 ; TRANSFER_TOKENS ; ALLOW_DFS ; CONS }
-                        { DIG 2 ; SWAP ; PUSH mutez 0 ; DIG 3 ; TRANSFER_TOKENS ; CONS } }
-                   { SWAP ;
-                     IF { DIG 2 ; SWAP ; PUSH mutez 0 ; DIG 3 ; TRANSFER_TOKENS ; MAKE_DFS ; ALLOW_DFS ; CONS }
-                        { DIG 2 ; SWAP ; PUSH mutez 0 ; DIG 3 ; TRANSFER_TOKENS ; MAKE_DFS ; CONS } } } ;
+                DIG 2 ;
+                IF { DIG 2 ; SWAP ; PUSH mutez 0 ; DIG 3 ; TRANSFER_TOKENS ; CONS }
+                   { DIG 2 ; SWAP ; PUSH mutez 0 ; DIG 3 ; TRANSFER_TOKENS ; MAKE_DFS ; CONS } } ;
          NIL operation ;
          SWAP ;
          PAIR ;

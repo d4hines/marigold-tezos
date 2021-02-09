@@ -11,13 +11,10 @@
 #             # The address is the address of ordering_mix_dfs_bfs_parent.tz
 #             address)
 #
-#         # The first bool is to control the order of in BFS(True) or DFS(False) by ALLOW_DFS
-#         # The second bool is to offer permission to run DFS by `ALLOW_DFS`
-#         (pair bool bool))
+#         # The bool is to control the order of in BFS(True) or DFS(False) by ALLOW_DFS
+#         bool )
 #
-
-{ parameter
-    (list (pair (pair (list (pair (pair string address) (pair bool bool))) address) (pair bool bool))) ;
+{ parameter (list (pair (pair (list (pair (pair string address) bool)) address) bool)) ;
   storage unit ;
   code { NIL operation ;
          SWAP ;
@@ -30,21 +27,12 @@
                 CDR ;
                 SWAP ;
                 CAR ;
-                DIG 2 ;
-                DUP ;
-                CDR ;
                 SWAP ;
-                CAR ;
-                DIG 3 ;
-                CONTRACT (list (pair (pair string address) (pair bool bool))) ;
+                CONTRACT (list (pair (pair string address) bool)) ;
                 IF_NONE { PUSH string "Not a contract" ; FAILWITH } {} ;
-                SWAP ;
-                IF { SWAP ;
-                     IF { DIG 2 ; SWAP ; PUSH mutez 0 ; DIG 3 ; TRANSFER_TOKENS ; ALLOW_DFS ; CONS }
-                        { DIG 2 ; SWAP ; PUSH mutez 0 ; DIG 3 ; TRANSFER_TOKENS ; CONS } }
-                   { SWAP ;
-                     IF { DIG 2 ; SWAP ; PUSH mutez 0 ; DIG 3 ; TRANSFER_TOKENS ; MAKE_DFS ; ALLOW_DFS ; CONS }
-                        { DIG 2 ; SWAP ; PUSH mutez 0 ; DIG 3 ; TRANSFER_TOKENS ; MAKE_DFS ; CONS } } } ;
+                DIG 2 ;
+                IF { DIG 2 ; SWAP ; PUSH mutez 0 ; DIG 3 ; TRANSFER_TOKENS ; CONS }
+                   { DIG 2 ; SWAP ; PUSH mutez 0 ; DIG 3 ; TRANSFER_TOKENS ; MAKE_DFS ; CONS } } ;
          NIL operation ;
          SWAP ;
          PAIR ;
@@ -60,4 +48,3 @@
          PUSH unit Unit ;
          SWAP ;
          PAIR } }
-

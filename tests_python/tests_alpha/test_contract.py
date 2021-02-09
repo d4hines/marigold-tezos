@@ -347,8 +347,8 @@ class TestManager:
 @pytest.mark.incremental
 class TestExecutionOrdering:
     def child_input(self, contract_input, c_addr):
-        return ("Pair (Pair \"{}\" \"{}\") (Pair {} {})").format(
-            contract_input[0], c_addr, contract_input[1], contract_input[2]
+        return ("Pair (Pair \"{}\" \"{}\") {}").format(
+            contract_input[0], c_addr, contract_input[1]
         )
 
     def parent_input(self, contract_input, p_addr, c_addr):
@@ -361,19 +361,8 @@ class TestExecutionOrdering:
                     itertools.repeat(c_addr),
                 )
             )
-            + "}}\"{}\") (Pair {} {})"
-        ).format(p_addr, contract_input[1], contract_input[2])
-
-    def deploy_root(
-        self,
-        client,
-        session,
-        root_contract,
-    ):
-        path = f'{CONTRACT_PATH}/opcodes/ordering_root.tz'
-        originate(client, session, path, 'Unit', 0, contract_name=root_contract)
-        session[root_contract] = session['contract']
-        client.bake('bootstrap3', ["--minimal-timestamp"])
+            + "}}\"{}\") {}"
+        ).format(p_addr, contract_input[1])
 
     def deploy_three_layer_tree(
         self,
@@ -405,25 +394,22 @@ class TestExecutionOrdering:
     ##
     # This test case uses string concatenation to verify the execution flow
     # of operations. There are 3 contracts, called Contract Grandparent,
-    # Contract Parent and Contract Child. The Contract Grandparent will
-    # call the Contract Parent several times and the Contract Parent will
-    # call the Contract Child several times. It looks like the following:
+    # Contract Parent and Contract Child It looks like the following:
     #
     # Grandparent --> Parent --> Child
-    #            |          |-> Child
-    #            |          |-> Child
-    #            --> Parent --> Child
-    #                       |-> Child
+    #            |           |-> Child
+    #            |           |-> Child
+    #            --> Parent  --> Child
+    #                        |-> Child
     #
     # The `contract_input` is the input of contract grandparent which defines
     # how parents call its children.
     #
     # (* True run operation in BFS, False run operation in DFS *)
     # flow = True | False
-    # allow_dfs = True | False
     #
     # (* The `flow` is the flow of child *)
-    # input_of_child = string * flow * allow_dfs
+    # input_of_child = string * flow
     #
     # (* The `flow` is the flow of parent *)
     # input_of_parent = input_of_child * flow
@@ -431,101 +417,133 @@ class TestExecutionOrdering:
     #
     # For example:
     #  contract_input =
-    #    [([("A","True", "True"), ("B","False", "True"), ("C","False", "True")],
-    #      "True", "False"),
-    #     ([], "True", "False"),
-    #     ([("D", "True", "False"), ("E", "False", "True"),
-    #       ("F","False", "True")],
-    #      "False", "True")],
+    #    [([("A","True"), ("B","False"), ("C","False")],
+    #      "True"),
+    #     ([], "True"),
+    #     ([("D", "True"), ("E", "False"),
+    #       ("F","False")],
+    #      "False")],
     #
-    # Grandparent --> Parent in BFS --> Child* with "A" in BFS
-    #            |                 |-> Child* with "B" in DFS
-    #            |                 |-> Child* with "C" in DFS
+    # Grandparent --> Parent in BFS --> Child with "A"
+    #            |                  |-> Child with "B"
+    #            |                  |-> Child with "C"
     #            --> Parent in BFS
-    #            --> Parent* in DFS --> Child with "D" in BFS
-    #                               |-> Child* with "E" in BFS
-    #                               |-> Child with "F" in BFS
-    # * the node is allowed to run in DFS order by its parent.
-    # `allow_dfs` is not transitive
+    #            --> Parent in DFS  --> Child with "D"
+    #                               |-> Child with "E"
+    #                               |-> Child with "F"
     ##
     @pytest.mark.parametrize(
         "child_contract, parent_contract, grandparent_contract,"
-        + "contract_input,expected,test_failure",
+        + "contract_input,expected",
         [
+            # all in BFS
             (
-                "ordering_child1",
-                "ordering_parent1",
-                "ordering_grandparent1",
+                "ordering_child1_",
+                "ordering_parent1_",
+                "ordering_grandparent1_",
                 [
                     (
-                        [("A", "False", "False")],
+                        [
+                            ("A", "True"),
+                            ("B", "True"),
+                            ("C", "True"),
+                        ],
                         "True",
+                    ),
+                    ([], "True"),
+                    (
+                        [
+                            ("D", "True"),
+                            ("E", "True"),
+                            ("F", "True"),
+                        ],
                         "True",
                     ),
                 ],
-                "A",
-                False,
+                "ABCDEF",
             ),
+            # all in DFS
             (
-                "ordering_child2",
-                "ordering_parent2",
-                "ordering_grandparent2",
+                "ordering_child2_",
+                "ordering_parent2_",
+                "ordering_grandparent2_",
                 [
                     (
-                        [("A", "False", "True")],
-                        "True",
-                        "True",
+                        [
+                            ("A", "False"),
+                            ("B", "False"),
+                            ("C", "False"),
+                        ],
+                        "False",
                     ),
-                ],
-                "A",
-                False,
-            ),
-            (
-                "ordering_child3",
-                "ordering_parent3",
-                "ordering_grandparent3",
-                [
+                    ([], "False"),
                     (
-                        [("A", "False", "False")],
-                        "True",
+                        [
+                            ("D", "False"),
+                            ("E", "False"),
+                            ("F", "False"),
+                        ],
                         "False",
                     ),
                 ],
-                "",
-                True,
+                "ABCDEF",
             ),
             (
-                "ordering_child4",
-                "ordering_parent4",
-                "ordering_grandparent4",
+                "ordering_child3_",
+                "ordering_parent3_",
+                "ordering_grandparent3_",
                 [
                     (
-                        [("A", "False", "True")],
+                        [
+                            ("A", "True"),
+                            ("B", "False"),
+                            ("C", "False"),
+                        ],
                         "True",
+                    ),
+                    ([], "True"),
+                    (
+                        [
+                            ("D", "True"),
+                            ("E", "False"),
+                            ("F", "False"),
+                        ],
                         "False",
                     ),
                 ],
-                "",
-                True,
+                "EFDBCA",
             ),
-            # Test the Contract Grandparent set Contract Parent in DFS
             (
-                "ordering_child5",
-                "ordering_parent5",
-                "ordering_grandparent5",
+                "ordering_child4_",
+                "ordering_parent4_",
+                "ordering_grandparent4_",
                 [
                     (
-                        [("A", "True", "False")],
+                        [
+                            ("A", "True"),
+                            ("B", "False"),
+                            ("C", "True"),
+                        ],
                         "False",
+                    ),
+                    (
+                        [("D", "True"), ("E", "False")],
+                        "True",
+                    ),
+                    (
+                        [
+                            ("F", "False"),
+                            ("G", "True"),
+                            ("H", "False"),
+                        ],
                         "False",
                     ),
                 ],
-                "A",
-                False,
+                "BACFHGED",
             ),
         ],
     )
-    def test_allow_dfs(
+    def test_ordering_3layer(
         self,
         client,
         session,
@@ -534,8 +552,8 @@ class TestExecutionOrdering:
         grandparent_contract,
         contract_input,
         expected,
-        test_failure,
     ):
+
         self.deploy_three_layer_tree(
             client,
             session,
@@ -557,276 +575,13 @@ class TestExecutionOrdering:
                     itertools.repeat(c_addr),
                 )
             )
-            + "}"
-        )
-
-        if test_failure:
-            with utils.assert_run_failure(
-                "Internal operation in DFS without permission"
-            ):
-                client.transfer(
-                    0,
-                    'bootstrap2',
-                    grandparent_contract,
-                    ["--burn-cap", "5", "--arg", m_input],
-                )
-        else:
-            client.transfer(
-                0,
-                'bootstrap2',
-                grandparent_contract,
-                ["--burn-cap", "5", "--arg", m_input],
-            )
-            client.bake('bootstrap3', ["--minimal-timestamp"])
-            assert client.get_storage(child_contract) == "\"{}\"".format(
-                expected
-            )
-
-    @pytest.mark.parametrize(
-        "child_contract, parent_contract, grandparent_contract,root_contract,"
-        + "contract_input",
-        [
-            (
-                "ordering2_child1",
-                "ordering2_parent1",
-                "ordering2_grandparent1",
-                "ordering2_root1",
-                [
-                    (
-                        [
-                            ("A", "False", "True"),
-                        ],
-                        "True",
-                        "False",
-                    ),
-                ],
-            ),
-        ],
-    )
-    # the top contract just pass arguments to the second
-    # contract (i.e Grandparent) but doesn't grant it permission
-    #
-    def test_allow_dfs2_4layer(
-        self,
-        client,
-        session,
-        child_contract,
-        parent_contract,
-        grandparent_contract,
-        root_contract,
-        contract_input,
-    ):
-
-        self.deploy_root(client, session, root_contract)
-
-        self.deploy_three_layer_tree(
-            client,
-            session,
-            child_contract,
-            parent_contract,
-            grandparent_contract,
-        )
-
-        g_addr = session[grandparent_contract]
-        c_addr = session[child_contract]
-        p_addr = session[parent_contract]
-
-        m_input = (
-            "Pair {"
-            + ";".join(
-                map(
-                    self.parent_input,
-                    contract_input,
-                    itertools.repeat(p_addr),
-                    itertools.repeat(c_addr),
-                )
-            )
-            + "} (Pair \""
-            + g_addr
-            + "\" False)"
-        )
-
-        with utils.assert_run_failure(
-            "Internal operation in DFS without permission"
-        ):
-            client.transfer(
-                0,
-                'bootstrap2',
-                root_contract,
-                ["--burn-cap", "5", "--arg", m_input],
-            )
-
-    @pytest.mark.parametrize(
-        "child_contract, parent_contract, grandparent_contract,root_contract,"
-        + "contract_input,expected",
-        [
-            # all in BFS
-            (
-                "ordering_child1_",
-                "ordering_parent1_",
-                "ordering_grandparent1_",
-                "ordering_root1_",
-                [
-                    (
-                        [
-                            ("A", "True", "True"),
-                            ("B", "True", "True"),
-                            ("C", "True", "True"),
-                        ],
-                        "True",
-                        "True",
-                    ),
-                    ([], "True", "True"),
-                    (
-                        [
-                            ("D", "True", "True"),
-                            ("E", "True", "True"),
-                            ("F", "True", "True"),
-                        ],
-                        "True",
-                        "True",
-                    ),
-                ],
-                "ABCDEF",
-            ),
-            # all in DFS
-            (
-                "ordering_child2_",
-                "ordering_parent2_",
-                "ordering_grandparent2_",
-                "ordering_root2_",
-                [
-                    (
-                        [
-                            ("A", "False", "True"),
-                            ("B", "False", "True"),
-                            ("C", "False", "True"),
-                        ],
-                        "False",
-                        "True",
-                    ),
-                    ([], "False", "True"),
-                    (
-                        [
-                            ("D", "False", "True"),
-                            ("E", "False", "True"),
-                            ("F", "False", "True"),
-                        ],
-                        "False",
-                        "True",
-                    ),
-                ],
-                "ABCDEF",
-            ),
-            (
-                "ordering_child3_",
-                "ordering_parent3_",
-                "ordering_grandparent3_",
-                "ordering_root3_",
-                [
-                    (
-                        [
-                            ("A", "True", "True"),
-                            ("B", "False", "True"),
-                            ("C", "False", "True"),
-                        ],
-                        "True",
-                        "True",
-                    ),
-                    ([], "True", "True"),
-                    (
-                        [
-                            ("D", "True", "True"),
-                            ("E", "False", "True"),
-                            ("F", "False", "True"),
-                        ],
-                        "False",
-                        "True",
-                    ),
-                ],
-                "DEFABC",
-            ),
-            (
-                "ordering_child4_",
-                "ordering_parent4_",
-                "ordering_grandparent4_",
-                "ordering_root4_",
-                [
-                    (
-                        [
-                            ("A", "True", "True"),
-                            ("B", "False", "True"),
-                            ("C", "True", "True"),
-                        ],
-                        "False",
-                        "True",
-                    ),
-                    (
-                        [("D", "True", "True"), ("E", "False", "True")],
-                        "True",
-                        "True",
-                    ),
-                    (
-                        [
-                            ("F", "False", "True"),
-                            ("G", "True", "True"),
-                            ("H", "False", "True"),
-                        ],
-                        "False",
-                        "True",
-                    ),
-                ],
-                "ABCFGHDE",
-            ),
-        ],
-    )
-    # the top contract just grant permission of running DFS
-    # and pass arguments to the second contract (i.e Grandparent)
-    def test_ordering_4layer(
-        self,
-        client,
-        session,
-        child_contract,
-        parent_contract,
-        grandparent_contract,
-        root_contract,
-        contract_input,
-        expected,
-    ):
-
-        self.deploy_root(client, session, root_contract)
-
-        self.deploy_three_layer_tree(
-            client,
-            session,
-            child_contract,
-            parent_contract,
-            grandparent_contract,
-        )
-
-        g_addr = session[grandparent_contract]
-        c_addr = session[child_contract]
-        p_addr = session[parent_contract]
-
-        m_input = (
-            "Pair {"
-            + ";".join(
-                map(
-                    self.parent_input,
-                    contract_input,
-                    itertools.repeat(p_addr),
-                    itertools.repeat(c_addr),
-                )
-            )
-            + "} (Pair \""
-            + g_addr
-            + "\" True)"
+            + "} "
         )
 
         client.transfer(
             0,
             'bootstrap2',
-            root_contract,
+            grandparent_contract,
             ["--burn-cap", "5", "--arg", m_input],
         )
         client.bake('bootstrap3', ["--minimal-timestamp"])
