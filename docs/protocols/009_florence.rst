@@ -189,7 +189,7 @@ Migrations may now Produce Balance Receipts
 
 Protocol migrations can now update the balance of accounts by producing
 balance receipts. This was necessary groundwork for `Baking
-Accounts <#Baking-accounts>`__ and facilitates `developer
+Accounts <#baking-accounts>`__ and facilitates `developer
 invoicing <https://www.youtube.com/watch?v=VFY76qFq5Gk>`__.
 
 -  Issue:
