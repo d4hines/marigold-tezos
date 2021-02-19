@@ -18,7 +18,7 @@ TL;DR
    -  New account type enabling key rotation and multisig authentication
       for bakers.
 
--  Inter-contract calls now execute depth-first order
+-  Inter-contract calls now execute in depth-first order
    `# <#depth-first-execution-order>`__
 -  Migration can now produce balance update receipts
    `# <#migrations-may-now-produce-balance-receipts>`__
@@ -29,7 +29,7 @@ TL;DR
 -  Multiple significant performance improvements `# <#performance>`__
 
    -  Improved gas accounting
-   -  Linear time endorsement checking
+   -  Linear-time endorsement checking
    -  Improved staking balance accounting
 
 -  Operation size limit doubled to 32KB
@@ -49,7 +49,7 @@ TODO: update final MR count
 Baking Accounts
 ~~~~~~~~~~~~~~~
 
-A new kind of account type has been added to represent accounts managed
+A new account type has been added to represent accounts managed
 by bakers. These accounts are Michelson smart contracts running a fixed
 multisig script. This feature lets bakers renew and split their
 consensus keys without moving to a new address and asking their
@@ -122,9 +122,12 @@ New ``failing_noop`` Operation
 A new operation has been added to the protocol that is guaranteed to
 fail. This feature can be used by tooling (such as ``tezos-client``) to
 sign arbitrary data securely, without fear of malicious injection into
-future protocols. - Issue:
-`tezos#52 <https://gitlab.com/metastatedev/tezos/-/issues/52>`__ - MR:
-`tezos!2361 <https://gitlab.com/tezos/tezos/-/merge_requests/2361>`__
+future protocols. 
+
+- Adresses issue:
+  `tezos#52 <https://gitlab.com/metastatedev/tezos/-/issues/52>`__ 
+- MR:
+  `tezos!2361 <https://gitlab.com/tezos/tezos/-/merge_requests/2361>`__
 
 Performance
 ~~~~~~~~~~~
@@ -143,7 +146,7 @@ Staking balance RPC
 Some users observed degraded performance in v8.1 as reported in issue
 `tezos#1067 <https://gitlab.com/tezos/tezos/-/issues/1067>`__. To
 address this, the measurement of staking balance has been reworked,
-improving the performance of the the performance of the
+improving the performance of the
 ``/chains/[...]/blocks/[...]/context/delegates/[...]`` RPC endpoint.
 
 -  MR:
@@ -154,7 +157,7 @@ Gas Optimizations
 
 Various optimizations have been added to the gas accounting subsystem.
 Most notably, gas consumption is now computed using `saturated
-arithmetics <https://en.wikipedia.org/wiki/Saturation_arithmetic>`__.
+arithmetic <https://en.wikipedia.org/wiki/Saturation_arithmetic>`__.
 
 -  MR’s:
    `tezos!2328 <https://gitlab.com/tezos/tezos/-/merge_requests/2328>`__,
