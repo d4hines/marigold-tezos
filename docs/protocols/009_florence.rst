@@ -33,7 +33,7 @@ TL;DR
    -  Improved staking balance accounting
 
 -  Operation size limit doubled to 32KB
-   `# <#increase-max_operation_data_length-to-32kb>`__
+   `# <#increase-max-operation-data-length-to-32kb>`__
 -  Test chain removed from the voting procedure
    `# <#deactivation-of-the-test-chain-in-the-economic-protocol>`__
 -  A new version of the environment
