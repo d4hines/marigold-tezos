@@ -190,6 +190,7 @@ in the :ref:`introduction <howtoget>`.
    protocols/005_babylon
    protocols/006_carthage
    protocols/008_edo
+   protocols/009_florence
    protocols/alpha
 
 .. toctree::
