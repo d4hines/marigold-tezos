@@ -37,9 +37,7 @@ TL;DR
 -  Test chain removed from the voting procedure
    `# <#deactivation-of-the-test-chain-in-the-economic-protocol>`__
 -  A new version of the environment
-
-   -  See Environment change log for details (TODO: create said document
-      per `issue <https://gitlab.com/tezos/tezos/-/issues/1083>`__)
+   -  See `Environment change log <https://gitlab.com/tezos/tezos/-/blob/master/src/lib_protocol_environmnet/CHANGES.md>`__ for details.
 
 All MR’s (XX in total)
 ----------------------
@@ -124,7 +122,7 @@ fail. This feature can be used by tooling (such as ``tezos-client``) to
 sign arbitrary data securely, without fear of malicious injection into
 future protocols. 
 
-- Adresses issue:
+- Addresses issue:
   `tezos#52 <https://gitlab.com/metastatedev/tezos/-/issues/52>`__ 
 - MR:
   `tezos!2361 <https://gitlab.com/tezos/tezos/-/merge_requests/2361>`__
