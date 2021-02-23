@@ -1644,7 +1644,6 @@ and step :
           | ((contract, entrypoint), "default") ->
               let ctxt = update_context gas ctxt in
               Script_ir_translator.parse_contract_for_script
-                ~legacy:false
                 ctxt
                 kinfo.kloc
                 t
