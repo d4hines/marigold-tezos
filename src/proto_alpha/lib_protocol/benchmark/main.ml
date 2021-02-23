@@ -58,7 +58,7 @@ let create_benchmark name f =
     assert false
 
 let benchmarks =
-  [ create_benchmark "Fact" Fact_benchmarks.fact_benchmark;
+  [ (* create_benchmark "Fact" Fact_benchmarks.fact_benchmark; *)
     create_benchmark "FA1.2_Approve" Fa12_benchmarks.approve_fa12_benchmark;
     create_benchmark "FA1.2_Transfer" Fa12_benchmarks.transfer_benchmark;
     create_benchmark "Dexter_xtzToToken" Dexter_benchmarks.xtzToToken_benchmark

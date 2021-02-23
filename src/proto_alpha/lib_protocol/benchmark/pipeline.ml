@@ -87,7 +87,7 @@ let type_script context script =
     ~legacy:false
     ~allow_forged_in_storage:true
     script
-  >|= Environment.wrap_error |> force_global_lwt
+  >|= Environment.wrap_tzresult |> force_global_lwt
 
 module Transfer : sig
   type t = {
@@ -202,7 +202,7 @@ let finally :
   let context = get_next_context b in
   let (context, script) =
     Alpha_context.Contract.get_script context transfer.recipient
-    >|= Environment.wrap_error |> force_global_lwt
+    >|= Environment.wrap_tzresult |> force_global_lwt
   in
   let script = script |> Option.get in
   let ( Ex_script {code; arg_type; storage; storage_type; root_name = _},
@@ -217,13 +217,35 @@ let finally :
       ~allow_forged:false
       arg_type
       (Micheline.root (Expr.from_string transfer.parameters))
-    >|= Environment.wrap_error |> force_global_lwt
+    >|= Environment.wrap_tzresult |> force_global_lwt
   in
   let stack = ((arg, storage), ()) in
   let eval_script () =
     Script_interpreter.step logger context step_constants code stack
   in
-  let run_script () = eval_script () |> Lwt.map (fun _ -> ()) in
+  let run_script () =
+    let (context, script) =
+      Alpha_context.Contract.get_script context transfer.recipient
+      >|= Environment.wrap_tzresult |> force_global_lwt
+    in
+    let script = script |> Option.get in
+    let (Ex_script {code; arg_type; storage; root_name = _; _}, context) =
+      type_script context script
+    in
+    let (Lam (code, _)) = code in
+    let (arg, context) =
+      Script_ir_translator.parse_data
+        context
+        ~legacy:false
+        ~allow_forged:false
+        arg_type
+        (Micheline.root (Expr.from_string transfer.parameters))
+      >|= Environment.wrap_tzresult |> force_global_lwt
+    in
+    let stack = ((arg, storage), ()) in
+    Script_interpreter.step logger context step_constants code stack
+    |> Lwt.map (fun _ -> ())
+  in
   let eval_script () =
     let output =
       eval_script ()
@@ -233,7 +255,7 @@ let finally :
       Micheline.strip_locations micheline
       |> micheline_canonical_to_string |> Error_monad.return
     in
-    output |> Lwt.map (fun v -> force_global @@ Environment.wrap_error v)
+    output |> Lwt.map (fun v -> force_global @@ Environment.wrap_tzresult v)
   in
   (eval_script, run_script)
 

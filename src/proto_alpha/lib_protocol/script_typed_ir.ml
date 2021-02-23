@@ -171,9 +171,12 @@ and 'ty ty =
 
 and 'ty stack_ty =
   | Item_t :
+      (*      ('ty * 'rest) Equality_witness.t * *)
       'ty ty * 'rest stack_ty * var_annot option
       -> ('ty * 'rest) stack_ty
-  | Empty_t : end_of_stack stack_ty
+  | Empty_t :
+      (*      end_of_stack Equality_witness.t -> *)
+      end_of_stack stack_ty
 
 and ('key, 'value) big_map = {
   id : Big_map.Id.t option;

@@ -71,7 +71,7 @@ let force_global_lwt x = force_global (Lwt_main.run x)
 
 let force_lwt x = force (Lwt_main.run x)
 
-let ( >>=?? ) x k = x >>= fun x -> Lwt.return (Environment.wrap_error x) >>=? k
+(* let ( >>=?? ) x k = x >>= fun x -> Lwt.return (Environment.wrap_tzerror x) >>=? k *)
 
 let of_mutez x = Tez.of_mutez_exn (Int64.of_int x)
 
