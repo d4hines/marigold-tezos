@@ -29,11 +29,13 @@ open Script
 open Util
 
 module Logger : Script_interpreter.STEP_LOGGER = struct
-  let log_interp _ctxt _descr _stack = ()
+  let log_interp _ctxt _descr _stack _ _ = ()
 
-  let log_entry _ctxt _descr _stack = ()
+  let log_entry _ctxt _descr _stack _ _ = ()
 
-  let log_exit _ctxt _descr _stack = ()
+  let log_exit _ctxt _descr _stack _ _ = ()
+
+  let log_control _ = ()
 
   let get_log () = Lwt.return (Ok None)
 end
@@ -205,7 +207,7 @@ let finally :
     >|= Environment.wrap_tzresult |> force_global_lwt
   in
   let script = script |> Option.get in
-  let ( Ex_script {code; arg_type; storage; storage_type; root_name = _},
+  let ( Ex_script {code; arg_type; storage; root_name = _; storage_type},
         context ) =
     type_script context script
   in
@@ -221,7 +223,13 @@ let finally :
   in
   let stack = ((arg, storage), ()) in
   let eval_script () =
-    Script_interpreter.step logger context step_constants code stack
+    Script_interpreter.step
+      None
+      context
+      step_constants
+      code
+      (fst stack)
+      ((), ())
   in
   let run_script () =
     let (context, script) =
@@ -242,14 +250,20 @@ let finally :
         (Micheline.root (Expr.from_string transfer.parameters))
       >|= Environment.wrap_tzresult |> force_global_lwt
     in
-    let stack = ((arg, storage), ()) in
-    Script_interpreter.step logger context step_constants code stack
+    let stack = ((arg, storage), ((), ())) in
+    Script_interpreter.step
+      None
+      context
+      step_constants
+      code
+      (fst stack)
+      (snd stack)
     |> Lwt.map (fun _ -> ())
   in
   let eval_script () =
     let output =
       eval_script ()
-      >>=? fun (((_, storage), ()), ctx) ->
+      >>=? fun ((_, storage), _, ctx) ->
       Script_ir_translator.unparse_data ctx Readable storage_type storage
       >>=? fun (micheline, _) ->
       Micheline.strip_locations micheline
