@@ -22,6 +22,8 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
+open Lens
+(*open Lens.Infix*)
 
 module Int_set = Set.Make (Compare.Int)
 
@@ -101,6 +103,85 @@ type back = {
   gas_counter_status : gas_counter_status;
 }
 
+(* lenses for back *)
+
+let back_context = {
+    get = (fun x -> x.context) ;
+    set = (fun v x -> {x with context = v})
+  }
+let back_constants = {
+    get = (fun x -> x.constants) ;
+    set = (fun v x -> {x with constants = v})
+  }
+let back_first_level = {
+    get = (fun x -> x.first_level) ;
+    set = (fun v x -> {x with first_level = v})
+  }
+let back_level = {
+    get = (fun x -> x.level) ;
+    set = (fun v x -> {x with level = v})
+  }
+let back_predecessor_timestamp = {
+    get = (fun x -> x.predecessor_timestamp) ;
+    set = (fun v x -> {x with predecessor_timestamp = v})
+  }
+let back_timestamp = {
+    get = (fun x -> x.timestamp) ;
+    set = (fun v x -> {x with timestamp = v})
+  }
+let back_fitness = {
+    get = (fun x -> x.fitness) ;
+    set = (fun v x -> {x with fitness = v})
+  }
+let back_deposits = {
+    get = (fun x -> x.deposits) ;
+    set = (fun v x -> {x with deposits = v})
+  }
+let back_included_endorsements = {
+    get = (fun x -> x.included_endorsements) ;
+    set = (fun v x -> {x with included_endorsements = v})
+  }
+let back_allowed_endorsements = {
+    get = (fun x -> x.allowed_endorsements) ;
+    set = (fun v x -> {x with allowed_endorsements = v})
+  }
+let back_fees = {
+    get = (fun x -> x.fees) ;
+    set = (fun v x -> {x with fees = v})
+  }
+let back_rewards = {
+    get = (fun x -> x.rewards) ;
+    set = (fun v x -> {x with rewards = v})
+  }
+let back_storage_space_to_pay = {
+    get = (fun x -> x.storage_space_to_pay) ;
+    set = (fun v x -> {x with storage_space_to_pay = v})
+  }
+let back_allocated_contracts = {
+    get = (fun x -> x.allocated_contracts) ;
+    set = (fun v x -> {x with allocated_contracts = v})
+  }
+let back_origination_nonce = {
+    get = (fun x -> x.origination_nonce) ;
+    set = (fun v x -> {x with origination_nonce = v})
+  }
+let back_temporary_lazy_storage_ids = {
+    get = (fun x -> x.temporary_lazy_storage_ids) ;
+    set = (fun v x -> {x with temporary_lazy_storage_ids = v})
+  }
+let back_internal_nonce = {
+    get = (fun x -> x.internal_nonce) ;
+    set = (fun v x -> {x with internal_nonce = v})
+  }
+let back_internal_nonces_used = {
+    get = (fun x -> x.internal_nonces_used) ;
+    set = (fun v x -> {x with internal_nonces_used = v})
+  }
+let back_gas_counter_status = {
+    get = (fun x -> x.gas_counter_status) ;
+    set = (fun v x -> {x with gas_counter_status = v})
+  }
+
 (*
 
    The context is simply a record with two fields which
@@ -110,6 +191,23 @@ type back = {
 type t = {gas_counter : Gas_limit_repr.Arith.fp; back : back}
 
 type root = t
+
+(* lens for t and root *)
+
+let root_gas_counter = {
+    get = (fun x -> x.gas_counter) ;
+    set = fun v x -> { x with gas_counter = v }
+  }
+
+let root_back_lens = {
+    get = (fun x -> x.back) ;
+    set = fun v x -> { x with back = v }
+  }
+
+(*
+let _get_gas_counter_status =
+  fun x -> x |. (backL |-- gas_counter_statusL)
+*)
 
 (*
 
