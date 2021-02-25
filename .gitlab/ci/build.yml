@@ -64,7 +64,7 @@ build:
   script:
     - . ./scripts/version.sh
     - dune build @runtest_dune_template
-    - make all build-test
+    - make release build-test
     - opam clean
   cache:
     key: "$CI_COMMIT_REF_SLUG"
@@ -93,4 +93,3 @@ build_arm64:
       - install_root/bin/tezos-*
   tags:
     - arm64
-
