@@ -23,7 +23,8 @@
             ptime
             ezjsonm
             lwt
-            ipaddr))
+            ipaddr
+	    lens))
 
 (ocamllex point_parser)
 
