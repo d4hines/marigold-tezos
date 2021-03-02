@@ -67,6 +67,12 @@ val delegation :
   public_key_hash option ->
   Operation.packed tzresult Lwt.t
 
+val rollup_block_commitment :
+  Context.t -> Contract.t -> Operation.packed tzresult Lwt.t
+
+val rollup_tx_rejection :
+  Context.t -> Contract.t -> Operation.packed tzresult Lwt.t
+
 val revelation :
   ?fee:Tez.tez -> Context.t -> public_key -> Operation.packed tzresult Lwt.t
 

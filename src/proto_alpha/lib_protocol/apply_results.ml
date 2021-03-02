@@ -75,6 +75,9 @@ type _ successful_manager_operation_result =
       consumed_gas : Gas.Arith.fp;
     }
       -> Kind.delegation successful_manager_operation_result
+  | Rollup_result :
+      Rollup.result
+      -> Kind.rollup successful_manager_operation_result
 
 type packed_successful_manager_operation_result =
   | Successful_manager_result :
@@ -463,6 +466,10 @@ let equal_manager_kind :
   | (Kind.Delegation_manager_kind, Kind.Delegation_manager_kind) ->
       Some Eq
   | (Kind.Delegation_manager_kind, _) ->
+      None
+  | (Kind.Rollup_manager_kind, Kind.Rollup_manager_kind) ->
+      Some Eq
+  | (Kind.Rollup_manager_kind, _) ->
       None
 
 module Encoding = struct
@@ -1101,6 +1108,26 @@ let kind_equal :
           _ } ) ->
       Some Eq
   | (Manager_operation {operation = Delegation _; _}, _) ->
+      None
+  | ( Manager_operation {operation = Rollup _; _},
+      Manager_operation_result {operation_result = Applied (Rollup_result _); _}
+    ) ->
+      Some Eq
+  | ( Manager_operation {operation = Rollup _; _},
+      Manager_operation_result
+        {operation_result = Backtracked (Rollup_result _, _); _} ) ->
+      Some Eq
+  | ( Manager_operation {operation = Rollup _; _},
+      Manager_operation_result
+        { operation_result = Failed (Alpha_context.Kind.Rollup_manager_kind, _);
+          _ } ) ->
+      Some Eq
+  | ( Manager_operation {operation = Rollup _; _},
+      Manager_operation_result
+        {operation_result = Skipped Alpha_context.Kind.Rollup_manager_kind; _}
+    ) ->
+      Some Eq
+  | (Manager_operation {operation = Rollup _; _}, _) ->
       None
 
 let rec kind_equal_list :

@@ -802,6 +802,19 @@ let apply_manager_operation_content :
         Delegation_result
           {consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt},
         [] )
+  | Rollup content -> (
+      let dummy_result : Rollup.result =
+        {
+          consumed_gas = Gas.Arith.zero;
+          allocated_storage = Z.zero;
+          originated_contracts = [];
+        }
+      in
+      match content with
+      | Commit_block _ ->
+          return (ctxt, Rollup_result dummy_result, [])
+      | Reject_tx _ ->
+          return (ctxt, Rollup_result dummy_result, []) )
 
 type success_or_failure = Success of context | Failure
 

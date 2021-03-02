@@ -130,6 +130,21 @@ let pp_manager_operation_content (type kind) source internal pp_result ppf
         Signature.Public_key_hash.pp
         delegate
         pp_result
+        result
+  | Rollup rollup ->
+      let type_ =
+        match rollup with
+        | Commit_block () ->
+            "commitment"
+        | Reject_tx () ->
+            "rejection"
+      in
+      Format.fprintf
+        ppf
+        "@[<v 2>%s:@,Type: %s@,%a@]"
+        (if internal then "Internal Rollup" else "Rollup")
+        type_
+        pp_result
         result ) ;
   Format.fprintf ppf "@]"
 
@@ -322,6 +337,30 @@ let pp_manager_operation_contents_and_result ppf
           ppf
           "@[<v 0>This delegation was BACKTRACKED, its expected effects were \
            NOT applied.@]"
+    | Applied
+        (Rollup_result {consumed_gas; originated_contracts; allocated_storage})
+      ->
+        Format.fprintf ppf "This rollup was successfully applied" ;
+        Format.fprintf ppf "@,Consumed gas: %a" Gas.Arith.pp consumed_gas ;
+        ( match originated_contracts with
+        | [] ->
+            ()
+        | contracts ->
+            Format.fprintf
+              ppf
+              "@,@[<v 2>Originated contracts:@,%a@]"
+              (Format.pp_print_list Contract.pp)
+              contracts ) ;
+        if allocated_storage <> Z.zero then
+          Format.fprintf
+            ppf
+            "@,Paid storage size diff: %s bytes"
+            (Z.to_string allocated_storage)
+    | Backtracked (Rollup_result _, _) ->
+        Format.fprintf
+          ppf
+          "@[<v 0>This rollup was BACKTRACKED, its expected effects were NOT \
+           applied.@]"
     | Applied (Transaction_result _ as tx) ->
         Format.fprintf ppf "This transaction was successfully applied" ;
         pp_transaction_result tx

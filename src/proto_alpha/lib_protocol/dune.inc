@@ -47,6 +47,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    roll_repr.mli roll_repr.ml
    vote_repr.mli vote_repr.ml
    block_header_repr.mli block_header_repr.ml
+   rollup_repr.ml
    operation_repr.mli operation_repr.ml
    manager_repr.mli manager_repr.ml
    commitment_repr.mli commitment_repr.ml
@@ -87,6 +88,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    script_interpreter.mli script_interpreter.ml
    baking.mli baking.ml
    amendment.mli amendment.ml
+   rollup.ml
    apply_results.mli apply_results.ml
    apply.mli apply.ml
    services_registration.mli services_registration.ml
@@ -134,6 +136,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    roll_repr.mli roll_repr.ml
    vote_repr.mli vote_repr.ml
    block_header_repr.mli block_header_repr.ml
+   rollup_repr.ml
    operation_repr.mli operation_repr.ml
    manager_repr.mli manager_repr.ml
    commitment_repr.mli commitment_repr.ml
@@ -175,6 +178,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    baking.mli baking.ml
    amendment.mli amendment.ml
    apply_results.mli apply_results.ml
+   rollup.ml
    apply.mli apply.ml
    services_registration.mli services_registration.ml
    constants_services.mli constants_services.ml
@@ -221,6 +225,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    roll_repr.mli roll_repr.ml
    vote_repr.mli vote_repr.ml
    block_header_repr.mli block_header_repr.ml
+   rollup_repr.ml
    operation_repr.mli operation_repr.ml
    manager_repr.mli manager_repr.ml
    commitment_repr.mli commitment_repr.ml
@@ -262,6 +267,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    baking.mli baking.ml
    amendment.mli amendment.ml
    apply_results.mli apply_results.ml
+   rollup.ml 
    apply.mli apply.ml
    services_registration.mli services_registration.ml
    constants_services.mli constants_services.ml
@@ -328,6 +334,7 @@ include Tezos_raw_protocol_alpha.Main
    Roll_repr
    Vote_repr
    Block_header_repr
+   Rollup_repr
    Operation_repr
    Manager_repr
    Commitment_repr
@@ -369,6 +376,7 @@ include Tezos_raw_protocol_alpha.Main
    Baking
    Amendment
    Apply_results
+   Rollup
    Apply
    Services_registration
    Constants_services

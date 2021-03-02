@@ -50,6 +50,8 @@ module Kind : sig
 
   type delegation = Delegation_kind
 
+  type rollup = Rollup_kind
+
   type failing_noop = Failing_noop_kind
 
   type 'a manager =
@@ -57,6 +59,7 @@ module Kind : sig
     | Transaction_manager_kind : transaction manager
     | Origination_manager_kind : origination manager
     | Delegation_manager_kind : delegation manager
+    | Rollup_manager_kind : rollup manager
 end
 
 type raw = Operation.t = {shell : Operation.shell_header; proto : bytes}
@@ -150,6 +153,7 @@ and _ manager_operation =
   | Delegation :
       Signature.Public_key_hash.t option
       -> Kind.delegation manager_operation
+  | Rollup : Rollup_repr.operation_content -> Kind.rollup manager_operation
 
 and counter = Z.t
 

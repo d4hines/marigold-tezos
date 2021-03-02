@@ -48,6 +48,8 @@ val begin_construction :
   Block.t ->
   incremental tzresult Lwt.t
 
+val get_last_operation_result : incremental -> operation_receipt tzresult Lwt.t
+
 val add_operation :
   ?expect_apply_failure:(error list -> unit tzresult Lwt.t) ->
   ?expect_failure:(error list -> unit tzresult Lwt.t) ->

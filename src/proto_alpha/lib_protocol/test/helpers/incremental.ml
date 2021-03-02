@@ -147,6 +147,13 @@ let detect_script_failure :
   in
   fun {contents} -> detect_script_failure contents
 
+let get_last_operation_result ({rev_tickets; _} : incremental) =
+  match rev_tickets with
+  | [] ->
+      failwith "Tried to get last operation result in empty block"
+  | hd :: _ ->
+      return hd
+
 let add_operation ?expect_apply_failure ?expect_failure st op =
   let open Apply_results in
   apply_operation st.state op

@@ -31,6 +31,7 @@ __pycache__
 /tezos-snoop
 
 /src/proto_*/parameters/*-parameters.json
+/src/proto_*/lib_protocol/_build
 
 /scripts/opam-test-all.sh.DONE
 /scripts/create_genesis/src

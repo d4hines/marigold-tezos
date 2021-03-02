@@ -372,6 +372,8 @@ let estimated_gas_single (type kind)
         Ok consumed_gas
     | Applied (Delegation_result {consumed_gas}) ->
         Ok consumed_gas
+    | Applied (Rollup_result {consumed_gas; _}) ->
+        Ok consumed_gas
     | Skipped _ ->
         assert false
     | Backtracked (_, None) ->
@@ -405,6 +407,8 @@ let estimated_storage_single (type kind) origination_size
         Ok Z.zero
     | Applied (Delegation_result _) ->
         Ok Z.zero
+    | Applied (Rollup_result {allocated_storage; _}) ->
+        Ok allocated_storage
     | Skipped _ ->
         assert false
     | Backtracked (_, None) ->
@@ -450,6 +454,8 @@ let originated_contracts_single (type kind)
         Ok []
     | Applied (Delegation_result _) ->
         Ok []
+    | Applied (Rollup_result {originated_contracts; _}) ->
+        Ok originated_contracts
     | Skipped _ ->
         assert false
     | Backtracked (_, None) ->

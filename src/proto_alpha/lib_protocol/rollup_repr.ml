@@ -1,7 +1,7 @@
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
-(* Copyright (c) 2018 Dynamic Ledger Solutions, Inc. <contact@tezos.com>     *)
+(* Copyright (c) 2021 Gabriel Alfour <gabriel.alfour@gmail.com>              *)
 (*                                                                           *)
 (* Permission is hereby granted, free of charge, to any person obtaining a   *)
 (* copy of this software and associated documentation files (the "Software"),*)
@@ -23,42 +23,30 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** Testing
-    -------
-    Component:    Protocol
-    Invocation:   dune build @src/proto_alpha/lib_protocol/runtest
-    Subject:      Entrypoint
-*)
+type block_commitment = unit
 
-let () =
-  Alcotest_lwt.run
-    "protocol_alpha"
-    [ ("transfer", Test_transfer.tests);
-      ("origination", Test_origination.tests);
-      ("activation", Test_activation.tests);
-      ("revelation", Test_reveal.tests);
-      ("endorsement", Test_endorsement.tests);
-      ("double endorsement", Test_double_endorsement.tests);
-      ("double baking", Test_double_baking.tests);
-      ("seed", Test_seed.tests);
-      ("baking", Test_baking.tests);
-      ("delegation", Test_delegation.tests);
-      ("rolls", Test_rolls.tests);
-      ("combined", Test_combined_operations.tests);
-      ("qty", Test_qty.tests);
-      ("voting", Test_voting.tests);
-      ("interpretation", Test_interpretation.tests);
-      ("typechecking", Test_typechecking.tests);
-      ("gas properties", Test_gas_properties.tests);
-      ("fixed point computation", Test_fixed_point.tests);
-      ("gas levels", Test_gas_levels.tests);
-      ("saturation arithmetic", Test_saturation.tests);
-      ("gas cost functions", Test_gas_costs.tests);
-      ("lazy storage diff", Test_lazy_storage_diff.tests);
-      ("sapling", Test_sapling.tests);
-      ("helpers rpcs", Test_helpers_rpcs.tests);
-      ("script deserialize gas", Test_script_gas.tests);
-      ("failing_noop operation", Test_failing_noop.tests);
-      ("storage description", Test_storage.tests);
-      ("rollup", Test_rollup.tests) ]
-  |> Lwt_main.run
+type tx_rejection = unit
+
+type operation_content =
+  | Commit_block of block_commitment
+  | Reject_tx of tx_rejection
+
+let encoding : operation_content Data_encoding.t =
+  Data_encoding.(
+    let case_commit_block =
+      case
+        "commit_block"
+        (Tag 0)
+        unit
+        (function Commit_block () -> Some () | _ -> None)
+        (fun () -> Commit_block ())
+    in
+    let case_reject_tx =
+      case
+        "reject_tx"
+        (Tag 1)
+        unit
+        (function Reject_tx () -> Some () | _ -> None)
+        (fun () -> Reject_tx ())
+    in
+    union [case_commit_block; case_reject_tx])

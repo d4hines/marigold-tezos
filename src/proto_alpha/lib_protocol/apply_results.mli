@@ -126,6 +126,9 @@ and _ successful_manager_operation_result =
       consumed_gas : Gas.Arith.fp;
     }
       -> Kind.delegation successful_manager_operation_result
+  | Rollup_result :
+      Rollup.result
+      -> Kind.rollup successful_manager_operation_result
 
 and packed_successful_manager_operation_result =
   | Successful_manager_result :

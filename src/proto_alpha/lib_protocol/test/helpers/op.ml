@@ -26,6 +26,8 @@
 open Protocol
 open Alpha_context
 
+let (let*) x f = x >>=? f
+
 let sign ?(watermark = Signature.Generic_operation) sk ctxt contents =
   let branch = Context.branch ctxt in
   let unsigned =
@@ -336,6 +338,18 @@ let delegation ?fee ctxt source dst =
   >>=? fun sop ->
   Context.Contract.manager ctxt source
   >|=? fun account -> sign account.sk ctxt sop
+
+let rollup_block_commitment ctxt source =
+  let rollup = Rollup (Commit_block ()) in
+  let* sop = manager_operation ~source ctxt rollup in
+  let* account = Context.Contract.manager ctxt source in
+  return (sign account.sk ctxt sop)
+
+let rollup_tx_rejection ctxt source =
+  let rollup = Rollup (Reject_tx ()) in
+  let* sop = manager_operation ~source ctxt rollup in
+  let* account = Context.Contract.manager ctxt source in
+  return (sign account.sk ctxt sop)
 
 let activation ctxt (pkh : Signature.Public_key_hash.t) activation_code =
   ( match pkh with

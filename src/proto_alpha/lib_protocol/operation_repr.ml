@@ -52,11 +52,14 @@ module Kind = struct
 
   type failing_noop = Failing_noop_kind
 
+  type rollup = Rollup_kind
+
   type 'a manager =
     | Reveal_manager_kind : reveal manager
     | Transaction_manager_kind : transaction manager
     | Origination_manager_kind : origination manager
     | Delegation_manager_kind : delegation manager
+    | Rollup_manager_kind : rollup manager
 end
 
 type raw = Operation.t = {shell : Operation.shell_header; proto : bytes}
@@ -150,6 +153,7 @@ and _ manager_operation =
   | Delegation :
       Signature.Public_key_hash.t option
       -> Kind.delegation manager_operation
+  | Rollup : Rollup_repr.operation_content -> Kind.rollup manager_operation
 
 and counter = Z.t
 
@@ -163,6 +167,8 @@ let manager_kind : type kind. kind manager_operation -> kind Kind.manager =
       Kind.Origination_manager_kind
   | Delegation _ ->
       Kind.Delegation_manager_kind
+  | Rollup _ ->
+      Kind.Rollup_manager_kind
 
 type 'kind internal_operation = {
   source : Contract_repr.contract;
@@ -358,6 +364,17 @@ module Encoding = struct
           inj = (fun key -> Delegation key);
         }
 
+    let rollup_case =
+      MCase
+        {
+          tag = 4;
+          name = "rollup";
+          encoding = Rollup_repr.encoding;
+          select = (function Manager (Rollup _ as op) -> Some op | _ -> None);
+          proj = (function Rollup content -> content);
+          inj = (fun content -> Rollup content);
+        }
+
     let encoding =
       let make (MCase {tag; name; encoding; select; proj; inj}) =
         case
@@ -373,7 +390,8 @@ module Encoding = struct
         [ make reveal_case;
           make transaction_case;
           make origination_case;
-          make delegation_case ]
+          make delegation_case;
+          make rollup_case ]
   end
 
   type 'b case =
@@ -628,6 +646,8 @@ module Encoding = struct
   let delegation_case =
     make_manager_case 110 Manager_operations.delegation_case
 
+  let rollup_case = make_manager_case 111 Manager_operations.rollup_case
+
   let contents_encoding =
     let make (Case {tag; name; encoding; select; proj; inj}) =
       case
@@ -651,6 +671,7 @@ module Encoding = struct
            make transaction_case;
            make origination_case;
            make delegation_case;
+           make rollup_case;
            make failing_noop_case ]
 
   let contents_list_encoding =
@@ -834,6 +855,10 @@ let equal_manager_operation_kind :
   | (Delegation _, Delegation _) ->
       Some Eq
   | (Delegation _, _) ->
+      None
+  | (Rollup _, Rollup _) ->
+      Some Eq
+  | (Rollup _, _) ->
       None
 
 let equal_contents_kind :
