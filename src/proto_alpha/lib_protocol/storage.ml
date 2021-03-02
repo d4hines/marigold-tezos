@@ -1217,6 +1217,21 @@ module Ramp_up = struct
          end)
 end
 
+module Rollups = struct
+  module Raw_context =
+    Make_subcontext (Registered) (Raw_context)
+      (struct
+        let name = ["rollups"]
+      end)
+
+  module Global_counter =
+    Make_single_data_storage (Registered) (Raw_context)
+      (struct
+        let name = ["global_counter"]
+      end)
+      (Z)
+end
+
 module Pending_migration_balance_updates =
   Make_single_data_storage (Registered) (Raw_context)
     (struct

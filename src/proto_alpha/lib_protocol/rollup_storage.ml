@@ -23,10 +23,23 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Alpha_context
+let (let*) = (>>=?)
 
-type result = {
-  consumed_gas : Gas.Arith.fp;
-  allocated_storage : Z.t;
-  originated_contracts : Contract.t list;
-}
+type t = Raw_context.t
+
+let init c =
+  Storage.Rollups.Global_counter.init c Z.zero
+
+let increment_counter ctxt =
+  let* counter = Storage.Rollups.Global_counter.get ctxt in
+  let counter = Z.succ counter in
+  let* ctxt = Storage.Rollups.Global_counter.update ctxt counter in
+  return (counter , ctxt)
+
+(* Used for tests, debugging, etc. *)
+module Dev = struct
+
+  let get_counter ctxt =
+    Storage.Rollups.Global_counter.get ctxt
+
+end

@@ -372,8 +372,13 @@ let estimated_gas_single (type kind)
         Ok consumed_gas
     | Applied (Delegation_result {consumed_gas}) ->
         Ok consumed_gas
-    | Applied (Rollup_result {consumed_gas; _}) ->
-        Ok consumed_gas
+    | Applied (Rollup_result rollup_result) ->
+        Ok
+          ( match rollup_result with
+          | Rollup_creation_result {consumed_gas; _}
+          | Block_commitment_result {consumed_gas; _}
+          | Tx_rejection_result {consumed_gas; _} ->
+              consumed_gas )
     | Skipped _ ->
         assert false
     | Backtracked (_, None) ->
@@ -407,8 +412,13 @@ let estimated_storage_single (type kind) origination_size
         Ok Z.zero
     | Applied (Delegation_result _) ->
         Ok Z.zero
-    | Applied (Rollup_result {allocated_storage; _}) ->
-        Ok allocated_storage
+    | Applied (Rollup_result rollup_result) ->
+        Ok
+          ( match rollup_result with
+          | Rollup_creation_result {allocated_storage; _}
+          | Block_commitment_result {allocated_storage; _}
+          | Tx_rejection_result {allocated_storage; _} ->
+              allocated_storage )
     | Skipped _ ->
         assert false
     | Backtracked (_, None) ->
@@ -454,8 +464,13 @@ let originated_contracts_single (type kind)
         Ok []
     | Applied (Delegation_result _) ->
         Ok []
-    | Applied (Rollup_result {originated_contracts; _}) ->
-        Ok originated_contracts
+    | Applied (Rollup_result rollup_result) ->
+        Ok
+          ( match rollup_result with
+          | Rollup_creation_result {originated_contracts; _}
+          | Block_commitment_result {originated_contracts; _}
+          | Tx_rejection_result {originated_contracts; _} ->
+              originated_contracts )
     | Skipped _ ->
         assert false
     | Backtracked (_, None) ->

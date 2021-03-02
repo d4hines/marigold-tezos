@@ -1642,3 +1642,31 @@ module Parameters : sig
 
   val encoding : t Data_encoding.t
 end
+
+module Rollup : sig
+  include module type of Rollup_repr
+
+  type rollup_creation_result = {
+    consumed_gas : Gas.Arith.fp;
+    allocated_storage : Z.t;
+    originated_contracts : Contract.t list;
+    rollup_number : Z.t;
+  }
+
+  type dummy_result = {
+    consumed_gas : Gas.Arith.fp;
+    allocated_storage : Z.t;
+    originated_contracts : Contract.t list;
+  }
+
+  type result =
+    | Rollup_creation_result of rollup_creation_result
+    | Block_commitment_result of dummy_result
+    | Tx_rejection_result of dummy_result
+
+  val increment_counter : t -> (Z.t * t) tzresult Lwt.t
+
+  module Dev : sig
+    val get_counter : t -> Z.t tzresult Lwt.t
+  end
+end

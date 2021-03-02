@@ -483,6 +483,19 @@ module Ramp_up : sig
        and type t := Raw_context.t
 end
 
+module Rollups : sig
+  (** Storage from this submodule must only be accessed through the
+      module `Rollup_storage`. *)
+
+  module Global_counter : sig
+    val get : Raw_context.t -> Z.t tzresult Lwt.t
+
+    val update : Raw_context.t -> Z.t -> Raw_context.t tzresult Lwt.t
+
+    val init : Raw_context.t -> Z.t -> Raw_context.t tzresult Lwt.t
+  end
+end
+
 module Pending_migration_balance_updates :
   Single_data_storage
     with type value = Receipt_repr.balance_updates

@@ -247,6 +247,30 @@ module Global = struct
   let set_block_priority = Storage.Block_priority.update
 end
 
+module Rollup = struct
+  include Rollup_repr
+
+  type rollup_creation_result = {
+    consumed_gas : Gas.Arith.fp;
+    allocated_storage : Z.t;
+    originated_contracts : Contract.t list;
+    rollup_number : Z.t;
+  }
+
+  type dummy_result = {
+    consumed_gas : Gas.Arith.fp;
+    allocated_storage : Z.t;
+    originated_contracts : Contract.t list;
+  }
+
+  type result =
+    | Rollup_creation_result of rollup_creation_result
+    | Block_commitment_result of dummy_result
+    | Tx_rejection_result of dummy_result
+
+  include Rollup_storage
+end
+
 let prepare_first_block = Init_storage.prepare_first_block
 
 let prepare = Init_storage.prepare

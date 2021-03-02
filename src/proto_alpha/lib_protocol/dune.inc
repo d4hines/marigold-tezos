@@ -77,6 +77,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    commitment_storage.mli commitment_storage.ml
    init_storage.mli init_storage.ml
    fees_storage.mli fees_storage.ml
+   rollup_storage.ml
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
    script_typed_ir.ml
@@ -88,7 +89,6 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    script_interpreter.mli script_interpreter.ml
    baking.mli baking.ml
    amendment.mli amendment.ml
-   rollup.ml
    apply_results.mli apply_results.ml
    apply.mli apply.ml
    services_registration.mli services_registration.ml
@@ -166,6 +166,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    commitment_storage.mli commitment_storage.ml
    init_storage.mli init_storage.ml
    fees_storage.mli fees_storage.ml
+   rollup_storage.ml
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
    script_typed_ir.ml
@@ -178,7 +179,6 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    baking.mli baking.ml
    amendment.mli amendment.ml
    apply_results.mli apply_results.ml
-   rollup.ml
    apply.mli apply.ml
    services_registration.mli services_registration.ml
    constants_services.mli constants_services.ml
@@ -255,6 +255,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    commitment_storage.mli commitment_storage.ml
    init_storage.mli init_storage.ml
    fees_storage.mli fees_storage.ml
+   rollup_storage.ml
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
    script_typed_ir.ml
@@ -267,7 +268,6 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    baking.mli baking.ml
    amendment.mli amendment.ml
    apply_results.mli apply_results.ml
-   rollup.ml 
    apply.mli apply.ml
    services_registration.mli services_registration.ml
    constants_services.mli constants_services.ml
@@ -364,6 +364,7 @@ include Tezos_raw_protocol_alpha.Main
    Commitment_storage
    Init_storage
    Fees_storage
+   Rollup_storage
    Sapling_validator
    Alpha_context
    Script_typed_ir
@@ -376,7 +377,6 @@ include Tezos_raw_protocol_alpha.Main
    Baking
    Amendment
    Apply_results
-   Rollup
    Apply
    Services_registration
    Constants_services
@@ -488,6 +488,7 @@ include Tezos_raw_protocol_alpha.Main
    commitment_storage.mli commitment_storage.ml
    init_storage.mli init_storage.ml
    fees_storage.mli fees_storage.ml
+   rollup_storage.ml
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
    script_typed_ir.ml

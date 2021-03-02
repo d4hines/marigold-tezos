@@ -73,6 +73,8 @@ let prepare_first_block ctxt ~typecheck ~level ~timestamp ~fitness =
         ctxt
         ~start_position:(Level_storage.current ctxt).level_position
       >>=? fun ctxt ->
+      Rollup_storage.init ctxt
+      >>=? fun ctxt ->
       Storage.Block_priority.init ctxt 0
       >>=? fun ctxt -> Vote_storage.update_listings ctxt
   | Edo_008 ->

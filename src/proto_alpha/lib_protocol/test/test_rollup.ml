@@ -26,11 +26,13 @@
 let test msg f = Test_services.tztest msg `Quick f
 
 let (let*) x f = x >>=? f
+let (!*) i = Incremental.alpha_ctxt i
+let (let**) x f = x >>= fun x -> Lwt.return @@ Environment.wrap_tzresult x >>=? f
 
 (* let (let==) x f = x >>= f *)
 
-let assert_rollup : (_ -> unit tzresult Lwt.t) -> Protocol.operation_receipt -> _ = fun f ->
-  function
+let assert_rollup : Protocol.operation_receipt -> (_ -> unit tzresult Lwt.t) -> _ = fun x f ->
+  match x with
   | No_operation_metadata -> failwith "operation has no result"
   | Operation_metadata { contents  } -> (
       match contents with
@@ -50,6 +52,9 @@ let assert_rollup : (_ -> unit tzresult Lwt.t) -> Protocol.operation_receipt -> 
         )
     )
 
+let check condition msg =
+  if condition then return () else failwith msg
+
 let noop = test "noop" @@ fun () ->
   let* (b , bootstrap_contracts) = Context.init 10 in
   let bootstrap0 =
@@ -60,12 +65,33 @@ let noop = test "noop" @@ fun () ->
   let* rollup_block_commitment = Op.rollup_block_commitment (I i) bootstrap0 in
   let* i = Incremental.add_operation i rollup_block_commitment in
   let* result1 = Incremental.get_last_operation_result i in
-  let* () = assert_rollup (fun _ -> return ()) result1 in
+  let* () =
+    assert_rollup result1 @@ function
+    | Block_commitment_result _ -> return ()
+    | _ -> failwith "expected a block commitment result"
+  in
   
   let* rollup_tx_rejection = Op.rollup_tx_rejection (I i) bootstrap0 in
   let* i = Incremental.add_operation i rollup_tx_rejection in
   let* result2 = Incremental.get_last_operation_result i in
-  let* () = assert_rollup (fun _ -> return ()) result2 in
+  let* () =
+    assert_rollup result2 @@ function
+    | Tx_rejection_result _ -> return ()
+    | _ -> failwith "expected a tx rejection result"
+  in
+
+  let** counter = Protocol.Alpha_context.Rollup.Dev.get_counter !*i in
+  let* () = check Z.(counter = zero) "rollup counter didn't start at 0" in
+  let* rollup_creation = Op.rollup_creation (I i) bootstrap0 in
+  let* i = Incremental.add_operation i rollup_creation in
+  let* result3 = Incremental.get_last_operation_result i in
+  let* () =
+    assert_rollup result3 @@ function
+    | Rollup_creation_result _ -> return ()
+    | _ -> failwith "expected a rollup creation result"
+  in
+  let** counter = Protocol.Alpha_context.Rollup.Dev.get_counter !*i in
+  let* () = check Z.(counter = one) "rollup counter didn't increment to 1" in
   
   return ()
 

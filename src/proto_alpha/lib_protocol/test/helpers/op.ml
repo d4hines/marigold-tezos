@@ -351,6 +351,12 @@ let rollup_tx_rejection ctxt source =
   let* account = Context.Contract.manager ctxt source in
   return (sign account.sk ctxt sop)
 
+let rollup_creation ctxt source =
+  let rollup = Rollup (Create_rollup ()) in
+  let* sop = manager_operation ~source ctxt rollup in
+  let* account = Context.Contract.manager ctxt source in
+  return (sign account.sk ctxt sop)
+
 let activation ctxt (pkh : Signature.Public_key_hash.t) activation_code =
   ( match pkh with
   | Ed25519 edpkh ->

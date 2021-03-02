@@ -803,7 +803,7 @@ let apply_manager_operation_content :
           {consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt},
         [] )
   | Rollup content -> (
-      let dummy_result : Rollup.result =
+      let dummy_result : Rollup.dummy_result =
         {
           consumed_gas = Gas.Arith.zero;
           allocated_storage = Z.zero;
@@ -811,10 +811,23 @@ let apply_manager_operation_content :
         }
       in
       match content with
-      | Commit_block _ ->
-          return (ctxt, Rollup_result dummy_result, [])
-      | Reject_tx _ ->
-          return (ctxt, Rollup_result dummy_result, []) )
+      | Create_rollup () ->
+          Rollup.increment_counter ctxt
+          >>=? fun (counter, ctxt) ->
+          let result : Rollup.rollup_creation_result =
+            {
+              rollup_number = counter;
+              consumed_gas = Gas.Arith.zero;
+              allocated_storage = Z.zero;
+              originated_contracts = [];
+            }
+          in
+          return (ctxt, Rollup_result (Rollup_creation_result result), [])
+      | Commit_block () ->
+          return
+            (ctxt, Rollup_result (Block_commitment_result dummy_result), [])
+      | Reject_tx () ->
+          return (ctxt, Rollup_result (Tx_rejection_result dummy_result), []) )
 
 type success_or_failure = Success of context | Failure
 

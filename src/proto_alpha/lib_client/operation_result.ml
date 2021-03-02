@@ -131,21 +131,29 @@ let pp_manager_operation_content (type kind) source internal pp_result ppf
         delegate
         pp_result
         result
-  | Rollup rollup ->
-      let type_ =
-        match rollup with
-        | Commit_block () ->
-            "commitment"
-        | Reject_tx () ->
-            "rejection"
-      in
-      Format.fprintf
-        ppf
-        "@[<v 2>%s:@,Type: %s@,%a@]"
-        (if internal then "Internal Rollup" else "Rollup")
-        type_
-        pp_result
-        result ) ;
+  | Rollup rollup -> (
+    match rollup with
+    | Commit_block () ->
+        Format.fprintf
+          ppf
+          "@[<v 2>%s:@,Type: Commit block@,%a@]"
+          (if internal then "Internal Rollup" else "Rollup")
+          pp_result
+          result
+    | Reject_tx () ->
+        Format.fprintf
+          ppf
+          "@[<v 2>%s:@,Type: Reject transaction@,%a@]"
+          (if internal then "Internal Rollup" else "Rollup")
+          pp_result
+          result
+    | Create_rollup () ->
+        Format.fprintf
+          ppf
+          "@[<v 2>%s:@,Type: Create rollup@,%a@]"
+          (if internal then "Internal Rollup" else "Rollup")
+          pp_result
+          result ) ) ;
   Format.fprintf ppf "@]"
 
 let pp_balance_updates ppf = function
@@ -337,10 +345,29 @@ let pp_manager_operation_contents_and_result ppf
           ppf
           "@[<v 0>This delegation was BACKTRACKED, its expected effects were \
            NOT applied.@]"
-    | Applied
-        (Rollup_result {consumed_gas; originated_contracts; allocated_storage})
-      ->
-        Format.fprintf ppf "This rollup was successfully applied" ;
+    | Applied (Rollup_result rollup_result) ->
+        Format.fprintf ppf "This rollup operation was successfully applied" ;
+        let (consumed_gas, originated_contracts, allocated_storage) =
+          match rollup_result with
+          | Rollup_creation_result
+              { consumed_gas;
+                originated_contracts;
+                allocated_storage;
+                rollup_number } ->
+              Format.fprintf
+                ppf
+                "@, Created rollup #%s"
+                (Z.to_string rollup_number) ;
+              (consumed_gas, originated_contracts, allocated_storage)
+          | Block_commitment_result
+              {consumed_gas; originated_contracts; allocated_storage} ->
+              Format.fprintf ppf "@, Committed rollup block" ;
+              (consumed_gas, originated_contracts, allocated_storage)
+          | Tx_rejection_result
+              {consumed_gas; originated_contracts; allocated_storage} ->
+              Format.fprintf ppf "@, Rejected rollup tx" ;
+              (consumed_gas, originated_contracts, allocated_storage)
+        in
         Format.fprintf ppf "@,Consumed gas: %a" Gas.Arith.pp consumed_gas ;
         ( match originated_contracts with
         | [] ->

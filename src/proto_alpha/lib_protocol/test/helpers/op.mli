@@ -73,6 +73,9 @@ val rollup_block_commitment :
 val rollup_tx_rejection :
   Context.t -> Contract.t -> Operation.packed tzresult Lwt.t
 
+val rollup_creation :
+  Context.t -> Contract.t -> Operation.packed tzresult Lwt.t
+
 val revelation :
   ?fee:Tez.tez -> Context.t -> public_key -> Operation.packed tzresult Lwt.t
 

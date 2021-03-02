@@ -23,11 +23,14 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+type rollup_creation = unit
+
 type block_commitment = unit
 
 type tx_rejection = unit
 
 type operation_content =
+  | Create_rollup of rollup_creation
   | Commit_block of block_commitment
   | Reject_tx of tx_rejection
 
@@ -49,4 +52,12 @@ let encoding : operation_content Data_encoding.t =
         (function Reject_tx () -> Some () | _ -> None)
         (fun () -> Reject_tx ())
     in
-    union [case_commit_block; case_reject_tx])
+    let case_create_rollup =
+      case
+        "create_rollup"
+        (Tag 2)
+        unit
+        (function Create_rollup () -> Some () | _ -> None)
+        (fun () -> Create_rollup ())
+    in
+    union [case_commit_block; case_reject_tx; case_create_rollup])
