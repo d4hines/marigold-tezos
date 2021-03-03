@@ -1645,7 +1645,7 @@ end
 
 module Rollup : sig
   include module type of Rollup_repr
-
+  
   type rollup_creation_result = {
     consumed_gas : Gas.Arith.fp;
     allocated_storage : Z.t;
@@ -1664,9 +1664,6 @@ module Rollup : sig
     | Block_commitment_result of dummy_result
     | Tx_rejection_result of dummy_result
 
-  val increment_counter : t -> (Z.t * t) tzresult Lwt.t
+  include Rollup_storage.TYPE with type t := t
 
-  module Dev : sig
-    val get_counter : t -> Z.t tzresult Lwt.t
-  end
 end

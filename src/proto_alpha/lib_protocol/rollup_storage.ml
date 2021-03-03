@@ -25,6 +25,7 @@
 
 let (let*) = (>>=?)
 
+
 type t = Raw_context.t
 
 let init c =
@@ -41,5 +42,18 @@ module Dev = struct
 
   let get_counter ctxt =
     Storage.Rollups.Global_counter.get ctxt
+
+end
+
+module type TYPE = sig
+
+  type t
+
+  val init : t -> t tzresult Lwt.t
+  val increment_counter : t -> (Z.t * t) tzresult Lwt.t
+
+  module Dev : sig
+    val get_counter : t -> Z.t tzresult Lwt.t
+  end
 
 end
