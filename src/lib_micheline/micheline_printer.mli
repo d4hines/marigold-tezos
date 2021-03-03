@@ -32,6 +32,7 @@ type location = {comment : string option}
 type node = (location, string) Micheline.node
 
 val print_expr : Format.formatter -> (location, string) Micheline.node -> unit
+[@@ocaml.toplevel_printer]
 
 val print_expr_unwrapped :
   Format.formatter -> (location, string) Micheline.node -> unit

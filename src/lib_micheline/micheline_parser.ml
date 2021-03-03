@@ -186,7 +186,7 @@ let tokenize source =
   in
   let allowed_ident_char c =
     match uchar_to_char c with
-    | Some ('a' .. 'z' | 'A' .. 'Z' | '_' | '0' .. '9') ->
+    | Some ('a' .. 'z' | 'A' .. 'Z' | '_' | '0' .. '9' | '\'') ->
         true
     | Some _ | None ->
         false
@@ -204,7 +204,7 @@ let tokenize source =
         List.rev acc
     | (`Uchar c, start) -> (
       match uchar_to_char c with
-      | Some ('a' .. 'z' | 'A' .. 'Z') ->
+      | Some ('a' .. 'z' | 'A' .. 'Z' | '\'') ->
           ident acc start (fun s _ -> Ident s)
       | Some ('@' | ':' | '$' | '&' | '%' | '!' | '?') ->
           annot acc start (fun str stop ->

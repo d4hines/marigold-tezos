@@ -152,6 +152,8 @@ let test_tokenize_basic () =
   (* Ident *)
   assert_tokenize ~loc:__LOC__ "string" [Ident "string"]
   >>=? fun () ->
+  assert_tokenize ~loc:__LOC__ "'string" [Ident "'string"]
+  >>=? fun () ->
   (* Annotation *)
   assert_tokenize ~loc:__LOC__ "@my_pair" [Annot "@my_pair"]
   >>=? fun () ->
