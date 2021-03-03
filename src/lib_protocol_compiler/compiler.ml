@@ -38,9 +38,12 @@ let preloaded_cmis : Persistent_env.Persistent_signature.t String.Hashtbl.t =
 
 (* Set hook *)
 let () =
+  let default_load = !Persistent_env.Persistent_signature.load in
   Persistent_env.Persistent_signature.load :=
     fun ~unit_name ->
-      String.Hashtbl.find preloaded_cmis (String.capitalize_ascii unit_name)
+      (match String.Hashtbl.find preloaded_cmis (String.capitalize_ascii unit_name) with
+        | None -> default_load ~unit_name
+        | Some v -> Some v)
 
 let load_cmi_from_file file =
   String.Hashtbl.add

@@ -1,0 +1,22 @@
+{
+    name fa12_approve;
+    input
+     { contract
+         { address KT1WKgBhVYaHCHxDydPC3AvcYV5QEX4pa1iL ;
+           code "/home/d4hines/repos/tezos/src/proto_alpha/lib_protocol/benchmark/contracts/fa1.2.tz" ;
+           storage (Pair {Elt "tz1TTAuzs8A1Mm4aDncHexodqNoAcKd7JRfg" (Pair {} 100000000000000)} 100000000000000) }
+         };
+  operations
+    { transfer
+        { sender tz1TTAuzs8A1Mm4aDncHexodqNoAcKd7JRfg; 
+          recipient KT1WKgBhVYaHCHxDydPC3AvcYV5QEX4pa1iL;
+          entrypoint "approve";
+          parameters (Left (Left (Left (Pair "tz1TAN9oBiGe7RoAReMZUi4c1CfvDMjbrz3x" 100)))) } };
+  output
+    { contract
+        { address KT123abc;
+          storage (Pair (Pair 0
+            { Elt "tz1TTAuzs8A1Mm4aDncHexodqNoAcKd7JRfg"
+                  (Some (Pair { Elt "tz1TAN9oBiGe7RoAReMZUi4c1CfvDMjbrz3x" 100 } 100000000000000)) })
+      100000000000000) } }
+}

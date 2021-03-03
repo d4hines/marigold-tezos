@@ -51,27 +51,24 @@ let make_contract :
  fun ~script ~originator ~amount ~b ->
   let amount = Util.of_mutez amount in
   let x =
-    Incremental.begin_construction b
-    >>=? fun b ->
+    Incremental.begin_construction b >>=? fun b ->
     Op.origination (I b) originator ~script ~credit:amount
     >>=? fun (op, originated_contract) ->
-    Incremental.add_operation b op
-    >>=? fun b ->
-    Incremental.finalize_block b
-    >>=? fun b -> Error_monad.return (b, originated_contract)
+    Incremental.add_operation b op >>=? fun b ->
+    Incremental.finalize_block b >>=? fun b ->
+    Error_monad.return (b, originated_contract)
   in
   x
 
 let get_next_context b =
   force_global_lwt
-    ( Incremental.begin_construction b
-    >>=? fun b -> return (Incremental.alpha_ctxt b) )
+    ( Incremental.begin_construction b >>=? fun b ->
+      return (Incremental.alpha_ctxt b) )
 
 let do_transaction block ~sender ~recipient ~amount ~entrypoint ~parameters =
   let parameters = parameters |> Expr.from_string in
   let parameters = lazy_expr parameters in
-  Incremental.begin_construction block
-  >>=? fun b ->
+  Incremental.begin_construction block >>=? fun b ->
   Op.transaction
     (I b)
     ~parameters
@@ -92,21 +89,21 @@ let type_script context script =
   >|= Environment.wrap_tzresult |> force_global_lwt
 
 module Transfer : sig
-  type t = {
-    sender : Contract.t;
-    recipient : Contract.t;
-    entrypoint : String.t;
-    amount : Int.t;
-    parameters : String.t;
-  }
+  type t =
+    { sender : Contract.t;
+      recipient : Contract.t;
+      entrypoint : String.t;
+      amount : Int.t;
+      parameters : String.t
+    }
 end = struct
-  type t = {
-    sender : Contract.t;
-    recipient : Contract.t;
-    entrypoint : String.t;
-    amount : Int.t;
-    parameters : String.t;
-  }
+  type t =
+    { sender : Contract.t;
+      recipient : Contract.t;
+      entrypoint : string;
+      amount : int;
+      parameters : string
+    }
 end
 
 type goal = (unit -> string Lwt.t) * (unit -> unit Lwt.t)
@@ -117,15 +114,16 @@ end = struct
   type t = goal
 end
 
+type origination =
+  { originator : Contract.t;
+    amount : Int.t;
+    contract : String.t;
+    initial_storage : String.t
+  }
+
 (* let return =  *)
 type 'a operation =
-  | Origination : {
-      originator : Contract.t;
-      amount : Int.t;
-      contract : String.t;
-      initial_storage : String.t;
-    }
-      -> Contract.t operation
+  | Origination : origination -> Contract.t operation
   | Transfer : Transfer.t -> Transfer.t operation
   | Pending : ('a operation * (Block.t * 'a -> 'b operation)) -> 'b operation
   (* | Finally : Finally.t -> (Block.t * Finally.t) operation *)
@@ -134,14 +132,10 @@ type 'a operation =
 let op_to_string : type a. a operation -> string =
  fun op ->
   match op with
-  | Transfer _ ->
-      "Transfer"
-  | Origination _ ->
-      "Origination"
-  | Pending _ ->
-      "Pending"
-  | Return _ ->
-      "Return"
+  | Transfer _ -> "Transfer"
+  | Origination _ -> "Origination"
+  | Pending _ -> "Pending"
+  | Return _ -> "Return"
 
 let return v = Return v
 
@@ -158,14 +152,14 @@ let ( >>| ) = map
 let rec run : type a. a operation -> Block.t -> (Block.t * a) tzresult Lwt.t =
  fun op b ->
   match op with
-  | Origination {originator; amount; contract; initial_storage} ->
+  | Origination { originator; amount; contract; initial_storage } ->
       let contract = contract |> Expr.from_string |> lazy_expr in
       let storage = initial_storage |> Expr.from_string |> lazy_expr in
-      let script = Script.{code = contract; storage} in
+      let script = Script.{ code = contract; storage } in
       let x =
         make_contract ~script ~originator ~amount ~b |> force_global_lwt
       in
-      Error_monad.return x
+      Error_monad.return  x
   | Transfer x ->
       let b =
         do_transaction
@@ -178,13 +172,14 @@ let rec run : type a. a operation -> Block.t -> (Block.t * a) tzresult Lwt.t =
         |> force_global_lwt
       in
       Error_monad.return (b, x)
-  | Pending (op, f) ->
-      run op b >>=? fun (b, x) -> run (f (b, x)) b
-  | Return v ->
-      Error_monad.return (b, v)
+  | Pending (op, f) -> run op b >>=? fun (b, x) -> run (f (b, x)) b
+  | Return v -> Error_monad.return (b, v)
 
 let get_transfer : Transfer.t operation -> Transfer.t =
- fun op -> match op with Transfer x -> x | _ -> assert false
+ fun op ->
+  match op with
+  | Transfer x -> x
+  | _ -> assert false
 
 let finally :
     type a.
@@ -193,12 +188,11 @@ let finally :
   let (b, x) = run op b |> force_global_lwt in
   let transfer = f (b, x) |> get_transfer in
   let step_constants : Script_interpreter.step_constants =
-    {
-      source = transfer.sender;
+    { source = transfer.sender;
       payer = transfer.sender;
       self = transfer.recipient;
       amount = Util.of_mutez transfer.amount;
-      chain_id = Chain_id.zero;
+      chain_id = Chain_id.zero
     }
   in
   let context = get_next_context b in
@@ -207,7 +201,7 @@ let finally :
     >|= Environment.wrap_tzresult |> force_global_lwt
   in
   let script = script |> Option.get in
-  let ( Ex_script {code; arg_type; storage; root_name = _; storage_type},
+  let ( Ex_script { code; arg_type; storage; root_name = _; storage_type },
         context ) =
     type_script context script
   in
@@ -223,13 +217,7 @@ let finally :
   in
   let stack = ((arg, storage), ()) in
   let eval_script () =
-    Script_interpreter.step
-      None
-      context
-      step_constants
-      code
-      (fst stack)
-      ((), ())
+    Script_interpreter.step None context step_constants code (fst stack) ((), ())
   in
   let run_script () =
     let (context, script) =
@@ -237,7 +225,7 @@ let finally :
       >|= Environment.wrap_tzresult |> force_global_lwt
     in
     let script = script |> Option.get in
-    let (Ex_script {code; arg_type; storage; root_name = _; _}, context) =
+    let (Ex_script { code; arg_type; storage; root_name = _; _ }, context) =
       type_script context script
     in
     let (Lam (code, _)) = code in
@@ -262,8 +250,7 @@ let finally :
   in
   let eval_script () =
     let output =
-      eval_script ()
-      >>=? fun ((_, storage), _, ctx) ->
+      eval_script () >>=? fun ((_, storage), _, ctx) ->
       Script_ir_translator.unparse_data ctx Readable storage_type storage
       >>=? fun (micheline, _) ->
       Micheline.strip_locations micheline

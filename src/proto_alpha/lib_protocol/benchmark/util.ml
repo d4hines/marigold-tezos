@@ -31,16 +31,15 @@ module Option = struct
 
   let get opt =
     match opt with
-    | Some x ->
-        x
-    | None ->
-        raise @@ Invalid_argument "Option.get called on None"
+    | Some x -> x
+    | None -> raise @@ Invalid_argument "Option.get called on None"
 end
 
 let read_file filename =
   let ch = open_in filename in
   let s = really_input_string ch (in_channel_length ch) in
-  close_in ch ; s
+  close_in ch ;
+  s
 
 let write_file filename str =
   let ch = open_out_gen [Open_creat; Open_wronly] 0o666 filename in
@@ -51,8 +50,7 @@ let write_file filename str =
 
 let force x =
   match x with
-  | Ok x ->
-      x
+  | Ok x -> x
   | Error es ->
       Format.printf "Errors :\n" ;
       List.iter (Format.printf "- %a\n" Protocol.Environment.Error_monad.pp) es ;
@@ -60,8 +58,7 @@ let force x =
 
 let force_global x =
   match x with
-  | Ok x ->
-      x
+  | Ok x -> x
   | Error es ->
       Format.printf "Errors :\n" ;
       List.iter (Format.printf "- %a\n" pp) es ;
@@ -70,6 +67,13 @@ let force_global x =
 let force_global_lwt x = force_global (Lwt_main.run x)
 
 let force_lwt x = force (Lwt_main.run x)
+
+let force_std x =
+  match x with
+  | Ok x -> x
+  | Error e ->
+      Format.printf "%a" pp e ;
+      raise (Failure "force_std")
 
 (* let ( >>=?? ) x k = x >>= fun x -> Lwt.return (Environment.wrap_tzerror x) >>=? k *)
 
@@ -84,3 +88,10 @@ let micheline_canonical_to_string c =
     "%a"
     Micheline_printer.print_expr
     (Micheline_printer.printable Michelson_v1_primitives.string_of_prim c)
+
+let pp_micheline_string fmt x =
+  Micheline_printer.print_expr fmt (Micheline_printer.printable (fun x -> x) x)
+
+let micheline_canonical_string_to_string c = Fmt.str "%a" pp_micheline_string c
+
+let first x = x |> List.hd |> Option.get
