@@ -22,8 +22,22 @@
 (* DEALINGS IN THE SOFTWARE.                                                 *)
 (*                                                                           *)
 (*****************************************************************************)
+
+(*
+  [TODO] temprarily open Lens
+  should be removed after adding Lens into protocol environment.
+ *)
+
 open Lens
-(*open Lens.Infix*)
+
+let[@inline] (|>|) l1 l2 = compose l2 l1
+
+let[@inline] lensappRes f lens blob =
+  (* f (blob |. lens) >|? (fun x -> (lens ^= x) @@ blob) *)
+  f (lens.get blob) >|? (fun x -> lens.set x blob)
+
+let[@inline] lensappLwt f lens blob =
+  f (lens.get blob) >|= (fun x -> lens.set x blob)
 
 module Int_set = Set.Make (Compare.Int)
 
@@ -103,81 +117,81 @@ type back = {
   gas_counter_status : gas_counter_status;
 }
 
-(* lenses for back *)
+(* internal lenses for back *)
 
-let back_context = {
+let _lens_back_context = {
     get = (fun x -> x.context) ;
     set = (fun v x -> {x with context = v})
   }
-let back_constants = {
+let _lens_back_constants = {
     get = (fun x -> x.constants) ;
     set = (fun v x -> {x with constants = v})
   }
-let back_first_level = {
+let _lens_back_first_level = {
     get = (fun x -> x.first_level) ;
     set = (fun v x -> {x with first_level = v})
   }
-let back_level = {
+let _lens_back_level = {
     get = (fun x -> x.level) ;
     set = (fun v x -> {x with level = v})
   }
-let back_predecessor_timestamp = {
+let _lens_back_predecessor_timestamp = {
     get = (fun x -> x.predecessor_timestamp) ;
     set = (fun v x -> {x with predecessor_timestamp = v})
   }
-let back_timestamp = {
+let _lens_back_timestamp = {
     get = (fun x -> x.timestamp) ;
     set = (fun v x -> {x with timestamp = v})
   }
-let back_fitness = {
+let _lens_back_fitness = {
     get = (fun x -> x.fitness) ;
     set = (fun v x -> {x with fitness = v})
   }
-let back_deposits = {
+let _lens_back_deposits = {
     get = (fun x -> x.deposits) ;
     set = (fun v x -> {x with deposits = v})
   }
-let back_included_endorsements = {
+let _lens_back_included_endorsements = {
     get = (fun x -> x.included_endorsements) ;
     set = (fun v x -> {x with included_endorsements = v})
   }
-let back_allowed_endorsements = {
+let _lens_back_allowed_endorsements = {
     get = (fun x -> x.allowed_endorsements) ;
     set = (fun v x -> {x with allowed_endorsements = v})
   }
-let back_fees = {
+let _lens_back_fees = {
     get = (fun x -> x.fees) ;
     set = (fun v x -> {x with fees = v})
   }
-let back_rewards = {
+let _lens_back_rewards = {
     get = (fun x -> x.rewards) ;
     set = (fun v x -> {x with rewards = v})
   }
-let back_storage_space_to_pay = {
+let _lens_back_storage_space_to_pay = {
     get = (fun x -> x.storage_space_to_pay) ;
     set = (fun v x -> {x with storage_space_to_pay = v})
   }
-let back_allocated_contracts = {
+let _lens_back_allocated_contracts = {
     get = (fun x -> x.allocated_contracts) ;
     set = (fun v x -> {x with allocated_contracts = v})
   }
-let back_origination_nonce = {
+let _lens_back_origination_nonce = {
     get = (fun x -> x.origination_nonce) ;
     set = (fun v x -> {x with origination_nonce = v})
   }
-let back_temporary_lazy_storage_ids = {
+let _lens_back_temporary_lazy_storage_ids = {
     get = (fun x -> x.temporary_lazy_storage_ids) ;
     set = (fun v x -> {x with temporary_lazy_storage_ids = v})
   }
-let back_internal_nonce = {
+let _lens_back_internal_nonce = {
     get = (fun x -> x.internal_nonce) ;
     set = (fun v x -> {x with internal_nonce = v})
   }
-let back_internal_nonces_used = {
+let _lens_back_internal_nonces_used = {
     get = (fun x -> x.internal_nonces_used) ;
     set = (fun v x -> {x with internal_nonces_used = v})
   }
-let back_gas_counter_status = {
+let _lens_back_gas_counter_status = {
     get = (fun x -> x.gas_counter_status) ;
     set = (fun v x -> {x with gas_counter_status = v})
   }
@@ -192,22 +206,17 @@ type t = {gas_counter : Gas_limit_repr.Arith.fp; back : back}
 
 type root = t
 
-(* lens for t and root *)
+(* internal lenses for root *)
 
-let root_gas_counter = {
+let _lens_root_gas_counter = {
     get = (fun x -> x.gas_counter) ;
     set = fun v x -> { x with gas_counter = v }
   }
 
-let root_back_lens = {
+let _lens_root_back = {
     get = (fun x -> x.back) ;
     set = fun v x -> { x with back = v }
   }
-
-(*
-let _get_gas_counter_status =
-  fun x -> x |. (backL |-- gas_counter_statusL)
-*)
 
 (*
 
@@ -219,101 +228,74 @@ let _get_gas_counter_status =
    components.
 
 *)
-let[@inline] context ctxt = ctxt.back.context
 
-let[@inline] current_level ctxt = ctxt.back.level
+(* context accessing lens *)
 
-let[@inline] storage_space_to_pay ctxt = ctxt.back.storage_space_to_pay
+(* let lens_back = _lens_root_back *)
 
-let[@inline] predecessor_timestamp ctxt = ctxt.back.predecessor_timestamp
+let lens_gas_counter = _lens_root_gas_counter
 
-let[@inline] current_timestamp ctxt = ctxt.back.timestamp
+let lens_context = _lens_root_back |>| _lens_back_context
 
-let[@inline] current_fitness ctxt = ctxt.back.fitness
+let lens_constants = _lens_root_back |>| _lens_back_constants
 
-let[@inline] first_level ctxt = ctxt.back.first_level
+let lens_first_level = _lens_root_back |>| _lens_back_first_level
 
-let[@inline] constants ctxt = ctxt.back.constants
+let lens_level = _lens_root_back |>| _lens_back_level
 
-let[@inline] recover ctxt = ctxt.back.context
+let lens_predecessor_timestamp =
+  _lens_root_back |>| _lens_back_predecessor_timestamp
 
-let[@inline] fees ctxt = ctxt.back.fees
+let lens_timestamp = _lens_root_back |>| _lens_back_timestamp
 
-let[@inline] origination_nonce ctxt = ctxt.back.origination_nonce
+let lens_fitness = _lens_root_back |>| _lens_back_fitness
 
-let[@inline] deposits ctxt = ctxt.back.deposits
+let lens_deposits = _lens_root_back |>| _lens_back_deposits
 
-let[@inline] allowed_endorsements ctxt = ctxt.back.allowed_endorsements
+let lens_included_endorsements =
+  _lens_root_back |>| _lens_back_included_endorsements
 
-let[@inline] included_endorsements ctxt = ctxt.back.included_endorsements
+let lens_allowed_endorsements =
+  _lens_root_back |>| _lens_back_allowed_endorsements
 
-let[@inline] internal_nonce ctxt = ctxt.back.internal_nonce
+let lens_fees = _lens_root_back |>| _lens_back_fees
 
-let[@inline] internal_nonces_used ctxt = ctxt.back.internal_nonces_used
+let lens_rewards = _lens_root_back |>| _lens_back_rewards
 
-let[@inline] gas_counter_status ctxt = ctxt.back.gas_counter_status
+let lens_storage_space_to_pay =
+  _lens_root_back |>| _lens_back_storage_space_to_pay
 
-let[@inline] rewards ctxt = ctxt.back.rewards
+let lens_allocated_contracts =
+  _lens_root_back |>| _lens_back_allocated_contracts
 
-let[@inline] allocated_contracts ctxt = ctxt.back.allocated_contracts
+let lens_origination_nonce = _lens_root_back |>| _lens_back_origination_nonce
 
-let[@inline] temporary_lazy_storage_ids ctxt =
-  ctxt.back.temporary_lazy_storage_ids
+let lens_temporary_lazy_storage_ids =
+  _lens_root_back |>| _lens_back_temporary_lazy_storage_ids
 
-let[@inline] gas_counter ctxt = ctxt.gas_counter
+let lens_internal_nonce = _lens_root_back |>| _lens_back_internal_nonce
 
-let[@inline] update_gas_counter ctxt gas_counter = {ctxt with gas_counter}
+let lens_internal_nonces_used =
+  _lens_root_back |>| _lens_back_internal_nonces_used
 
-let[@inline] update_back ctxt back = {ctxt with back}
+let lens_gas_counter_status = _lens_root_back |>| _lens_back_gas_counter_status
 
-let[@inline] update_gas_counter_status ctxt gas_counter_status =
-  update_back ctxt {ctxt.back with gas_counter_status}
+(* explicit accessing functions *)
 
-let[@inline] update_context ctxt context =
-  update_back ctxt {ctxt.back with context}
-
-let[@inline] update_constants ctxt constants =
-  update_back ctxt {ctxt.back with constants}
-
-let[@inline] update_fitness ctxt fitness =
-  update_back ctxt {ctxt.back with fitness}
-
-let[@inline] update_deposits ctxt deposits =
-  update_back ctxt {ctxt.back with deposits}
-
-let[@inline] update_allowed_endorsements ctxt allowed_endorsements =
-  update_back ctxt {ctxt.back with allowed_endorsements}
-
-let[@inline] update_rewards ctxt rewards =
-  update_back ctxt {ctxt.back with rewards}
-
-let[@inline] update_storage_space_to_pay ctxt storage_space_to_pay =
-  update_back ctxt {ctxt.back with storage_space_to_pay}
-
-let[@inline] update_allocated_contracts ctxt allocated_contracts =
-  update_back ctxt {ctxt.back with allocated_contracts}
-
-let[@inline] update_origination_nonce ctxt origination_nonce =
-  update_back ctxt {ctxt.back with origination_nonce}
-
-let[@inline] update_internal_nonce ctxt internal_nonce =
-  update_back ctxt {ctxt.back with internal_nonce}
-
-let[@inline] update_internal_nonces_used ctxt internal_nonces_used =
-  update_back ctxt {ctxt.back with internal_nonces_used}
-
-let[@inline] update_included_endorsements ctxt included_endorsements =
-  update_back ctxt {ctxt.back with included_endorsements}
-
-let[@inline] update_fees ctxt fees = update_back ctxt {ctxt.back with fees}
-
-let[@inline] update_temporary_lazy_storage_ids ctxt temporary_lazy_storage_ids
-    =
-  update_back ctxt {ctxt.back with temporary_lazy_storage_ids}
+let included_endorsements = lens_included_endorsements.get
+let allowed_endorsements = lens_allowed_endorsements.get
+let first_level = lens_first_level.get
+let constants = lens_constants.get
+let current_fitness = lens_fitness.get
+let current_timestamp = lens_timestamp.get
+let predecessor_timestamp = lens_predecessor_timestamp.get
+let current_level = lens_level.get
+let recover = lens_context.get
 
 let record_endorsement ctxt k =
   match
-    Signature.Public_key_hash.Map.find_opt k (allowed_endorsements ctxt)
+    Signature.Public_key_hash.Map.find_opt k
+      (lens_allowed_endorsements.get ctxt)
   with
   | None ->
       assert false
@@ -321,22 +303,21 @@ let record_endorsement ctxt k =
       assert false (* right already used *)
   | Some (d, s, false) ->
       let ctxt =
-        update_included_endorsements
-          ctxt
-          (included_endorsements ctxt + List.length s)
+        modify lens_included_endorsements (fun x -> x + List.length s) ctxt
       in
-      update_allowed_endorsements
-        ctxt
+      lens_allowed_endorsements.set
         (Signature.Public_key_hash.Map.add
            k
            (d, s, true)
-           (allowed_endorsements ctxt))
+           (lens_allowed_endorsements.get ctxt))
+        ctxt
 
 let init_endorsements ctxt allowed_endorsements' =
   if Signature.Public_key_hash.Map.is_empty allowed_endorsements' then
     assert false (* can't initialize to empty *)
-  else if Signature.Public_key_hash.Map.is_empty (allowed_endorsements ctxt)
-  then update_allowed_endorsements ctxt allowed_endorsements'
+  else if Signature.Public_key_hash.Map.is_empty
+            (lens_allowed_endorsements.get ctxt)
+  then lens_allowed_endorsements.set allowed_endorsements' ctxt
   else assert false
 
 type error += Too_many_internal_operations (* `Permanent *)
@@ -378,34 +359,35 @@ let () =
     (fun () -> Block_quota_exceeded)
 
 let fresh_internal_nonce ctxt =
-  if Compare.Int.(internal_nonce ctxt >= 65_535) then
+  let inonce = lens_internal_nonce.get ctxt in
+  if Compare.Int.(inonce >= 65_535) then
     error Too_many_internal_operations
   else
-    ok
-      ( update_internal_nonce ctxt (internal_nonce ctxt + 1),
-        internal_nonce ctxt )
+    ok (modify lens_internal_nonce (fun x -> x + 1) ctxt, inonce)
 
 let reset_internal_nonce ctxt =
-  let ctxt = update_internal_nonce ctxt 0 in
-  update_internal_nonces_used ctxt Int_set.empty
+  let ctxt = lens_internal_nonce.set 0 ctxt in
+  lens_internal_nonces_used.set Int_set.empty ctxt
 
 let record_internal_nonce ctxt k =
-  update_internal_nonces_used ctxt (Int_set.add k (internal_nonces_used ctxt))
+  modify lens_internal_nonces_used (Int_set.add k) ctxt
 
 let internal_nonce_already_recorded ctxt k =
-  Int_set.mem k (internal_nonces_used ctxt)
+  Int_set.mem k (lens_internal_nonces_used.get ctxt)
 
-let set_current_fitness ctxt fitness = update_fitness ctxt fitness
+let set_current_fitness ctxt fitness = lens_fitness.set fitness ctxt
 
-let add_fees ctxt fees' = Tez_repr.(fees ctxt +? fees') >|? update_fees ctxt
+let add_fees ctxt fees' =
+  (* Tez_repr.(fees ctxt +? fees') >|? update_fees ctxt *)
+  lensappRes (Tez_repr.(+?) fees') lens_fees ctxt
 
 let add_rewards ctxt rewards' =
-  Tez_repr.(rewards ctxt +? rewards') >|? update_rewards ctxt
+  lensappRes (fun x -> Tez_repr.(x +? rewards')) lens_rewards ctxt
 
 let add_deposit ctxt delegate deposit =
   let open Signature.Public_key_hash.Map in
   let previous =
-    match find_opt delegate (deposits ctxt) with
+    match find_opt delegate (lens_deposits.get ctxt) with
     | Some tz ->
         tz
     | None ->
@@ -413,14 +395,14 @@ let add_deposit ctxt delegate deposit =
   in
   Tez_repr.(previous +? deposit)
   >|? fun deposit ->
-  let deposits = add delegate deposit (deposits ctxt) in
-  update_deposits ctxt deposits
+      modify lens_deposits (add delegate deposit) ctxt
 
-let get_deposits = deposits
+let get_deposits = lens_deposits.get
 
-let get_rewards = rewards
+let get_rewards = lens_rewards.get
 
-let get_fees = fees
+(*let get_fees = fees*)
+let get_fees ctx = lens_fees.get ctx
 
 type error += Undefined_operation_nonce (* `Permanent *)
 
@@ -440,27 +422,27 @@ let init_origination_nonce ctxt operation_hash =
   let origination_nonce =
     Some (Contract_repr.initial_origination_nonce operation_hash)
   in
-  update_origination_nonce ctxt origination_nonce
+  lens_origination_nonce.set origination_nonce ctxt
 
 let increment_origination_nonce ctxt =
-  match origination_nonce ctxt with
+  match lens_origination_nonce.get ctxt with
   | None ->
       error Undefined_operation_nonce
   | Some cur_origination_nonce ->
       let origination_nonce =
         Some (Contract_repr.incr_origination_nonce cur_origination_nonce)
       in
-      let ctxt = update_origination_nonce ctxt origination_nonce in
+      let ctxt = lens_origination_nonce.set origination_nonce ctxt in
       ok (ctxt, cur_origination_nonce)
 
 let origination_nonce ctxt =
-  match origination_nonce ctxt with
+  match lens_origination_nonce.get ctxt with
   | None ->
       error Undefined_operation_nonce
   | Some origination_nonce ->
       ok origination_nonce
 
-let unset_origination_nonce ctxt = update_origination_nonce ctxt None
+let unset_origination_nonce ctxt = lens_origination_nonce.set None ctxt
 
 type error += Gas_limit_too_high (* `Permanent *)
 
@@ -477,26 +459,27 @@ let () =
 
 let gas_level ctxt =
   let open Gas_limit_repr in
-  match gas_counter_status ctxt with
+  match lens_gas_counter_status.get ctxt with
   | Unlimited_operation_gas ->
       Unaccounted
   | Count_block_gas {operation_gas_delta} ->
-      Limited {remaining = Arith.(add (gas_counter ctxt) operation_gas_delta)}
+      Limited {remaining =
+                 Arith.(add (lens_gas_counter.get ctxt) operation_gas_delta)}
   | Count_operation_gas _ ->
-      Limited {remaining = gas_counter ctxt}
+      Limited {remaining = lens_gas_counter.get ctxt}
 
 let block_gas_level ctxt =
   let open Gas_limit_repr in
-  match gas_counter_status ctxt with
+  match lens_gas_counter_status.get ctxt with
   | Unlimited_operation_gas | Count_block_gas _ ->
-      gas_counter ctxt
+      lens_gas_counter.get ctxt
   | Count_operation_gas {block_gas_delta} ->
-      Arith.(add (gas_counter ctxt) block_gas_delta)
+      Arith.(add (lens_gas_counter.get ctxt) block_gas_delta)
 
 let check_gas_limit ctxt (remaining : 'a Gas_limit_repr.Arith.t) =
   if
     Gas_limit_repr.Arith.(
-      remaining > (constants ctxt).hard_gas_limit_per_operation
+      remaining > (lens_constants.get ctxt).hard_gas_limit_per_operation
       || remaining < zero)
   then error Gas_limit_too_high
   else ok_unit
@@ -505,7 +488,7 @@ let set_gas_limit ctxt (remaining : 'a Gas_limit_repr.Arith.t) =
   let open Gas_limit_repr in
   let remaining = Arith.fp remaining in
   let block_gas = block_gas_level ctxt in
-  let (gas_counter_status, gas_counter) =
+  let (gas_counter_status', gas_counter') =
     if Arith.(remaining < block_gas) then
       let block_gas_delta = Arith.sub block_gas remaining in
       (Count_operation_gas {block_gas_delta}, remaining)
@@ -513,30 +496,32 @@ let set_gas_limit ctxt (remaining : 'a Gas_limit_repr.Arith.t) =
       let operation_gas_delta = Arith.sub remaining block_gas in
       (Count_block_gas {operation_gas_delta}, block_gas)
   in
-  let ctxt = update_gas_counter_status ctxt gas_counter_status in
-  {ctxt with gas_counter}
+  ctxt
+  |> lens_gas_counter_status.set gas_counter_status'
+  |> lens_gas_counter.set gas_counter'
 
 let set_gas_unlimited ctxt =
   let block_gas = block_gas_level ctxt in
-  let ctxt = {ctxt with gas_counter = block_gas} in
-  update_gas_counter_status ctxt Unlimited_operation_gas
+  ctxt
+  |> lens_gas_counter_status.set Unlimited_operation_gas
+  |> lens_gas_counter.set block_gas
 
 let is_gas_unlimited ctxt =
-  match ctxt.back.gas_counter_status with
-  | Unlimited_operation_gas ->
-      true
-  | _ ->
-      false
+  match lens_gas_counter_status.get ctxt with
+  | Unlimited_operation_gas -> true
+  | _ -> false
 
 let is_counting_block_gas ctxt =
-  match gas_counter_status ctxt with Count_block_gas _ -> true | _ -> false
+  match lens_gas_counter_status.get ctxt with
+  | Count_block_gas _ -> true
+  | _ -> false
 
 let consume_gas ctxt cost =
   if is_gas_unlimited ctxt then ok ctxt
   else
-    match Gas_limit_repr.raw_consume (gas_counter ctxt) cost with
-    | Some gas_counter ->
-        Ok (update_gas_counter ctxt gas_counter)
+    match Gas_limit_repr.raw_consume (lens_gas_counter.get ctxt) cost with
+    | Some gas_counter' ->
+        Ok (lens_gas_counter.set gas_counter' ctxt)
     | None ->
         if is_counting_block_gas ctxt then error Block_quota_exceeded
         else error Operation_quota_exceeded
@@ -551,35 +536,37 @@ let gas_consumed ~since ~until =
       Gas_limit_repr.Arith.zero
 
 let init_storage_space_to_pay ctxt =
-  match storage_space_to_pay ctxt with
+  match lens_storage_space_to_pay.get ctxt with
   | Some _ ->
       assert false
   | None ->
-      let ctxt = update_storage_space_to_pay ctxt (Some Z.zero) in
-      update_allocated_contracts ctxt (Some 0)
+      let ctxt = lens_storage_space_to_pay.set (Some Z.zero) ctxt in
+      lens_allocated_contracts.set (Some 0) ctxt
 
 let clear_storage_space_to_pay ctxt =
-  match (storage_space_to_pay ctxt, allocated_contracts ctxt) with
+  match ( lens_storage_space_to_pay.get ctxt
+        , lens_allocated_contracts.get ctxt) with
   | (None, _) | (_, None) ->
       assert false
   | (Some storage_space_to_pay, Some allocated_contracts) ->
-      let ctxt = update_storage_space_to_pay ctxt None in
-      let ctxt = update_allocated_contracts ctxt None in
-      (ctxt, storage_space_to_pay, allocated_contracts)
+     ctxt
+     |> lens_storage_space_to_pay.set None
+     |> lens_allocated_contracts.set None
+     |> fun ctxt -> (ctxt, storage_space_to_pay, allocated_contracts)
 
 let update_storage_space_to_pay ctxt n =
-  match storage_space_to_pay ctxt with
+  match lens_storage_space_to_pay.get ctxt with
   | None ->
       assert false
   | Some storage_space_to_pay ->
-      update_storage_space_to_pay ctxt (Some (Z.add n storage_space_to_pay))
+      lens_storage_space_to_pay.set (Some (Z.add n storage_space_to_pay)) ctxt
 
 let update_allocated_contracts_count ctxt =
-  match allocated_contracts ctxt with
+  match lens_allocated_contracts.get ctxt with
   | None ->
       assert false
   | Some allocated_contracts ->
-      update_allocated_contracts ctxt (Some (succ allocated_contracts))
+      lens_allocated_contracts.set (Some (succ allocated_contracts)) ctxt
 
 type missing_key_kind = Get | Set | Del | Copy
 
@@ -791,11 +778,12 @@ let get_constants ctxt =
         ok constants )
 
 let patch_constants ctxt f =
-  let constants = f (constants ctxt) in
-  add_constants (context ctxt) constants
+  let constants = f (lens_constants.get ctxt) in
+  add_constants (lens_context.get ctxt) constants
   >|= fun context ->
-  let ctxt = update_context ctxt context in
-  update_constants ctxt constants
+  ctxt
+  |> lens_context.set context
+  |> lens_constants.set constants
 
 let check_inited ctxt =
   Context.find ctxt version_key
@@ -888,7 +876,9 @@ let prepare_first_block ~level ~timestamp ~fitness ctxt =
   prepare ctxt ~level ~predecessor_timestamp:timestamp ~timestamp ~fitness
   >|=? fun ctxt -> (previous_proto, ctxt)
 
-let activate ctxt h = Updater.activate (context ctxt) h >|= update_context ctxt
+let activate ctxt h =
+  lensappLwt (fun ctx -> Updater.activate ctx h) lens_context ctxt
+  (* Updater.activate (context ctxt) h >|= update_context ctxt *)
 
 (* Generic context ********************************************************)
 
@@ -905,85 +895,81 @@ module type T =
      and type value := value
      and type tree := tree
 
-let mem ctxt k = Context.mem (context ctxt) k
+let mem ctxt k = Context.mem (lens_context.get ctxt) k
 
-let mem_tree ctxt k = Context.mem_tree (context ctxt) k
+let mem_tree ctxt k = Context.mem_tree (lens_context.get ctxt) k
 
 let get ctxt k =
-  Context.find (context ctxt) k
+  Context.find (lens_context.get ctxt) k
   >|= function None -> storage_error (Missing_key (k, Get)) | Some v -> ok v
 
 let get_tree ctxt k =
-  Context.find_tree (context ctxt) k
+  Context.find_tree (lens_context.get ctxt) k
   >|= function None -> storage_error (Missing_key (k, Get)) | Some v -> ok v
 
-let find ctxt k = Context.find (context ctxt) k
+let find ctxt k = Context.find (lens_context.get ctxt) k
 
-let find_tree ctxt k = Context.find_tree (context ctxt) k
+let find_tree ctxt k = Context.find_tree (lens_context.get ctxt) k
 
-let add ctxt k v = Context.add (context ctxt) k v >|= update_context ctxt
+let add ctxt k v =
+  lensappLwt (fun ctx -> Context.add ctx k v) lens_context ctxt
 
 let add_tree ctxt k v =
-  Context.add_tree (context ctxt) k v >|= update_context ctxt
+  lensappLwt (fun ctx -> Context.add_tree ctx k v) lens_context ctxt
 
 let init ctxt k v =
-  Context.mem (context ctxt) k
+  Context.mem (lens_context.get ctxt) k
   >>= function
   | true ->
       Lwt.return @@ storage_error (Existing_key k)
   | _ ->
-      Context.add (context ctxt) k v
-      >|= fun context -> ok (update_context ctxt context)
+     lensappLwt (fun ctx -> Context.add ctx k v) lens_context ctxt >|= ok
 
 let init_tree ctxt k v : _ tzresult Lwt.t =
-  Context.mem_tree (context ctxt) k
+  Context.mem_tree (lens_context.get ctxt) k
   >>= function
   | true ->
       Lwt.return @@ storage_error (Existing_key k)
   | _ ->
-      Context.add_tree (context ctxt) k v
-      >|= fun context -> ok (update_context ctxt context)
+     lensappLwt (fun ctx -> Context.add_tree ctx k v) lens_context ctxt >|= ok
 
 let update ctxt k v =
-  Context.mem (context ctxt) k
+  Context.mem (lens_context.get ctxt) k
   >>= function
   | false ->
       Lwt.return @@ storage_error (Missing_key (k, Set))
   | _ ->
-      Context.add (context ctxt) k v
-      >|= fun context -> ok (update_context ctxt context)
+     lensappLwt (fun ctx -> Context.add ctx k v) lens_context ctxt >|= ok
 
 let update_tree ctxt k v =
-  Context.mem_tree (context ctxt) k
+  Context.mem_tree (lens_context.get ctxt) k
   >>= function
   | false ->
       Lwt.return @@ storage_error (Missing_key (k, Set))
   | _ ->
-      Context.add_tree (context ctxt) k v
-      >|= fun context -> ok (update_context ctxt context)
+     lensappLwt (fun ctx -> Context.add_tree ctx k v) lens_context ctxt >|= ok
 
 (* Verify that the key is present before deleting *)
 let remove_existing ctxt k =
-  Context.mem (context ctxt) k
+  Context.mem (lens_context.get ctxt) k
   >>= function
   | false ->
       Lwt.return @@ storage_error (Missing_key (k, Del))
   | _ ->
-      Context.remove (context ctxt) k
-      >|= fun context -> ok (update_context ctxt context)
+     lensappLwt (fun ctx -> Context.remove ctx k) lens_context ctxt >|= ok
 
 (* Verify that the key is present before deleting *)
 let remove_existing_tree ctxt k =
-  Context.mem_tree (context ctxt) k
+  Context.mem_tree (lens_context.get ctxt) k
   >>= function
   | false ->
       Lwt.return @@ storage_error (Missing_key (k, Del))
   | _ ->
-      Context.remove (context ctxt) k
-      >|= fun context -> ok (update_context ctxt context)
+     lensappLwt (fun ctx -> Context.remove ctx k) lens_context ctxt >|= ok
 
 (* Do not verify before deleting *)
-let remove ctxt k = Context.remove (context ctxt) k >|= update_context ctxt
+let remove ctxt k =
+  lensappLwt (fun ctx -> Context.remove ctx k) lens_context ctxt
 
 let add_or_remove ctxt k = function
   | None ->
@@ -997,14 +983,16 @@ let add_or_remove_tree ctxt k = function
   | Some v ->
       add_tree ctxt k v
 
-let list ctxt ?offset ?length k = Context.list (context ctxt) ?offset ?length k
+let list ctxt ?offset ?length k =
+  Context.list (lens_context.get ctxt) ?offset ?length k
 
-let fold ?depth ctxt k ~init ~f = Context.fold ?depth (context ctxt) k ~init ~f
+let fold ?depth ctxt k ~init ~f =
+  Context.fold ?depth (lens_context.get ctxt) k ~init ~f
 
 module Tree = struct
   include Context.Tree
 
-  let empty ctxt = Context.Tree.empty (context ctxt)
+  let empty ctxt = Context.Tree.empty (lens_context.get ctxt)
 
   let get t k =
     find t k
@@ -1082,11 +1070,10 @@ let absolute_key _ k = k
 let description = Storage_description.create ()
 
 let fold_map_temporary_lazy_storage_ids ctxt f =
-  f (temporary_lazy_storage_ids ctxt)
-  |> fun (temporary_lazy_storage_ids, x) ->
-  (update_temporary_lazy_storage_ids ctxt temporary_lazy_storage_ids, x)
+  let (ids', x) = f (lens_temporary_lazy_storage_ids.get ctxt) in
+  (lens_temporary_lazy_storage_ids.set ids' ctxt, x)
 
 let map_temporary_lazy_storage_ids_s ctxt f =
-  f (temporary_lazy_storage_ids ctxt)
-  >|= fun (ctxt, temporary_lazy_storage_ids) ->
-  update_temporary_lazy_storage_ids ctxt temporary_lazy_storage_ids
+  f (lens_temporary_lazy_storage_ids.get ctxt)
+  >|= fun (ctxt, ids') ->
+  lens_temporary_lazy_storage_ids.set ids' ctxt
