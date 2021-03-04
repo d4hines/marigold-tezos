@@ -29,8 +29,6 @@ let (let*) x f = x >>=? f
 let (!*) i = Incremental.alpha_ctxt i
 let (let**) x f = x >>= fun x -> Lwt.return @@ Environment.wrap_tzresult x >>=? f
 
-(* let (let==) x f = x >>= f *)
-
 let assert_rollup : Protocol.operation_receipt -> (_ -> unit tzresult Lwt.t) -> _ = fun x f ->
   match x with
   | No_operation_metadata -> failwith "operation has no result"
@@ -96,5 +94,5 @@ let noop = test "noop" @@ fun () ->
   return ()
 
 let tests = [
-    noop ;
+  noop ;
 ]

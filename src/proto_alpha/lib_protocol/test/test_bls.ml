@@ -1,0 +1,77 @@
+(*****************************************************************************)
+(*                                                                           *)
+(* Open Source License                                                       *)
+(* Copyright (c) 2021 Gabriel Alfour <gabriel.alfour@gmail.com>              *)
+(*                                                                           *)
+(* Permission is hereby granted, free of charge, to any person obtaining a   *)
+(* copy of this software and associated documentation files (the "Software"),*)
+(* to deal in the Software without restriction, including without limitation *)
+(* the rights to use, copy, modify, merge, publish, distribute, sublicense,  *)
+(* and/or sell copies of the Software, and to permit persons to whom the     *)
+(* Software is furnished to do so, subject to the following conditions:      *)
+(*                                                                           *)
+(* The above copyright notice and this permission notice shall be included   *)
+(* in all copies or substantial portions of the Software.                    *)
+(*                                                                           *)
+(* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR*)
+(* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  *)
+(* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL   *)
+(* THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER*)
+(* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING   *)
+(* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER       *)
+(* DEALINGS IN THE SOFTWARE.                                                 *)
+(*                                                                           *)
+(*****************************************************************************)
+
+open Protocol.Bls_scheme
+
+let test msg f = Test_services.tztest msg `Quick f
+
+let (let*) x f = x >>=? f
+let (!*) i = Incremental.alpha_ctxt i
+let (let**) x f = x >>= fun x -> Lwt.return @@ Environment.wrap_tzresult x >>=? f
+
+let check condition msg =
+  if condition then return () else failwith msg
+
+let simple_signature_check = test "simple signature check" @@ fun () ->
+  let account = Dev.create_account () in
+  let message_content = Bytes.of_string "This is a message!" in
+  let message = Message message_content in
+  let hash = do_hash message in
+  let signed_hash = account_sign_hash account hash in
+  let* () = check (check_signed_hash signed_hash) "Bad signature" in
+  return ()
+
+let simple_signature_fail = test "simple signature fail" @@ fun () ->
+  let account = Dev.create_account () in
+  let message_content = Bytes.of_string "This is a message!" in
+  let message = Message message_content in
+  let hash = do_hash message in
+  let signed_hash = account_sign_hash account hash in
+
+  let* () =
+    let (Hash h) = signed_hash.hash in
+    let modified_hash = Hash (Dev.G2.(add one h)) in
+    let modified_signed_hash = { signed_hash with hash = modified_hash } in
+    check (not @@ check_signed_hash modified_signed_hash) "Unexpectedly good signature"
+  in
+  let* () =
+    let (Public_key pk) = signed_hash.signer in
+    let modified_signer = Public_key (Dev.G1.(add one pk)) in
+    let modified_signed_hash = { signed_hash with signer = modified_signer } in
+    check (not @@ check_signed_hash modified_signed_hash) "Unexpectedly good signature"
+  in
+  let* () =
+    let (Signature s) = signed_hash.signature in
+    let modified_signature = Signature (Dev.G2.(add one s)) in
+    let modified_signed_hash = { signed_hash with signature = modified_signature } in
+    check (not @@ check_signed_hash modified_signed_hash) "Unexpectedly good signature"
+  in
+  
+  return ()
+
+let tests = [
+  simple_signature_check ;
+  simple_signature_fail ;
+]

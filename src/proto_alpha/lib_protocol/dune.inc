@@ -20,6 +20,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
  (targets registerer.ml)
  (deps
    misc.mli misc.ml
+   bls_scheme.ml
    storage_description.mli storage_description.ml
    state_hash.mli state_hash.ml
    nonce_hash.mli nonce_hash.ml
@@ -109,6 +110,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
  (targets functor.ml)
  (deps
    misc.mli misc.ml
+   bls_scheme.ml
    storage_description.mli storage_description.ml
    state_hash.mli state_hash.ml
    nonce_hash.mli nonce_hash.ml
@@ -198,6 +200,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
  (targets protocol.ml)
  (deps
    misc.mli misc.ml
+   bls_scheme.ml
    storage_description.mli storage_description.ml
    state_hash.mli state_hash.ml
    nonce_hash.mli nonce_hash.ml
@@ -307,6 +310,7 @@ include Tezos_raw_protocol_alpha.Main
                    -open Error_monad))
  (modules
    Misc
+   Bls_scheme
    Storage_description
    State_hash
    Nonce_hash
@@ -432,6 +436,7 @@ include Tezos_raw_protocol_alpha.Main
  (alias runtest_compile_protocol)
  (deps
    misc.mli misc.ml
+   bls_scheme.ml
    storage_description.mli storage_description.ml
    state_hash.mli state_hash.ml
    nonce_hash.mli nonce_hash.ml

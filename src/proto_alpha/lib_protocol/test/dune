@@ -43,6 +43,12 @@
  (package tezos-protocol-alpha-tests)
  (action (run %{exe:main.exe} test -v -c ".*rollup.*")))
 
+(rule
+ (alias runtest_proto_alpha_bls_signature)
+ (deps (glob_files contracts/*))
+ (package tezos-protocol-alpha-tests)
+ (action (run %{exe:main.exe} test -v -c ".*bls-signature.*")))
+
 ; runs both `Quick and `Slow tests
 (rule
  (alias runtest_slow)
