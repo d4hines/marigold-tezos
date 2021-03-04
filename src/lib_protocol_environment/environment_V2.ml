@@ -1086,4 +1086,7 @@ struct
     end
 
   module Equality_witness = Environment_context.Equality_witness
+  module Hack = struct
+    let print s = Format.printf "%s%!" s
+  end
 end
