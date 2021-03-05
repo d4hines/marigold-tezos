@@ -71,7 +71,26 @@ let simple_signature_fail = test "simple signature fail" @@ fun () ->
   
   return ()
 
+let aggregated_signature_check = test "aggregated signature check" @@ fun () ->
+  let n = 2 in
+  let ns = 1 -- n in
+  let accounts = List.map (fun _ -> Dev.create_account ()) ns in
+  let messages = List.map (fun k -> Message (Bytes.of_string ("toto" ^ (string_of_int k)))) ns in
+  (* let messages = List.map (fun _ -> Message (Bytes.of_string "test string")) ns in *)
+  let hashes = List.map do_hash messages in
+  let signed_hashes =
+    match List.map2 ~when_different_lengths:() account_sign_hash accounts hashes with
+    | Ok x -> x
+    | _ -> assert false
+  in
+  let aggregated_signed_hashes = Dev.list_signed_hashes signed_hashes in
+  let* () = check (check_signed_hashes aggregated_signed_hashes) "Bad aggregated signatures" in
+  
+  return ()
+
+  
 let tests = [
   simple_signature_check ;
   simple_signature_fail ;
+  aggregated_signature_check ;
 ]

@@ -43,19 +43,32 @@ type message = Message of bytes
 type hash = Hash of G2.t
 type signature = Signature of G2.t
 
-(* E(G , S) = E(P , H) *)
+(*
+  E(g , signature) = E(signer , hash)
+  - Elements of Gt (signatures) are in `Left_pair`
+  - Elements of Gt (identified hashes) are in `Rigth_pair`
+*)
 type left_pair = Left_pair of Gt.t
 type right_pair = Right_pair of Gt.t
 
+(*
+  The right pair is `E(signer , hash)`
+*)
 type signed_hash = {
   signer : public_key ;
   hash : hash ;
   signature : signature ;
+  left_pair : left_pair ;
   right_pair : right_pair ;
 }
 
-type signed_hashes = {
-  signature : signature ;
+(*
+  - The signature is $\sum signature_i$
+  - The right pair is $\sum right_pair_i$
+*)
+type aggregated_signed_hashes = {
+  signatures : signature list ;
+  left_pair : left_pair ;
   identified_hashes : (public_key * hash) list ;
   right_pair : right_pair ;
 }
@@ -73,41 +86,63 @@ let do_hash (Message msg) =
   let content = hash_aux (hash_function msg) in
   Hash content
 
-let check_signature (Public_key pk) (Hash h) (Signature s) =
-  let left = pairing pk h in
-  let right = pairing generator s in
-  Fq12.eq left right
-
-let sign_hash (Secret_key sk) (Hash h) = Signature (G2.mul h sk)
-
 let right_pairing (Public_key pk) (Hash h) = Right_pair (pairing pk h)
 let left_pairing (Signature s) = Left_pair (pairing generator s)
 
-let compare_pairing (Left_pair l) (Right_pair r) = Gt.eq l r
+let compare_r_pairing (Right_pair l) (Right_pair r) = Fq12.eq l r
+let compare_lr_pairing (Left_pair l) (Right_pair r) = Fq12.eq l r
+
+let add_signature (Signature a) (Signature b) = Signature (G2.add a b)
+let compare_signature (Signature a) (Signature b) = G2.eq a b
+
+let add_left_pairing (Left_pair a) (Left_pair b) = Left_pair (Gt.add a b)
+let compare_left_pairing (Left_pair a) (Left_pair b) = Gt.eq a b
+
+let check_signature ?right_pair pk hash signature =
+  let left = left_pairing signature in
+  let right = right_pairing pk hash in
+  let check_right_pair = match right_pair with
+    | Some right_pair -> compare_r_pairing right right_pair
+    | None -> true
+  in
+  check_right_pair && compare_lr_pairing left right
+
+let sign_hash (Secret_key sk) (Hash h) = Signature (G2.mul h sk)
 
 let account_sign_hash { secret_key ; public_key = signer } hash =
-  { signer ; hash ; signature = sign_hash secret_key hash ; right_pair = right_pairing signer hash }
+  let signature = sign_hash secret_key hash in
+  { signer ; hash ; signature ; right_pair = right_pairing signer hash ; left_pair = left_pairing signature }
 
-let check_signed_hash { signer ; hash ; signature ; right_pair = _ } = check_signature signer hash signature
+let check_signed_hash { signer ; hash ; signature ; right_pair } = check_signature ~right_pair signer hash signature
 
-let check_signed_hashes { signature ; identified_hashes = _ ; right_pair } =
-  let left = left_pairing signature in
-  compare_pairing left right_pair
+let check_signed_hashes { left_pair ; identified_hashes = _ ; right_pair ; signatures = _ } =
+  compare_lr_pairing left_pair right_pair
 
-let single_signed_hashes { signer ; hash ; signature ; right_pair } = { signature ; right_pair ; identified_hashes = [ (signer , hash) ] }
 
-let cons_signed_hashes (hd : signed_hash) (tl : signed_hashes) =
-  let { signer ; hash ; signature = Signature s_hd ; right_pair = Right_pair p_hd } = hd in
-  let { identified_hashes ; signature = Signature s_tl ; right_pair = Right_pair p_tl } = tl in
-  { signature = Signature (G2.add s_hd s_tl) ; right_pair = Right_pair (Gt.add p_hd p_tl) ; identified_hashes = (signer , hash) :: identified_hashes }
+let single_signed_hashes { signer ; hash ; signature ; left_pair ; right_pair } =
+  { left_pair ; signatures = [ signature ] ; right_pair ; identified_hashes = [ (signer , hash) ] }
 
+(*
+  The right pair of the whole list is computed incrementally.
+*)
+let cons_signed_hashes (hd : signed_hash) (tl : aggregated_signed_hashes) =
+  let { signer ; hash ; signature ; right_pair = Right_pair p_hd ; left_pair = lp_hd } = hd in
+  let { identified_hashes ; signatures ; right_pair = Right_pair p_tl ; left_pair = lp_tl } = tl in
+  {
+    signatures = signature :: signatures ;
+    left_pair = add_left_pairing lp_hd lp_tl ;
+    right_pair = Right_pair (Gt.add p_hd p_tl) ;
+    identified_hashes = (signer , hash) :: identified_hashes ;
+  }
 
 (* Only used outside of the protocol. For tests, debugging, etc. *)
 module Dev = struct
 
+  
+  
   (* Not random, at all *)
   let create_account =
-    let seed = ref Fr.one in
+    let seed = ref @@ Fr.of_z @@ Z.of_int 42 in
     let next () = seed := Fr.(add one !seed) ; ! seed in
     fun ?(seed = next()) () ->
       let secret_key = Secret_key seed in
@@ -117,5 +152,11 @@ module Dev = struct
   module G1 = G1
   module G2 = G2
   module Fr = Fr
+
+  let rec list_signed_hashes (lst : signed_hash list) =
+    match lst with
+    | [] -> raise (Failure "empty list of signed hashes")
+    | [ single ] -> single_signed_hashes single
+    | hd :: tl -> cons_signed_hashes hd (list_signed_hashes tl)
   
 end
