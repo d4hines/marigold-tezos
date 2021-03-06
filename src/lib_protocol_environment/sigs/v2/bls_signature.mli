@@ -23,33 +23,38 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module type PARAM = sig val hash_function : bytes -> bytes end
+module type PARAM = sig
+  val hash_function : bytes -> bytes
+end
+
+open Bls12_381
+
 module Make : functor (P : PARAM) -> sig
-  val generator : Bls12_381.G1.t
-  val g : Bls12_381.G1.t
-  type secret_key = Secret_key of Bls12_381.Fr.t
-  type public_key = Public_key of Bls12_381.G1.t
-  type account = { secret_key : secret_key; public_key : public_key; }
+
+  val generator : G1.t
+  val g : G1.t
+  type secret_key = Secret_key of Fr.t
+  type public_key = Public_key of G1.t
+  type account = {
+    secret_key : secret_key;
+    public_key : public_key;
+  }
   type message = Message of bytes
-  type hash = Hash of Bls12_381.G2.t
-  type signature = Signature of Bls12_381.G2.t
-  type left_pair = Left_pair of Bls12_381.Fq12.t
-  type right_pair = Right_pair of Bls12_381.Fq12.t
+  type hash = Hash of G2.t
+  type signature = Signature of G2.t
+  type left_pair = Left_pair of Fq12.t
+  type right_pair = Right_pair of Fq12.t
   type signed_hash = {
     signer : public_key;
     hash : hash;
     signature : signature;
-    left_pair : left_pair;
-    right_pair : right_pair;
   }
   type aggregated_signed_hashes = {
-    signatures : signature list;
-    left_pair : left_pair;
+    aggregated_signature : signature;
     identified_hashes : (public_key * hash) list;
-    right_pair : right_pair;
   }
   val secret_to_public : secret_key -> public_key
-  val hash_aux : current:bytes -> Bls12_381.G2.t
+  val hash_aux : current:bytes -> G2.t
   val do_hash : message -> hash
   val right_pairing : public_key -> hash -> right_pair
   val left_pairing : signature -> left_pair
@@ -59,8 +64,7 @@ module Make : functor (P : PARAM) -> sig
   val compare_signature : signature -> signature -> bool
   val add_left_pairing : left_pair -> left_pair -> left_pair
   val compare_left_pairing : left_pair -> left_pair -> bool
-  val check_signature :
-    ?right_pair:right_pair -> public_key -> hash -> signature -> bool
+  val check_signature : public_key -> hash -> signature -> bool
   val sign_hash : secret_key -> hash -> signature
   val account_sign_hash : account -> hash -> signed_hash
   val check_signed_hash : signed_hash -> bool
@@ -68,14 +72,19 @@ module Make : functor (P : PARAM) -> sig
   val single_signed_hashes : signed_hash -> aggregated_signed_hashes
   val cons_signed_hashes :
     signed_hash -> aggregated_signed_hashes -> aggregated_signed_hashes
-  module Dev :
-  sig
-    val create_account : ?seed:Bls12_381.Fr.t -> unit -> account
-    module G1 = Bls12_381.G1
-    module G2 = Bls12_381.G2
-    module Gt = Bls12_381.Gt
-    module Fr = Bls12_381.Fr
-    val list_signed_hashes :
-      signed_hash list -> aggregated_signed_hashes
+  module Dev : sig
+    val create_account : ?seed:Fr.t -> unit -> account
+    module Fr = Fr
+    module Fq12 = Fq12
+    module G1 = G1
+    module G2 = G2
+    module Gt = Gt
+    val miller_loop : (G1.t * G2.t) list -> Fq12.t
+    val final_exponentiation_opt : Fq12.t -> Fq12.t option
+    val pairing : G1.t -> G2.t -> Fq12.t
+    val g : G1.t
+    val list_signed_hashes : signed_hash list -> aggregated_signed_hashes
   end
+
 end
+

@@ -54,26 +54,15 @@ module Make(P : PARAM) = struct
   type left_pair = Left_pair of Gt.t
   type right_pair = Right_pair of Gt.t
 
-(*
-  The right pair is `E(signer , hash)`
-*)
   type signed_hash = {
     signer : public_key ;
     hash : hash ;
     signature : signature ;
-    left_pair : left_pair ;
-    right_pair : right_pair ;
   }
 
-(*
-  - The left pair is $\sum left_pair_i$
-  - The right pair is $\sum right_pair_i$
-*)
   type aggregated_signed_hashes = {
-    signatures : signature list ;
-    left_pair : left_pair ;
+    aggregated_signature : signature ;
     identified_hashes : (public_key * hash) list ;
-    right_pair : right_pair ;
   }
 
   let secret_to_public (Secret_key sk) = (Public_key (G1.mul g sk))
@@ -99,40 +88,42 @@ module Make(P : PARAM) = struct
   let add_left_pairing (Left_pair a) (Left_pair b) = Left_pair (Gt.add a b)
   let compare_left_pairing (Left_pair a) (Left_pair b) = Gt.eq a b
 
-  let check_signature ?right_pair pk hash signature =
+  let check_signature pk hash signature =
     let left = left_pairing signature in
     let right = right_pairing pk hash in
-    let check_right_pair = match right_pair with
-      | Some right_pair -> compare_r_pairing right right_pair
-      | None -> true
-    in
-    check_right_pair && compare_lr_pairing left right
+    compare_lr_pairing left right
 
   let sign_hash (Secret_key sk) (Hash h) = Signature (G2.mul h sk)
 
   let account_sign_hash { secret_key ; public_key = signer } hash =
     let signature = sign_hash secret_key hash in
-    { signer ; hash ; signature ; right_pair = right_pairing signer hash ; left_pair = left_pairing signature }
+    { signer ; hash ; signature }
 
-  let check_signed_hash { signer ; hash ; signature ; right_pair ; left_pair = _ } = check_signature ~right_pair signer hash signature
+  let check_signed_hash { signer ; hash ; signature } = check_signature signer hash signature
 
-  let check_signed_hashes { left_pair ; identified_hashes = _ ; right_pair ; signatures = _ } =
-    compare_lr_pairing left_pair right_pair
+  let check_signed_hashes { identified_hashes ; aggregated_signature } =
+    let left_pair = left_pairing aggregated_signature in
+    (* let right_pair = miller_loop (List.map (fun (Public_key pk , Hash h) -> pk , h) identified_hashes) in *)
+    let right_pair =
+      let right_pairs =
+        List.map (fun (Right_pair rp) -> rp) @@
+        List.map (fun (pk , h) -> right_pairing pk h) @@
+        identified_hashes in
+      List.fold_left Gt.mul Gt.one right_pairs
+    in
+    compare_lr_pairing left_pair (Right_pair right_pair)
 
-
-  let single_signed_hashes { signer ; hash ; signature ; left_pair ; right_pair } =
-    { left_pair ; signatures = [ signature ] ; right_pair ; identified_hashes = [ (signer , hash) ] }
+  let single_signed_hashes { signer ; hash ; signature } =
+    { aggregated_signature = signature ; identified_hashes = [ (signer , hash) ] }
 
 (*
   The right pair of the whole list is computed incrementally.
 *)
   let cons_signed_hashes (hd : signed_hash) (tl : aggregated_signed_hashes) =
-    let { signer ; hash ; signature ; right_pair = Right_pair p_hd ; left_pair = lp_hd } = hd in
-    let { identified_hashes ; signatures ; right_pair = Right_pair p_tl ; left_pair = lp_tl } = tl in
+    let { signer ; hash ; signature } = hd in
+    let { identified_hashes ; aggregated_signature } = tl in
     {
-      signatures = signature :: signatures ;
-      left_pair = add_left_pairing lp_hd lp_tl ;
-      right_pair = Right_pair (Gt.add p_hd p_tl) ;
+      aggregated_signature = add_signature signature aggregated_signature ;
       identified_hashes = (signer , hash) :: identified_hashes ;
     }
 
@@ -147,11 +138,10 @@ module Make(P : PARAM) = struct
         let public_key = secret_to_public secret_key in
         { secret_key ; public_key }
 
-    module G1 = G1
-    module G2 = G2
-    module Gt = Gt
-    module Fr = Fr
+    include BLS12_381
 
+    let g = g
+    
     let rec list_signed_hashes (lst : signed_hash list) =
       match lst with
       | [] -> raise (Failure "empty list of signed hashes")

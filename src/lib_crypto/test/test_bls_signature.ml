@@ -90,6 +90,42 @@ let aggregated_signature_check = test "aggregated signature check" @@ fun () ->
   
   ()
 
+let linear_pairing_ouch = test "linear pairing OUCH" @@ fun () ->
+  let a = Dev.create_account () in
+  let b = Dev.create_account () in
+  let msg_a = Message (Bytes.of_string "foo") in
+  let msg_b = Message (Bytes.of_string "bar") in
+  let hash_a = do_hash msg_a in
+  let hash_b = do_hash msg_b in
+  let sg_a =
+    let (Secret_key sk_a) = a.secret_key in
+    let (Hash h_a) = hash_a in
+    Dev.G2.mul h_a sk_a
+  in
+  let sg_b =
+    let (Secret_key sk_b) = b.secret_key in
+    let (Hash h_b) = hash_b in
+    Dev.G2.mul h_b sk_b
+  in
+  let sgs = Dev.G2.add sg_a sg_b in
+  let p_a = Dev.pairing Dev.g sg_a in
+  let p_b = Dev.pairing Dev.g sg_b in
+  let p = Dev.pairing Dev.g sgs in
+  let p' = Dev.Gt.mul p_a p_b in
+  let sh_a =
+    let (Public_key pk_a) = a.public_key in
+    let (Hash h_a) = hash_a in
+    Dev.pairing pk_a h_a
+  in
+  let sh_b =
+    let (Public_key pk_b) = b.public_key in
+    let (Hash h_b) = hash_b in
+    Dev.pairing pk_b h_b
+  in
+  check (Dev.Gt.eq p p') "Pairings are not equal" ;
+  check (Dev.Gt.eq p (Dev.Gt.mul sh_a sh_b)) "Pairings are not equal" ;
+  ()
+  
 let aggregated_signature_fail = test "aggregated signature fail" @@ fun () ->
   let n = 10 in
   let accounts = Array.init n (fun _ -> Dev.create_account ()) in
@@ -98,35 +134,61 @@ let aggregated_signature_fail = test "aggregated signature fail" @@ fun () ->
   let signed_hashes = Array.map2 account_sign_hash accounts hashes in
 
   let () =
-    iter (0 -- (n - 1)) @@ fun k ->
-    let modified_signed_hashes = Array.copy signed_hashes in
-    let modified_sign_hash =
-      let current_sign_hash = signed_hashes.(k) in
-      let modified_left_pair =
-        let (Left_pair lp) = current_sign_hash.left_pair in
-        Left_pair (Dev.Gt.(add one lp))
-      in
-      { current_sign_hash with left_pair = modified_left_pair }
+    let aggregated_signed_hashes = Dev.list_signed_hashes (Array.to_list signed_hashes) in
+    let modified_signature =
+      let (Signature s) = aggregated_signed_hashes.aggregated_signature in
+      Signature (Dev.G2.(add one s))
     in
-    modified_signed_hashes.(k) <- modified_sign_hash ;
-    let modified_aggregated_signed_hashes = Dev.list_signed_hashes (Array.to_list modified_signed_hashes) in
+    let modified_aggregated_signed_hashes =
+    { aggregated_signed_hashes with aggregated_signature = modified_signature } in
     check (not @@ check_signed_hashes modified_aggregated_signed_hashes) "Unexpected good signature"
   in
 
   let () =
     iter (0 -- (n - 1)) @@ fun k ->
-    let modified_signed_hashes = Array.copy signed_hashes in
-    let modified_sign_hash =
-      let current_sign_hash = signed_hashes.(k) in
-      let modified_right_pair =
-        let (Right_pair rp) = current_sign_hash.right_pair in
-        Right_pair (Dev.Gt.(add one rp))
+    (
+      let modified_signed_hashes = Array.copy signed_hashes in
+      let modified_sign_hash =
+        let current_sign_hash = signed_hashes.(k) in
+        let modified_signature =
+          let (Signature s) = current_sign_hash.signature in
+          Signature (Dev.G2.(add one s))
+        in
+        { current_sign_hash with signature = modified_signature }
       in
-      { current_sign_hash with right_pair = modified_right_pair }
-    in
-    modified_signed_hashes.(k) <- modified_sign_hash ;
-    let modified_aggregated_signed_hashes = Dev.list_signed_hashes (Array.to_list modified_signed_hashes) in
-    check (not @@ check_signed_hashes modified_aggregated_signed_hashes) "Unexpected good signature"
+      modified_signed_hashes.(k) <- modified_sign_hash ;
+      let modified_aggregated_signed_hashes = Dev.list_signed_hashes (Array.to_list modified_signed_hashes) in
+      check (not @@ check_signed_hashes modified_aggregated_signed_hashes) "Unexpected good signature"
+    ) ;
+    (
+      let modified_signed_hashes = Array.copy signed_hashes in
+      let modified_sign_hash =
+        let current_sign_hash = signed_hashes.(k) in
+        let modified_hash =
+          let (Hash s) = current_sign_hash.hash in
+          Hash (Dev.G2.(add one s))
+        in
+        { current_sign_hash with hash = modified_hash }
+      in
+      modified_signed_hashes.(k) <- modified_sign_hash ;
+      let modified_aggregated_signed_hashes = Dev.list_signed_hashes (Array.to_list modified_signed_hashes) in
+      check (not @@ check_signed_hashes modified_aggregated_signed_hashes) "Unexpected good signature"
+    ) ;
+    (
+      let modified_signed_hashes = Array.copy signed_hashes in
+      let modified_sign_hash =
+        let current_sign_hash = signed_hashes.(k) in
+        let modified_signer =
+          let (Public_key s) = current_sign_hash.signer in
+          Public_key (Dev.G1.(add one s))
+        in
+        { current_sign_hash with signer = modified_signer }
+      in
+      modified_signed_hashes.(k) <- modified_sign_hash ;
+      let modified_aggregated_signed_hashes = Dev.list_signed_hashes (Array.to_list modified_signed_hashes) in
+      check (not @@ check_signed_hashes modified_aggregated_signed_hashes) "Unexpected good signature"
+    ) ;
+    ()
   in
 
   ()
@@ -134,6 +196,7 @@ let aggregated_signature_fail = test "aggregated signature fail" @@ fun () ->
 let tests = [
   simple_signature_check ;
   simple_signature_fail ;
+  linear_pairing_ouch ;
   aggregated_signature_check ;
   aggregated_signature_fail ;
 ]

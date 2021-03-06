@@ -61,6 +61,5 @@ let () =
       ("failing_noop operation", Test_failing_noop.tests);
       ("storage description", Test_storage.tests);
       ("rollup", Test_rollup.tests);
-      ("bls-signature", Test_bls.tests);
     ]
   |> Lwt_main.run
