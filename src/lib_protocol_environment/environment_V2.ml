@@ -170,6 +170,7 @@ struct
 
   module Time = Time.Protocol
   module Bls12_381 = BLS12_381
+  module Bls_signature = Bls_signature
   module Ed25519 = Ed25519
   module Secp256k1 = Secp256k1
   module P256 = P256

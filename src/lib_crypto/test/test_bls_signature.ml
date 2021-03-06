@@ -23,21 +23,19 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Protocol.Bls_scheme
+module BLS_SHA = Bls_signature.Make(struct
+    let hash_function bytes = Blake2B.(to_bytes @@ hash_bytes ?key:None [ bytes ])
+  end)
 
-let test msg f = Test_services.tztest msg `Quick f
+open BLS_SHA
 
-let iter (type a) (lst : a list) (f : a -> unit tzresult Lwt.t) : unit tzresult Lwt.t =
-  let* _lst = all_ep @@ List.map f lst in
-  return ()
-
-let (let*) x f = x >>=? f
-let (let*+) x f = Error_monad.all_ep (f x)
-let (!*) i = Incremental.alpha_ctxt i
-let (let**) x f = x >>= fun x -> Lwt.return @@ Environment.wrap_tzresult x >>=? f
+let test msg f = Alcotest.test_case msg `Quick f
 
 let check condition msg =
-  if condition then return () else failwith msg
+  if condition then () else failwith msg
+
+let iter x f = List.iter f x
+let rec (--) a b = if a < b then a :: ((a + 1) -- b) else [ a ]
 
 let simple_signature_check = test "simple signature check" @@ fun () ->
   let account = Dev.create_account () in
@@ -45,8 +43,8 @@ let simple_signature_check = test "simple signature check" @@ fun () ->
   let message = Message message_content in
   let hash = do_hash message in
   let signed_hash = account_sign_hash account hash in
-  let* () = check (check_signed_hash signed_hash) "Bad signature" in
-  return ()
+  let () = check (check_signed_hash signed_hash) "Bad signature" in
+  ()
 
 let simple_signature_fail = test "simple signature fail" @@ fun () ->
   let account = Dev.create_account () in
@@ -55,26 +53,26 @@ let simple_signature_fail = test "simple signature fail" @@ fun () ->
   let hash = do_hash message in
   let signed_hash = account_sign_hash account hash in
 
-  let* () =
+  let () =
     let (Hash h) = signed_hash.hash in
     let modified_hash = Hash (Dev.G2.(add one h)) in
     let modified_signed_hash = { signed_hash with hash = modified_hash } in
     check (not @@ check_signed_hash modified_signed_hash) "Unexpectedly good signature"
   in
-  let* () =
+  let () =
     let (Public_key pk) = signed_hash.signer in
     let modified_signer = Public_key (Dev.G1.(add one pk)) in
     let modified_signed_hash = { signed_hash with signer = modified_signer } in
     check (not @@ check_signed_hash modified_signed_hash) "Unexpectedly good signature"
   in
-  let* () =
+  let () =
     let (Signature s) = signed_hash.signature in
     let modified_signature = Signature (Dev.G2.(add one s)) in
     let modified_signed_hash = { signed_hash with signature = modified_signature } in
     check (not @@ check_signed_hash modified_signed_hash) "Unexpectedly good signature"
   in
   
-  return ()
+  ()
 
 let aggregated_signature_check = test "aggregated signature check" @@ fun () ->
   let n = 10 in
@@ -88,9 +86,9 @@ let aggregated_signature_check = test "aggregated signature check" @@ fun () ->
     | _ -> assert false
   in
   let aggregated_signed_hashes = Dev.list_signed_hashes signed_hashes in
-  let* () = check (check_signed_hashes aggregated_signed_hashes) "Bad aggregated signatures" in
+  let () = check (check_signed_hashes aggregated_signed_hashes) "Bad aggregated signatures" in
   
-  return ()
+  ()
 
 let aggregated_signature_fail = test "aggregated signature fail" @@ fun () ->
   let n = 10 in
@@ -99,7 +97,7 @@ let aggregated_signature_fail = test "aggregated signature fail" @@ fun () ->
   let hashes = Array.map do_hash messages in
   let signed_hashes = Array.map2 account_sign_hash accounts hashes in
 
-  let* () =
+  let () =
     iter (0 -- (n - 1)) @@ fun k ->
     let modified_signed_hashes = Array.copy signed_hashes in
     let modified_sign_hash =
@@ -115,7 +113,7 @@ let aggregated_signature_fail = test "aggregated signature fail" @@ fun () ->
     check (not @@ check_signed_hashes modified_aggregated_signed_hashes) "Unexpected good signature"
   in
 
-  let* () =
+  let () =
     iter (0 -- (n - 1)) @@ fun k ->
     let modified_signed_hashes = Array.copy signed_hashes in
     let modified_sign_hash =
@@ -131,7 +129,7 @@ let aggregated_signature_fail = test "aggregated signature fail" @@ fun () ->
     check (not @@ check_signed_hashes modified_aggregated_signed_hashes) "Unexpected good signature"
   in
 
-  return ()
+  ()
   
 let tests = [
   simple_signature_check ;
@@ -139,3 +137,5 @@ let tests = [
   aggregated_signature_check ;
   aggregated_signature_fail ;
 ]
+
+let () = Alcotest.run "tezos-crypto" [("bls-signature", tests)]

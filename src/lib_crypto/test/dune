@@ -11,6 +11,7 @@
         test_prop_signature
         test_prop_hacl_hash
         test_deterministic_nonce
+	test_bls_signature
         test_signature)
  (libraries tezos-stdlib
             tezos-crypto

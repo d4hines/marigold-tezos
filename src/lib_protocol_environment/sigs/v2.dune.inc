@@ -42,6 +42,7 @@
    v2/map.mli
    v2/blake2B.mli
    v2/bls12_381.mli
+   v2/bls_signature.mli
    v2/ed25519.mli
    v2/secp256k1.mli
    v2/p256.mli
