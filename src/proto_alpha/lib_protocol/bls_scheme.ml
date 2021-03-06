@@ -63,7 +63,7 @@ type signed_hash = {
 }
 
 (*
-  - The signature is $\sum signature_i$
+  - The left pair is $\sum left_pair_i$
   - The right pair is $\sum right_pair_i$
 *)
 type aggregated_signed_hashes = {
@@ -151,6 +151,7 @@ module Dev = struct
 
   module G1 = G1
   module G2 = G2
+  module Gt = Gt
   module Fr = Fr
 
   let rec list_signed_hashes (lst : signed_hash list) =

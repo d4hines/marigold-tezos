@@ -27,7 +27,12 @@ open Protocol.Bls_scheme
 
 let test msg f = Test_services.tztest msg `Quick f
 
+let iter (type a) (lst : a list) (f : a -> unit tzresult Lwt.t) : unit tzresult Lwt.t =
+  let* _lst = all_ep @@ List.map f lst in
+  return ()
+
 let (let*) x f = x >>=? f
+let (let*+) x f = Error_monad.all_ep (f x)
 let (!*) i = Incremental.alpha_ctxt i
 let (let**) x f = x >>= fun x -> Lwt.return @@ Environment.wrap_tzresult x >>=? f
 
@@ -72,11 +77,10 @@ let simple_signature_fail = test "simple signature fail" @@ fun () ->
   return ()
 
 let aggregated_signature_check = test "aggregated signature check" @@ fun () ->
-  let n = 2 in
+  let n = 10 in
   let ns = 1 -- n in
   let accounts = List.map (fun _ -> Dev.create_account ()) ns in
   let messages = List.map (fun k -> Message (Bytes.of_string ("toto" ^ (string_of_int k)))) ns in
-  (* let messages = List.map (fun _ -> Message (Bytes.of_string "test string")) ns in *)
   let hashes = List.map do_hash messages in
   let signed_hashes =
     match List.map2 ~when_different_lengths:() account_sign_hash accounts hashes with
@@ -88,9 +92,50 @@ let aggregated_signature_check = test "aggregated signature check" @@ fun () ->
   
   return ()
 
+let aggregated_signature_fail = test "aggregated signature fail" @@ fun () ->
+  let n = 10 in
+  let accounts = Array.init n (fun _ -> Dev.create_account ()) in
+  let messages = Array.init n (fun k -> Message (Bytes.of_string ("toto" ^ (string_of_int k)))) in
+  let hashes = Array.map do_hash messages in
+  let signed_hashes = Array.map2 account_sign_hash accounts hashes in
+
+  let* () =
+    iter (0 -- (n - 1)) @@ fun k ->
+    let modified_signed_hashes = Array.copy signed_hashes in
+    let modified_sign_hash =
+      let current_sign_hash = signed_hashes.(k) in
+      let modified_left_pair =
+        let (Left_pair lp) = current_sign_hash.left_pair in
+        Left_pair (Dev.Gt.(add one lp))
+      in
+      { current_sign_hash with left_pair = modified_left_pair }
+    in
+    modified_signed_hashes.(k) <- modified_sign_hash ;
+    let modified_aggregated_signed_hashes = Dev.list_signed_hashes (Array.to_list modified_signed_hashes) in
+    check (not @@ check_signed_hashes modified_aggregated_signed_hashes) "Unexpected good signature"
+  in
+
+  let* () =
+    iter (0 -- (n - 1)) @@ fun k ->
+    let modified_signed_hashes = Array.copy signed_hashes in
+    let modified_sign_hash =
+      let current_sign_hash = signed_hashes.(k) in
+      let modified_right_pair =
+        let (Right_pair rp) = current_sign_hash.right_pair in
+        Right_pair (Dev.Gt.(add one rp))
+      in
+      { current_sign_hash with right_pair = modified_right_pair }
+    in
+    modified_signed_hashes.(k) <- modified_sign_hash ;
+    let modified_aggregated_signed_hashes = Dev.list_signed_hashes (Array.to_list modified_signed_hashes) in
+    check (not @@ check_signed_hashes modified_aggregated_signed_hashes) "Unexpected good signature"
+  in
+
+  return ()
   
 let tests = [
   simple_signature_check ;
   simple_signature_fail ;
   aggregated_signature_check ;
+  aggregated_signature_fail ;
 ]
