@@ -10,6 +10,7 @@ __pycache__
 /_opam
 /_docker_build
 /docs/_build
+/tests_e2e/_build
 /docs/api/tezos-client.html
 /docs/api/tezos-admin-client.html
 /docs/api/tezos-signer.html
