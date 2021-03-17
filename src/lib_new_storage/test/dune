@@ -1,0 +1,11 @@
+(executable
+  (name tezos_new_storage_test)
+  (libraries
+    alcotest
+    tezos_new_storage
+  )
+)
+
+(rule
+ (alias runtest_new_storage)
+ (action (run %{exe:tezos_new_storage_test.exe} test -v -c)))
