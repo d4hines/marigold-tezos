@@ -6,7 +6,9 @@
             tezos-protocol-environment-sigs
             tezos-protocol-environment-structs
             tezos-micheline
-            tezos-storage.memory)
+            tezos-storage.memory
+	    tezos-new-storage
+)
  (flags (:standard -open Tezos_base__TzPervasives
                    -open Tezos_micheline))
  (wrapped false)
