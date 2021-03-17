@@ -181,7 +181,7 @@ module Make (P : PARAM) (S : SUITE) = struct
     let step x hs = Bytes.cat (op_idxed x) hs in
     List.init ~when_negative_length:() (Bytes.length major) (fun i -> i)
     |> function
-    | Error () -> failwith "length can never less zero"
+    | Error () -> failwith "length can never be less zero"
     | Ok ids -> List.fold_right step ids Bytes.empty
 
   (*
