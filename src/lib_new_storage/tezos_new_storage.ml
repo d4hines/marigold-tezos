@@ -343,6 +343,21 @@ module Stub = struct
   let nul = nul
   let do_hash = do_hash
   let empty_stream = empty_stream
+  let key_of_bits = fun x -> x
+  let key_of_bytes =
+    let bits_of_bytes = fun c ->
+      let i = Char.code c in
+      let rec aux k t =
+        if t = 0
+        then []
+        else if k >= t
+        then true :: (aux (k - t) (t / 2))
+        else false :: aux k (t / 2)
+      in
+      aux i 128
+    in
+    fun x -> List.concat @@ List.map bits_of_bytes @@ List.of_seq @@ Bytes.to_seq x
+    
   
   module Patricia = struct
     type t = value Map.t
@@ -356,10 +371,13 @@ module Stub = struct
     type t = Patricia.t
     type tt = t * stream
 
-    let get_hash : t -> hash = fun _ -> do_hash nul
+    let get_hash : t -> hash = fun t ->
+      do_hash @@ Bytes.concat Bytes.empty @@ List.map snd @@ List.of_seq @@ Map.to_seq t
 
     let of_patricia : Patricia.t -> t = fun t -> t
 
+    let empty : t = of_patricia Patricia.empty
+    
     let get : tt -> key -> value * tt = fun (t , s) k ->
       let v = Patricia.get t k in
       (v , (t , v :: s))
@@ -372,8 +390,14 @@ module Stub = struct
   module Patricia_consume_stream = struct
     type t = Patricia.t
     type tt = t * stream
+
+    let get_hash : t -> hash = fun t ->
+      do_hash @@ Bytes.concat Bytes.empty @@ List.map snd @@ List.of_seq @@ Map.to_seq t
+    
     let empty_hash : hash -> t = fun _ -> Patricia.empty
 
+    let empty = empty_hash @@ Patricia_produce_stream.(get_hash empty)
+    
     let consume : stream -> bytes * stream = function
       | [] -> assert false
       | hd :: tl -> hd , tl

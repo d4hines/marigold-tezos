@@ -488,12 +488,58 @@ module Rollups : sig
       module `Rollup_storage`. *)
 
   module Global_counter : sig
-    val get : Raw_context.t -> Z.t tzresult Lwt.t
+    type value = Z.t
+    
+    val get : Raw_context.t -> value tzresult Lwt.t
 
-    val update : Raw_context.t -> Z.t -> Raw_context.t tzresult Lwt.t
+    val update : Raw_context.t -> value -> Raw_context.t tzresult Lwt.t
 
-    val init : Raw_context.t -> Z.t -> Raw_context.t tzresult Lwt.t
+    val init : Raw_context.t -> value -> Raw_context.t tzresult Lwt.t
   end
+
+  module Rollup_content : sig
+    type t = Raw_context.t
+    type context = t
+    type key = Z.t
+    type value = Rollup_repr.Rollup_onchain_content.t
+    val mem : t -> key -> bool Lwt.t
+    val get : t -> key -> value tzresult Lwt.t
+    val find : t -> key -> value option tzresult Lwt.t
+    val update : t -> key -> value -> t tzresult Lwt.t
+    val init : t -> key -> value -> t tzresult Lwt.t
+    val add : t -> key -> value -> t Lwt.t
+    val add_or_remove : t -> key -> value option -> t Lwt.t
+    val remove_existing : t -> key -> t tzresult Lwt.t
+    val remove : t -> key -> t Lwt.t
+    val clear : t -> t Lwt.t
+    val keys : t -> key list Lwt.t
+    val bindings : t -> (key * value) list Lwt.t
+    val fold : t -> init:'a -> f:(key -> value -> 'a -> 'a Lwt.t) -> 'a Lwt.t
+    val fold_keys : t -> init:'a -> f:(key -> 'a -> 'a Lwt.t) -> 'a Lwt.t
+  end
+
+  module Block_content : sig
+    type t = Raw_context.t
+    type context = t
+    type key = Z.t * Z.t
+    type value = Rollup_repr.Block_onchain_content.t
+    val mem : t -> key -> bool Lwt.t
+    val get : t -> key -> value tzresult Lwt.t
+    val find : t -> key -> value option tzresult Lwt.t
+    val update : t -> key -> value -> t tzresult Lwt.t
+    val init : t -> key -> value -> t tzresult Lwt.t
+    val add : t -> key -> value -> t Lwt.t
+    val add_or_remove : t -> key -> value option -> t Lwt.t
+    val remove_existing : t -> key -> t tzresult Lwt.t
+    val remove : t -> key -> t Lwt.t
+    val clear : t -> t Lwt.t
+    val keys : t -> key list Lwt.t
+    val bindings : t -> (key * value) list Lwt.t
+    val fold : t -> init:'a -> f:(key -> value -> 'a -> 'a Lwt.t) -> 'a Lwt.t
+    val fold_keys : t -> init:'a -> f:(key -> 'a -> 'a Lwt.t) -> 'a Lwt.t
+  end
+
+  
 end
 
 module Pending_migration_balance_updates :

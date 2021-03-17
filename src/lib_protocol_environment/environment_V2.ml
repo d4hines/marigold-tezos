@@ -1091,6 +1091,6 @@ struct
     let print s = Format.printf "%s%!" s
   end
 
-  module New_storage = Tezos_new_storage
+  module New_storage = Tezos_new_storage.Stub
     
 end

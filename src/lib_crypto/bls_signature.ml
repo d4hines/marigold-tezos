@@ -103,7 +103,6 @@ module Make(P : PARAM) = struct
 
   let check_signed_hashes { identified_hashes ; aggregated_signature } =
     let left_pair = left_pairing aggregated_signature in
-    (* let right_pair = miller_loop (List.map (fun (Public_key pk , Hash h) -> pk , h) identified_hashes) in *)
     let right_pair =
       let right_pairs =
         List.map (fun (Right_pair rp) -> rp) @@
@@ -116,9 +115,6 @@ module Make(P : PARAM) = struct
   let single_signed_hashes { signer ; hash ; signature } =
     { aggregated_signature = signature ; identified_hashes = [ (signer , hash) ] }
 
-(*
-  The right pair of the whole list is computed incrementally.
-*)
   let cons_signed_hashes (hd : signed_hash) (tl : aggregated_signed_hashes) =
     let { signer ; hash ; signature } = hd in
     let { identified_hashes ; aggregated_signature } = tl in

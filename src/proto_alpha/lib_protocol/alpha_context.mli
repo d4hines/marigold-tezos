@@ -34,7 +34,7 @@ module type BASIC_DATA = sig
   val pp : Format.formatter -> t -> unit
 end
 
-type t
+type t = Raw_context.t
 
 type context = t
 
@@ -857,7 +857,7 @@ module Lazy_storage : sig
 end
 
 module Contract : sig
-  include BASIC_DATA
+  include BASIC_DATA with type t = Contract_repr.t
 
   type contract = t
 
@@ -1662,8 +1662,10 @@ module Rollup : sig
   type result =
     | Rollup_creation_result of rollup_creation_result
     | Block_commitment_result of dummy_result
-    | Tx_rejection_result of dummy_result
+    | Micro_block_rejection_result of dummy_result
+    | Deposit_result of dummy_result
+    | Withdrawal_result of dummy_result
 
-  include Rollup_storage.TYPE with type t := t
+  include module type of Rollup_storage
 
 end

@@ -133,27 +133,29 @@ let pp_manager_operation_content (type kind) source internal pp_result ppf
         result
   | Rollup rollup -> (
     match rollup with
-    | Commit_block () ->
+    | Commit_block _ ->         (* TODO *)
         Format.fprintf
           ppf
           "@[<v 2>%s:@,Type: Commit block@,%a@]"
           (if internal then "Internal Rollup" else "Rollup")
           pp_result
           result
-    | Reject_tx () ->
+    | Reject_micro_block _ ->   (* TODO *)
         Format.fprintf
           ppf
-          "@[<v 2>%s:@,Type: Reject transaction@,%a@]"
+          "@[<v 2>%s:@,Type: Reject micro block@,%a@]"
           (if internal then "Internal Rollup" else "Rollup")
           pp_result
           result
-    | Create_rollup () ->
+    | Create_rollup _ ->        (* TODO *)
         Format.fprintf
           ppf
           "@[<v 2>%s:@,Type: Create rollup@,%a@]"
           (if internal then "Internal Rollup" else "Rollup")
           pp_result
-          result ) ) ;
+          result
+    | _ -> raise (Failure __LOC__)                     (* TODO *)
+  ) ) ;
   Format.fprintf ppf "@]"
 
 let pp_balance_updates ppf = function
@@ -363,10 +365,11 @@ let pp_manager_operation_contents_and_result ppf
               {consumed_gas; originated_contracts; allocated_storage} ->
               Format.fprintf ppf "@, Committed rollup block" ;
               (consumed_gas, originated_contracts, allocated_storage)
-          | Tx_rejection_result
+          | Micro_block_rejection_result
               {consumed_gas; originated_contracts; allocated_storage} ->
               Format.fprintf ppf "@, Rejected rollup tx" ;
               (consumed_gas, originated_contracts, allocated_storage)
+          | _ -> raise (Failure __LOC__) (* TODO *)
         in
         Format.fprintf ppf "@,Consumed gas: %a" Gas.Arith.pp consumed_gas ;
         ( match originated_contracts with

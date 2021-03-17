@@ -70,7 +70,7 @@ val delegation :
 val rollup_block_commitment :
   Context.t -> Contract.t -> Operation.packed tzresult Lwt.t
 
-val rollup_tx_rejection :
+val rollup_micro_block_rejection :
   Context.t -> Contract.t -> Operation.packed tzresult Lwt.t
 
 val rollup_creation :

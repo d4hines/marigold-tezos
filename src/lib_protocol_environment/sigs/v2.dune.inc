@@ -68,6 +68,8 @@
    v2/RPC_context.mli
    v2/equality_witness.mli
 
+   v2/new_storage.mli
+
    ;;
    v2/hack.mli
 )

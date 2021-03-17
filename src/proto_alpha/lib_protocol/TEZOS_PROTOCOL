@@ -79,6 +79,7 @@
         "Baking",
         "Amendment",
         "Apply_results",
+	"Rollup_apply",
         "Apply",
 
         "Services_registration",

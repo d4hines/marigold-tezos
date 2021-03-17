@@ -185,22 +185,10 @@ struct
       V.encoding
 end
 
-module type INDEX = sig
-  type t
-
-  val path_length : int
-
-  val to_path : t -> string list -> string list
-
-  val of_path : string list -> t option
-
-  type 'a ipath
-
-  val args : ('a, t, 'a ipath) Storage_description.args
-end
-
-module Pair (I1 : INDEX) (I2 : INDEX) : INDEX with type t = I1.t * I2.t =
-struct
+module Pair (I1 : INDEX) (I2 : INDEX) : INDEX
+  with type t = I1.t * I2.t
+   and type 'a ipath = 'a I1.ipath I2.ipath
+= struct
   type t = I1.t * I2.t
 
   let path_length = I1.path_length + I2.path_length
@@ -270,6 +258,10 @@ module Make_indexed_data_storage (C : Raw_context.T) (I : INDEX) (V : VALUE) :
     with type t = C.t
      and type key = I.t
      and type value = V.t = struct
+
+  module I = I
+  module C = C
+  
   type t = C.t
 
   type context = t
@@ -616,11 +608,15 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
   Indexed_raw_context
     with type t = C.t
      and type key = I.t
+     and type context = C.t
      and type 'a ipath = 'a I.ipath = struct
   type t = C.t
 
   type context = t
 
+  module I = I
+  module C = C
+  
   type key = I.t
 
   type 'a ipath = 'a I.ipath
@@ -1112,7 +1108,19 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
         (register_named_subcontext Raw_context.description N.name)
         V.encoding
   end
+
 end
+
+module Nest_indexed_raw_context(C : Indexed_raw_context)(I' : INDEX) :
+  Indexed_raw_context with type t = C.t
+                       and type key = (C.key * I'.t)
+                       and type 'a ipath = 'a C.I.ipath I'.ipath
+= struct
+  module C' = Make_subcontext (Registered)(C.C)(struct let name = ["nest"] end)
+  module IP = Pair(C.I)(I')
+  include Make_indexed_subcontext(C')(IP)
+end
+
 
 module type WRAPPER = sig
   type t

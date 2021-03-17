@@ -23,6 +23,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+open Storage_sigs
 open Storage_functors
 
 module UInt16 = struct
@@ -42,6 +43,17 @@ module Int64 = struct
 
   let encoding = Data_encoding.int64
 end
+
+module Make_index (H : Storage_description.INDEX) :
+  INDEX with type t = H.t and type 'a ipath = 'a * H.t = struct
+  include H
+
+  type 'a ipath = 'a * t
+
+  let args = Storage_description.One {rpc_arg; encoding; compare}
+end
+
+module Z_ = Z
 
 module Z = struct
   type t = Z.t
@@ -73,14 +85,6 @@ module Int31_index : INDEX with type t = int = struct
       }
 end
 
-module Make_index (H : Storage_description.INDEX) :
-  INDEX with type t = H.t and type 'a ipath = 'a * H.t = struct
-  include H
-
-  type 'a ipath = 'a * t
-
-  let args = Storage_description.One {rpc_arg; encoding; compare}
-end
 
 module Block_priority =
   Make_single_data_storage (Registered) (Raw_context)
@@ -1230,6 +1234,75 @@ module Rollups = struct
         let name = ["global_counter"]
       end)
       (Z)
+
+  module Z_id = struct
+    module Z = Z_
+    type t = Z.t
+
+    let compare = Z.compare
+
+    let encoding =
+      Data_encoding.def "rollup_id" ~title:"rollup identifier" ~description:"a rollup identifier" Data_encoding.z
+
+    let rpc_arg =
+      let construct = Z.to_string in
+      let destruct hash =
+        match Z.of_string hash with
+        | exception _ ->
+          Error "Cannot parse rollup id"
+        | id ->
+          Ok id
+      in
+      RPC_arg.make ~descr:"a rollup identifier" ~name:"rollup_id" ~construct ~destruct ()
+
+    let init = Z.zero
+
+    let parse_z (z : Z.t) : t = z
+
+    let unparse_to_z (z : t) : Z.t = z
+
+    let next = Z.succ
+
+    let path_length = 1
+
+    let to_path z l = Z.to_string z :: l
+
+    let of_path = function
+      | [] | _ :: _ :: _ ->
+        None
+      | [z] ->
+        Some (Z.of_string z)
+
+  end
+  
+  module Rollup_context =
+    Make_indexed_subcontext
+      (Make_subcontext (Registered) (Raw_context)
+         (struct
+           let name = ["rollup_index"]
+         end))
+      (Make_index(Z_id))
+
+  module Rollup_content =
+    Rollup_context.Make_map(struct
+      let name = [ "rollup_content" ]
+    end)(Rollup_repr.Rollup_onchain_content)
+  
+  (* module Block_context = Nest_indexed_raw_context(Rollup_context)(Make_index(Z_id)) *)
+  module Block_context =
+    Make_indexed_subcontext
+      (Make_subcontext (Registered) (Raw_context)
+         (struct
+           let name = ["block_index"]
+         end))
+      (Pair(Make_index(Z_id))(Make_index(Z_id)))
+
+
+  
+  module Block_content = Block_context.Make_map(struct
+      let name = [ "block_content" ]
+    end)(Rollup_repr.Block_onchain_content)
+  
 end
 
 module Pending_migration_balance_updates =

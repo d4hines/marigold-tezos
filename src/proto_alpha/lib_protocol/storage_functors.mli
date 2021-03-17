@@ -41,20 +41,6 @@ module Make_single_data_storage
     (N : NAME)
     (V : VALUE) : Single_data_storage with type t = C.t and type value = V.t
 
-module type INDEX = sig
-  type t
-
-  val path_length : int
-
-  val to_path : t -> string list -> string list
-
-  val of_path : string list -> t option
-
-  type 'a ipath
-
-  val args : ('a, t, 'a ipath) Storage_description.args
-end
-
 module Pair (I1 : INDEX) (I2 : INDEX) : INDEX with type t = I1.t * I2.t
 
 module Make_data_set_storage (C : Raw_context.T) (I : INDEX) :
@@ -94,6 +80,12 @@ module Make_indexed_subcontext (C : Raw_context.T) (I : INDEX) :
     with type t = C.t
      and type key = I.t
      and type 'a ipath = 'a I.ipath
+
+module Nest_indexed_raw_context(C : Indexed_raw_context)(I' : INDEX) :
+  Indexed_raw_context with type t = C.t
+                       and type key = (C.key * I'.t)
+                       and type 'a ipath = 'a C.I.ipath I'.ipath
+
 
 module type WRAPPER = sig
   type t

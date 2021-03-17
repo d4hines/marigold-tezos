@@ -90,6 +90,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    baking.mli baking.ml
    amendment.mli amendment.ml
    apply_results.mli apply_results.ml
+   rollup_apply.ml
    apply.mli apply.ml
    services_registration.mli services_registration.ml
    constants_services.mli constants_services.ml
@@ -179,6 +180,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    baking.mli baking.ml
    amendment.mli amendment.ml
    apply_results.mli apply_results.ml
+   rollup_apply.ml
    apply.mli apply.ml
    services_registration.mli services_registration.ml
    constants_services.mli constants_services.ml
@@ -268,6 +270,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    baking.mli baking.ml
    amendment.mli amendment.ml
    apply_results.mli apply_results.ml
+   rollup_apply.ml
    apply.mli apply.ml
    services_registration.mli services_registration.ml
    constants_services.mli constants_services.ml
@@ -377,6 +380,7 @@ include Tezos_raw_protocol_alpha.Main
    Baking
    Amendment
    Apply_results
+   Rollup_apply
    Apply
    Services_registration
    Constants_services
@@ -501,6 +505,7 @@ include Tezos_raw_protocol_alpha.Main
    baking.mli baking.ml
    amendment.mli amendment.ml
    apply_results.mli apply_results.ml
+   rollup_apply.ml
    apply.mli apply.ml
    services_registration.mli services_registration.ml
    constants_services.mli constants_services.ml

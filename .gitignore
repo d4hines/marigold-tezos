@@ -51,6 +51,7 @@ __pycache__
 .merlin
 
 *~
+*.dir-locals.el
 \#*\#
 .\#*
 [._]*.s[a-v][a-z]

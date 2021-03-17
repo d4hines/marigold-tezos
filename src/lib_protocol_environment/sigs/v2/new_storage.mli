@@ -23,7 +23,12 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type key = bool list
+type key
+
+(* Both are from root to leaves *)
+val key_of_bytes : bytes -> key
+val key_of_bits : bool list -> key
+
 type value = bytes
 val nul : value
 
@@ -46,6 +51,7 @@ module Patricia_produce_stream : sig
   type tt = t * stream
   val get_hash : t -> hash
   val of_patricia : Patricia.t -> t
+  val empty : t
   val get : tt -> key -> value * tt
   val set : tt -> key -> value -> tt
 end
@@ -54,6 +60,8 @@ module Patricia_consume_stream : sig
   type t
   type tt = t * stream
   val empty_hash : hash -> t
+  val get_hash : t -> hash
+  val empty : t
   val get : tt -> key -> value * tt
   val set : tt -> key -> value -> tt
 end

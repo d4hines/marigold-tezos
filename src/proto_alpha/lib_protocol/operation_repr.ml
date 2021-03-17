@@ -369,7 +369,7 @@ module Encoding = struct
         {
           tag = 4;
           name = "rollup";
-          encoding = Rollup_repr.encoding;
+          encoding = obj1 (req "rollup" Rollup_repr.encoding);
           select = (function Manager (Rollup _ as op) -> Some op | _ -> None);
           proj = (function Rollup content -> content);
           inj = (fun content -> Rollup content);

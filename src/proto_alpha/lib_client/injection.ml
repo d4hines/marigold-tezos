@@ -377,8 +377,10 @@ let estimated_gas_single (type kind)
           ( match rollup_result with
           | Rollup_creation_result {consumed_gas; _}
           | Block_commitment_result {consumed_gas; _}
-          | Tx_rejection_result {consumed_gas; _} ->
-              consumed_gas )
+          | Micro_block_rejection_result {consumed_gas; _} ->
+            consumed_gas
+          | _ -> assert false   (* TODO *)
+          )
     | Skipped _ ->
         assert false
     | Backtracked (_, None) ->
@@ -417,8 +419,10 @@ let estimated_storage_single (type kind) origination_size
           ( match rollup_result with
           | Rollup_creation_result {allocated_storage; _}
           | Block_commitment_result {allocated_storage; _}
-          | Tx_rejection_result {allocated_storage; _} ->
-              allocated_storage )
+          | Micro_block_rejection_result {allocated_storage; _} ->
+            allocated_storage
+          | _ -> assert false   (* TODO *)
+          )
     | Skipped _ ->
         assert false
     | Backtracked (_, None) ->
@@ -469,8 +473,10 @@ let originated_contracts_single (type kind)
           ( match rollup_result with
           | Rollup_creation_result {originated_contracts; _}
           | Block_commitment_result {originated_contracts; _}
-          | Tx_rejection_result {originated_contracts; _} ->
-              originated_contracts )
+          | Micro_block_rejection_result {originated_contracts; _} ->
+            originated_contracts
+          | _ -> assert false   (* TODO *)
+          )
     | Skipped _ ->
         assert false
     | Backtracked (_, None) ->

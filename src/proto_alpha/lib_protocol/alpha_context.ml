@@ -266,7 +266,9 @@ module Rollup = struct
   type result =
     | Rollup_creation_result of rollup_creation_result
     | Block_commitment_result of dummy_result
-    | Tx_rejection_result of dummy_result
+    | Micro_block_rejection_result of dummy_result
+    | Deposit_result of dummy_result
+    | Withdrawal_result of dummy_result
 
   include Rollup_storage
 end

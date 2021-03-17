@@ -69,12 +69,12 @@ let noop = test "noop" @@ fun () ->
     | _ -> failwith "expected a block commitment result"
   in
   
-  let* rollup_tx_rejection = Op.rollup_tx_rejection (I i) bootstrap0 in
-  let* i = Incremental.add_operation i rollup_tx_rejection in
+  let* rollup_micro_block_rejection = Op.rollup_micro_block_rejection (I i) bootstrap0 in
+  let* i = Incremental.add_operation i rollup_micro_block_rejection in
   let* result2 = Incremental.get_last_operation_result i in
   let* () =
     assert_rollup result2 @@ function
-    | Tx_rejection_result _ -> return ()
+    | Micro_block_rejection_result _ -> return ()
     | _ -> failwith "expected a tx rejection result"
   in
 

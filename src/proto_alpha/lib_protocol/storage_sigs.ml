@@ -327,6 +327,20 @@ module type REGISTER = sig
   val ghost : bool
 end
 
+module type INDEX = sig
+  type t
+
+  val path_length : int
+
+  val to_path : t -> string list -> string list
+
+  val of_path : string list -> t option
+
+  type 'a ipath
+
+  val args : ('a, t, 'a ipath) Storage_description.args
+end
+
 module type Indexed_raw_context = sig
   type t
 
@@ -336,6 +350,9 @@ module type Indexed_raw_context = sig
 
   type 'a ipath
 
+  module I : INDEX with type t = key and type 'a ipath = 'a ipath
+  module C : Raw_context.T with type t = context
+  
   val clear : context -> Raw_context.t Lwt.t
 
   val fold_keys : context -> init:'a -> f:(key -> 'a -> 'a Lwt.t) -> 'a Lwt.t

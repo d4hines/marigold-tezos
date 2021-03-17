@@ -765,7 +765,7 @@ let apply_manager_operation_content :
                  It cannot come from the outside. *)
           ok (ctxt, contract)
       | None ->
-          Contract.fresh_contract_from_current_nonce ctxt )
+        Contract.fresh_contract_from_current_nonce ctxt )
       >>?= fun (ctxt, contract) ->
       Contract.originate
         ctxt
@@ -803,31 +803,8 @@ let apply_manager_operation_content :
           {consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt},
         [] )
   | Rollup content -> (
-      let dummy_result : Rollup.dummy_result =
-        {
-          consumed_gas = Gas.Arith.zero;
-          allocated_storage = Z.zero;
-          originated_contracts = [];
-        }
-      in
-      match content with
-      | Create_rollup () ->
-          Rollup.increment_counter ctxt
-          >>=? fun (counter, ctxt) ->
-          let result : Rollup.rollup_creation_result =
-            {
-              rollup_number = counter;
-              consumed_gas = Gas.Arith.zero;
-              allocated_storage = Z.zero;
-              originated_contracts = [];
-            }
-          in
-          return (ctxt, Rollup_result (Rollup_creation_result result), [])
-      | Commit_block () ->
-          return
-            (ctxt, Rollup_result (Block_commitment_result dummy_result), [])
-      | Reject_tx () ->
-          return (ctxt, Rollup_result (Tx_rejection_result dummy_result), []) )
+      Rollup_apply.main ctxt ~source content
+    )
 
 type success_or_failure = Success of context | Failure
 
