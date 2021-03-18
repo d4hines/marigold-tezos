@@ -983,7 +983,39 @@ module Keychain : sig
 
   val pp : Format.formatter -> t -> unit
 
-  val get_keys : context -> public_key_hash -> Keychain_repr.t option tzresult Lwt.t
+  type error += Unregistered_key_hash of public_key_hash (* Permanent *)
+
+  val exists : context -> public_key_hash -> bool Lwt.t
+
+  val init : context -> public_key_hash -> t -> context tzresult Lwt.t
+
+  val find : context -> public_key_hash -> t option tzresult Lwt.t
+
+  val get_consensus_key :
+    context ->
+    public_key_hash ->
+    public_key tzresult Lwt.t
+
+  val get_spending_key :
+    context ->
+    public_key_hash ->
+    public_key tzresult Lwt.t
+
+  val set : context -> public_key_hash -> t -> context tzresult Lwt.t
+
+  val set_consensus_key :
+    context ->
+    public_key_hash ->
+    public_key ->
+    context tzresult Lwt.t
+
+  val set_spending_key :
+    context ->
+    public_key_hash ->
+    public_key ->
+    context tzresult Lwt.t
+
+  val remove : context -> public_key_hash -> context Lwt.t
 end
 
 module Receipt : sig
