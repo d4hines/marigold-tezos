@@ -38,6 +38,7 @@
         "Sapling_repr",
         "Lazy_storage_kind",
         "Receipt_repr",
+        "Keychain_repr",
 
         "Raw_context_intf",
         "Raw_context",
