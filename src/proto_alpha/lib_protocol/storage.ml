@@ -799,6 +799,15 @@ module Sapling = struct
       (Raw_level_repr)
 end
 
+module Keychain =
+  Make_indexed_data_storage
+    (Make_subcontext (Registered) (Raw_context)
+       (struct
+         let name = ["keychain"]
+       end))
+    (Make_index (Signature.Public_key_hash))
+    (Keychain_repr)
+
 module Delegates =
   Make_data_set_storage
     (Make_subcontext (Registered) (Raw_context)

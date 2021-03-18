@@ -77,6 +77,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    commitment_storage.mli commitment_storage.ml
    init_storage.mli init_storage.ml
    fees_storage.mli fees_storage.ml
+   keychain_storage.mli keychain_storage.ml
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
    script_typed_ir.ml
@@ -165,6 +166,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    commitment_storage.mli commitment_storage.ml
    init_storage.mli init_storage.ml
    fees_storage.mli fees_storage.ml
+   keychain_storage.mli keychain_storage.ml
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
    script_typed_ir.ml
@@ -253,6 +255,7 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    commitment_storage.mli commitment_storage.ml
    init_storage.mli init_storage.ml
    fees_storage.mli fees_storage.ml
+   keychain_storage.mli keychain_storage.ml
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
    script_typed_ir.ml
@@ -361,6 +364,7 @@ include Tezos_raw_protocol_alpha.Main
    Commitment_storage
    Init_storage
    Fees_storage
+   Keychain_storage
    Sapling_validator
    Alpha_context
    Script_typed_ir
@@ -485,6 +489,7 @@ include Tezos_raw_protocol_alpha.Main
    commitment_storage.mli commitment_storage.ml
    init_storage.mli init_storage.ml
    fees_storage.mli fees_storage.ml
+   keychain_storage.mli keychain_storage.ml
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
    script_typed_ir.ml

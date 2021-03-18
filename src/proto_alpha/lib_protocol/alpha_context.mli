@@ -973,6 +973,19 @@ module Contract : sig
   val originated_contract : origination_nonce -> contract
 end
 
+module Keychain : sig
+  type t = {
+    consensus_key : Signature.Public_key.t;
+    spending_key : Signature.Public_key.t
+  }
+
+  val encoding : t Data_encoding.encoding
+
+  val pp : Format.formatter -> t -> unit
+
+  val get_keys : context -> public_key_hash -> Keychain_repr.t option tzresult Lwt.t
+end
+
 module Receipt : sig
   type balance =
     | Contract of Contract.t

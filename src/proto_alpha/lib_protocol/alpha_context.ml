@@ -210,6 +210,11 @@ module Sapling = struct
   let fresh ~temporary c = Lazy_storage.fresh Sapling_state ~temporary c
 end
 
+module Keychain = struct
+  include Keychain_repr
+  include Keychain_storage
+end
+
 module Receipt = Receipt_repr
 module Delegate = Delegate_storage
 

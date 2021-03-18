@@ -348,6 +348,13 @@ module Sapling : sig
        and type value = Raw_level_repr.t
 end
 
+(** Keychain for baking account*)
+module Keychain :
+  Indexed_data_storage
+    with type key = Signature.Public_key_hash.t
+     and type value = Keychain_repr.t
+     and type t := Raw_context.t
+
 (** Set of all registered delegates. *)
 module Delegates :
   Data_set_storage

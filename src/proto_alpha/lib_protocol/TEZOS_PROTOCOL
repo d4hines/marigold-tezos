@@ -63,6 +63,7 @@
         "Commitment_storage",
         "Init_storage",
         "Fees_storage",
+        "Keychain_storage",
         "Sapling_validator",
 
         "Alpha_context",
