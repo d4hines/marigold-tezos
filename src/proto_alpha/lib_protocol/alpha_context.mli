@@ -976,7 +976,7 @@ end
 module Keychain : sig
   type t = {
     consensus_key : Signature.Public_key.t;
-    spending_key : Signature.Public_key.t
+    spending_key : Signature.Public_key.t;
   }
 
   val encoding : t Data_encoding.encoding
@@ -992,28 +992,18 @@ module Keychain : sig
   val find : context -> public_key_hash -> t option tzresult Lwt.t
 
   val get_consensus_key :
-    context ->
-    public_key_hash ->
-    public_key tzresult Lwt.t
+    context -> public_key_hash -> public_key tzresult Lwt.t
 
   val get_spending_key :
-    context ->
-    public_key_hash ->
-    public_key tzresult Lwt.t
+    context -> public_key_hash -> public_key tzresult Lwt.t
 
   val set : context -> public_key_hash -> t -> context tzresult Lwt.t
 
   val set_consensus_key :
-    context ->
-    public_key_hash ->
-    public_key ->
-    context tzresult Lwt.t
+    context -> public_key_hash -> public_key -> context tzresult Lwt.t
 
   val set_spending_key :
-    context ->
-    public_key_hash ->
-    public_key ->
-    context tzresult Lwt.t
+    context -> public_key_hash -> public_key -> context tzresult Lwt.t
 
   val remove : context -> public_key_hash -> context Lwt.t
 end

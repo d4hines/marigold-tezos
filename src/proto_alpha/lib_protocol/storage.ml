@@ -805,8 +805,8 @@ module Keychain =
        (struct
          let name = ["keychain"]
        end))
-    (Make_index (Signature.Public_key_hash))
-    (Keychain_repr)
+       (Make_index (Signature.Public_key_hash))
+       (Keychain_repr)
 
 module Delegates =
   Make_data_set_storage

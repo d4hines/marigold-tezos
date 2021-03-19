@@ -29,9 +29,8 @@ type pk = Signature.Public_key.t
 
 type keychain = Keychain_repr.t
 
-type error +=
-  | (* Permanent *)
-    Unregistered_key_hash of pkh
+type error += (* Permanent *)
+              Unregistered_key_hash of pkh
 
 val exists : Raw_context.t -> pkh -> bool Lwt.t
 
@@ -55,18 +54,12 @@ val set : Raw_context.t -> pkh -> keychain -> Raw_context.t tzresult Lwt.t
 (** Update record with given consensus key
     Raises {!Unregistered_key_hash} if the keychain is non-existing *)
 val set_consensus_key :
-  Raw_context.t ->
-  pkh ->
-  pk ->
-  Raw_context.t tzresult Lwt.t
+  Raw_context.t -> pkh -> pk -> Raw_context.t tzresult Lwt.t
 
 (** Update record with given spending key
     Raises {!Unregistered_key_hash} if the keychain is non-existing *)
 val set_spending_key :
-  Raw_context.t ->
-  pkh ->
-  pk ->
-  Raw_context.t tzresult Lwt.t
+  Raw_context.t -> pkh -> pk -> Raw_context.t tzresult Lwt.t
 
 (** Remove keychain for given key hash
     Do nothing if it's non existing *)
