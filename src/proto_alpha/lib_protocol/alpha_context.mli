@@ -990,22 +990,22 @@ module Keychain : sig
 
   val exists : context -> public_key_hash -> bool Lwt.t
 
-  val create :
+  val init :
     context ->
     public_key_hash ->
     public_key ->
     public_key ->
     context tzresult Lwt.t
 
-  val init : context -> public_key_hash -> context tzresult Lwt.t
+  val init_with_manager : context -> public_key_hash -> context tzresult Lwt.t
 
   val find : context -> public_key_hash -> t option tzresult Lwt.t
 
   val get_consensus_key :
-    context -> public_key_hash -> public_key tzresult Lwt.t
+    context -> public_key_hash -> public_key option tzresult Lwt.t
 
   val get_spending_key :
-    context -> public_key_hash -> public_key tzresult Lwt.t
+    context -> public_key_hash -> public_key option tzresult Lwt.t
 
   val set :
     context ->

@@ -38,24 +38,22 @@ val exists : Raw_context.t -> pkh -> bool Lwt.t
 
 (** Create a new keychain with two given keys as consensus key and spending key
     Do nothing if there is a mapping for given key hash already *)
-val create : Raw_context.t -> pkh -> pk -> pk -> context tzresult Lwt.t
+val init : Raw_context.t -> pkh -> pk -> pk -> context tzresult Lwt.t
 
 (** Init keychain with manager key
     Do nothing if there is a mapping for given key hash already *)
-val init : Raw_context.t -> pkh -> context tzresult Lwt.t
+val init_with_manager : Raw_context.t -> pkh -> context tzresult Lwt.t
 
 (** Find a keychain for given key hash
     Return none if these is no mapping
     Raises {!Storage_error Corrupted_data} if the deserialisation fails. *)
 val find : Raw_context.t -> pkh -> keychain option tzresult Lwt.t
 
-(** Get the current valid consensus key
-    Raises {!Unregistered_key_hash} if the keychain is non-existing *)
-val get_consensus_key : context -> pkh -> pk tzresult Lwt.t
+(** Get the current valid consensus key *)
+val get_consensus_key : context -> pkh -> pk option tzresult Lwt.t
 
-(** Get the current valid spending key
-    Raises {!Unregistered_key_hash} if the keychain is non-existing *)
-val get_spending_key : context -> pkh -> pk tzresult Lwt.t
+(** Get the current valid spending key *)
+val get_spending_key : context -> pkh -> pk option tzresult Lwt.t
 
 (** Update keychain with two given keys as consensus key and spending key
     Raises {!Unregistered_key_hash} if the keychain is non-existing *)
