@@ -372,6 +372,8 @@ let estimated_gas_single (type kind)
         Ok consumed_gas
     | Applied (Delegation_result {consumed_gas}) ->
         Ok consumed_gas
+    | Applied (Baking_account_result {consumed_gas}) ->
+        Ok consumed_gas
     | Skipped _ ->
         assert false
     | Backtracked (_, None) ->
@@ -404,6 +406,8 @@ let estimated_storage_single (type kind) origination_size
     | Applied (Reveal_result _) ->
         Ok Z.zero
     | Applied (Delegation_result _) ->
+        Ok Z.zero
+    | Applied (Baking_account_result _) ->
         Ok Z.zero
     | Skipped _ ->
         assert false
@@ -449,6 +453,8 @@ let originated_contracts_single (type kind)
     | Applied (Reveal_result _) ->
         Ok []
     | Applied (Delegation_result _) ->
+        Ok []
+    | Applied (Baking_account_result _) ->
         Ok []
     | Skipped _ ->
         assert false

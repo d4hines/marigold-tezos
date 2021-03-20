@@ -802,6 +802,12 @@ let apply_manager_operation_content :
         Delegation_result
           {consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt},
         [] )
+  | Baking_account {key_hash = _; consensus_key = _; spending_key = _} ->
+    return (ctxt,
+            Baking_account_result
+              {consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt},
+            [])
+
 
 type success_or_failure = Success of context | Failure
 

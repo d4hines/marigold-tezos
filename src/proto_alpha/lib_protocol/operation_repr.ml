@@ -50,6 +50,8 @@ module Kind = struct
 
   type delegation = Delegation_kind
 
+  type baking_account = Baking_account_kind
+
   type failing_noop = Failing_noop_kind
 
   type 'a manager =
@@ -57,6 +59,7 @@ module Kind = struct
     | Transaction_manager_kind : transaction manager
     | Origination_manager_kind : origination manager
     | Delegation_manager_kind : delegation manager
+    | Baking_account_manager_kind : baking_account manager
 end
 
 type raw = Operation.t = {shell : Operation.shell_header; proto : bytes}
@@ -150,6 +153,12 @@ and _ manager_operation =
   | Delegation :
       Signature.Public_key_hash.t option
       -> Kind.delegation manager_operation
+  | Baking_account : {
+      key_hash : Signature.Public_key_hash.t;
+      consensus_key : Signature.Public_key.t;
+      spending_key : Signature.Public_key.t option;
+      }
+      -> Kind.baking_account manager_operation
 
 and counter = Z.t
 
@@ -163,6 +172,8 @@ let manager_kind : type kind. kind manager_operation -> kind Kind.manager =
       Kind.Origination_manager_kind
   | Delegation _ ->
       Kind.Delegation_manager_kind
+  | Baking_account _ ->
+      Kind.Baking_account_manager_kind
 
 type 'kind internal_operation = {
   source : Contract_repr.contract;
@@ -358,6 +369,20 @@ module Encoding = struct
           inj = (fun key -> Delegation key);
         }
 
+    let baking_account_case =
+      MCase
+        {
+          tag = 4;
+          name = "baking_account";
+          encoding = obj3 (req "key_hash" Signature.Public_key_hash.encoding)
+                          (req "consensus_key" Signature.Public_key.encoding)
+                          (opt "spending_key" Signature.Public_key.encoding);
+          select =
+            (function Manager (Baking_account _ as op) -> Some op | _ -> None);
+          proj = (function | Baking_account {key_hash; consensus_key; spending_key;} -> (key_hash, consensus_key, spending_key));
+          inj = (fun (key_hash, consensus_key, spending_key) -> Baking_account {key_hash; consensus_key; spending_key});
+        }
+
     let encoding =
       let make (MCase {tag; name; encoding; select; proj; inj}) =
         case
@@ -373,7 +398,9 @@ module Encoding = struct
         [ make reveal_case;
           make transaction_case;
           make origination_case;
-          make delegation_case ]
+          make delegation_case;
+          make baking_account_case;
+        ]
   end
 
   type 'b case =
@@ -628,6 +655,9 @@ module Encoding = struct
   let delegation_case =
     make_manager_case 110 Manager_operations.delegation_case
 
+  let baking_account_case =
+    make_manager_case 111 Manager_operations.baking_account_case
+
   let contents_encoding =
     let make (Case {tag; name; encoding; select; proj; inj}) =
       case
@@ -835,6 +865,10 @@ let equal_manager_operation_kind :
       Some Eq
   | (Delegation _, _) ->
       None
+  | (Baking_account _, Baking_account _) ->
+     Some Eq
+  | (Baking_account _, _) ->
+     None
 
 let equal_contents_kind :
     type a b. a contents -> b contents -> (a, b) eq option =
