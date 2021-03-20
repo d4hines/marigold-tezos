@@ -974,8 +974,11 @@ module Contract : sig
 end
 
 module Keychain : sig
+  type next_key
+
   type t = {
     consensus_key : Signature.Public_key.t;
+    next_consensus_key : next_key;
     spending_key : Signature.Public_key.t;
   }
 
@@ -987,7 +990,14 @@ module Keychain : sig
 
   val exists : context -> public_key_hash -> bool Lwt.t
 
-  val init : context -> public_key_hash -> t -> context tzresult Lwt.t
+  val create :
+    context ->
+    public_key_hash ->
+    public_key ->
+    public_key ->
+    context tzresult Lwt.t
+
+  val init : context -> public_key_hash -> context tzresult Lwt.t
 
   val find : context -> public_key_hash -> t option tzresult Lwt.t
 
@@ -997,7 +1007,12 @@ module Keychain : sig
   val get_spending_key :
     context -> public_key_hash -> public_key tzresult Lwt.t
 
-  val set : context -> public_key_hash -> t -> context tzresult Lwt.t
+  val set :
+    context ->
+    public_key_hash ->
+    public_key ->
+    public_key ->
+    context tzresult Lwt.t
 
   val set_consensus_key :
     context -> public_key_hash -> public_key -> context tzresult Lwt.t

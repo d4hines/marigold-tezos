@@ -23,8 +23,18 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+type delayed_update = {
+  activate_cycle : Cycle_repr.t;
+  pending_key : Signature.Public_key.t;
+}
+
+type next_key =
+  | No_next_key
+  | Delay of delayed_update
+
 type t = {
   consensus_key : Signature.Public_key.t;
+  next_consensus_key : next_key;
   spending_key : Signature.Public_key.t;
 }
 
