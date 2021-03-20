@@ -1021,32 +1021,48 @@ let check_manager_signature ctxt chain_id (op : _ Kind.manager contents_list)
   let rec find_source :
       type kind.
       kind Kind.manager contents_list ->
+      bool ->
       (Signature.public_key_hash * Signature.public_key option) option ->
-      (Signature.public_key_hash * Signature.public_key option) tzresult =
-   fun contents_list manager ->
+      ((Signature.public_key_hash * Signature.public_key option) * bool) tzresult =
+   fun contents_list is_all_transaction manager ->
     let source (type kind) = function
       | (Manager_operation {source; operation = Reveal key; _} :
           kind Kind.manager contents) ->
-          (source, Some key)
+          (source, Some key), false
+      | Manager_operation {source; operation = Transaction _} ->
+          (source, None), true
       | Manager_operation {source; _} ->
-          (source, None)
+          (source, None), false
     in
     match contents_list with
     | Single op ->
-        check_same_manager (source op) manager
+        let (source_op, is_transaction) = source op in
+        check_same_manager source_op manager
+        >|? fun (manager) -> (manager, is_transaction && is_all_transaction)
     | Cons (op, rest) ->
-        check_same_manager (source op) manager
-        >>? fun manager -> find_source rest (Some manager)
+        let (source_op, is_transaction) = source op in
+        check_same_manager source_op manager
+        >>? fun (manager) -> find_source rest (is_transaction && is_all_transaction) (Some manager)
   in
-  find_source op None
-  >>?= fun (source, source_key) ->
-  ( match source_key with
-  | Some key ->
-      return key
-  | None ->
-      Contract.get_manager_key ctxt source )
-  >>=? fun public_key ->
-  Lwt.return (Operation.check_signature public_key chain_id raw_operation)
+  find_source op true None
+  >>?= fun ((source, source_key), is_all_transaction) ->
+  Keychain.find ctxt source
+  >>=? fun (kc) ->
+  (match kc, is_all_transaction with
+  | Some {consensus_key; spending_key }, true ->
+    Operation.check_signature consensus_key chain_id raw_operation
+    >>?= fun () ->
+    Lwt.return (Operation.check_signature spending_key chain_id raw_operation)
+  | Some {consensus_key; _ }, false ->
+    Lwt.return (Operation.check_signature consensus_key chain_id raw_operation)
+  | None, _ ->
+    (( match source_key with
+    | Some key ->
+        return key
+    | None ->
+        Contract.get_manager_key ctxt source )
+    >>=? fun public_key ->
+    Lwt.return (Operation.check_signature public_key chain_id raw_operation)))
 
 let rec apply_manager_contents_list_rec :
     type kind.
