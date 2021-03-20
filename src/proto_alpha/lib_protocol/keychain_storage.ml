@@ -23,11 +23,15 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+open Keychain_repr
+
 type pkh = Signature.Public_key_hash.t
 
 type pk = Signature.Public_key.t
 
 type keychain = Keychain_repr.t
+
+type context = Raw_context.t
 
 type error +=
   | (* Permanent *)
@@ -52,28 +56,70 @@ let () =
 
 let exists ctx pkh = Storage.Keychain.mem ctx pkh
 
-let init ctx pkh keychain = Storage.Keychain.init ctx pkh keychain
+let init ctx pkh consensus_key spending_key =
+  let next_consensus_key = Keychain_repr.No_next_key in
+  Storage.Keychain.init
+    ctx
+    pkh
+    {consensus_key; next_consensus_key ;spending_key}
 
-let find ctx pkh = Storage.Keychain.find ctx pkh
+let init_with_manager ctx pkh =
+  Contract_storage.get_manager_key ctx pkh
+  >>=? fun (manager_key) -> init ctx pkh manager_key manager_key
+
+let consensus_key_update_internal ctx keychain : Keychain_repr.t =
+  match keychain.next_consensus_key with
+  | No_next_key -> keychain
+  | Delay update ->
+    let current_cycle = (Level_storage.current ctx).cycle in
+    if Cycle_repr.(current_cycle <= update.activate_cycle) then
+      let consensus_key = update.pending_key in
+      let next_consensus_key = No_next_key in
+      {keychain with consensus_key; next_consensus_key}
+    else keychain
+
+let find ctx pkh =
+  Storage.Keychain.find ctx pkh
+  >>=? function
+  | None -> return None
+  | Some keychain ->
+    let updated_keychain = consensus_key_update_internal ctx keychain in
+    return @@ Some updated_keychain
 
 let get_consensus_key ctx pkh =
   exists ctx pkh
   >>= fun existing ->
   if existing then
-    Storage.Keychain.get ctx pkh >|=? fun {consensus_key} -> consensus_key
-  else fail (Unregistered_key_hash pkh)
+    Storage.Keychain.get ctx pkh
+    >|=? fun keychain ->
+    let updated_keychain = consensus_key_update_internal ctx keychain in
+    Some updated_keychain.consensus_key
+  else return_none
 
 let get_spending_key ctx pkh =
   exists ctx pkh
   >>= fun existing ->
   if existing then
-    Storage.Keychain.get ctx pkh >|=? fun {spending_key} -> spending_key
-  else fail (Unregistered_key_hash pkh)
+    Storage.Keychain.get ctx pkh
+    >|=? fun keychain ->
+    let updated_keychain = consensus_key_update_internal ctx keychain in
+    Some updated_keychain.spending_key
+  else return_none
 
-let set ctx pkh keychain =
+let setup_next_key_internal ctx keychain pending_key : Keychain_repr.t =
+  let activate_cycle = (Level_storage.current ctx).cycle in
+  let update = Keychain_repr.{ activate_cycle; pending_key} in
+  let next = Keychain_repr.Delay update in
+  {keychain with Keychain_repr.next_consensus_key = next}
+
+let set ctx pkh consensus_key spending_key =
   exists ctx pkh
   >>= fun existing ->
-  if existing then Storage.Keychain.update ctx pkh keychain
+  if existing then
+    Storage.Keychain.get ctx pkh
+    >>=? fun keychain ->
+    let keychain_next = setup_next_key_internal ctx keychain consensus_key in
+    Storage.Keychain.update ctx pkh {keychain_next with spending_key}
   else fail (Unregistered_key_hash pkh)
 
 let set_consensus_key ctx pkh consensus_key =
@@ -81,7 +127,9 @@ let set_consensus_key ctx pkh consensus_key =
   >>= fun existing ->
   if existing then
     Storage.Keychain.get ctx pkh
-    >>=? fun ks -> Storage.Keychain.update ctx pkh {ks with consensus_key}
+    >>=? fun keychain ->
+    let keychain_next = setup_next_key_internal ctx keychain consensus_key in
+    Storage.Keychain.update ctx pkh keychain_next
   else fail (Unregistered_key_hash pkh)
 
 let set_spending_key ctx pkh spending_key =
