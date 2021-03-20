@@ -75,9 +75,9 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    voting_period_storage.mli voting_period_storage.ml
    vote_storage.mli vote_storage.ml
    commitment_storage.mli commitment_storage.ml
+   rollup_storage.ml
    init_storage.mli init_storage.ml
    fees_storage.mli fees_storage.ml
-   rollup_storage.ml
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
    script_typed_ir.ml
@@ -165,9 +165,9 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    voting_period_storage.mli voting_period_storage.ml
    vote_storage.mli vote_storage.ml
    commitment_storage.mli commitment_storage.ml
+   rollup_storage.ml
    init_storage.mli init_storage.ml
    fees_storage.mli fees_storage.ml
-   rollup_storage.ml
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
    script_typed_ir.ml
@@ -255,9 +255,9 @@ module CamlinternalFormatBasics = struct include CamlinternalFormatBasics end
    voting_period_storage.mli voting_period_storage.ml
    vote_storage.mli vote_storage.ml
    commitment_storage.mli commitment_storage.ml
+   rollup_storage.ml
    init_storage.mli init_storage.ml
    fees_storage.mli fees_storage.ml
-   rollup_storage.ml
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
    script_typed_ir.ml
@@ -365,9 +365,9 @@ include Tezos_raw_protocol_alpha.Main
    Voting_period_storage
    Vote_storage
    Commitment_storage
+   Rollup_storage
    Init_storage
    Fees_storage
-   Rollup_storage
    Sapling_validator
    Alpha_context
    Script_typed_ir
@@ -463,6 +463,7 @@ include Tezos_raw_protocol_alpha.Main
    roll_repr.mli roll_repr.ml
    vote_repr.mli vote_repr.ml
    block_header_repr.mli block_header_repr.ml
+   rollup_repr.ml
    operation_repr.mli operation_repr.ml
    manager_repr.mli manager_repr.ml
    commitment_repr.mli commitment_repr.ml
@@ -490,9 +491,9 @@ include Tezos_raw_protocol_alpha.Main
    voting_period_storage.mli voting_period_storage.ml
    vote_storage.mli vote_storage.ml
    commitment_storage.mli commitment_storage.ml
+   rollup_storage.ml
    init_storage.mli init_storage.ml
    fees_storage.mli fees_storage.ml
-   rollup_storage.ml
    sapling_validator.ml
    alpha_context.mli alpha_context.ml
    script_typed_ir.ml

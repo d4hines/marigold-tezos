@@ -1172,6 +1172,58 @@ module Vote : sig
   val clear_current_proposal : context -> context tzresult Lwt.t
 end
 
+module Rollup : sig
+  include module type of Rollup_repr
+
+  type rollup_creation_result = {
+    consumed_gas : Gas.Arith.fp;
+    allocated_storage : Z.t;
+    originated_contracts : Contract.t list;
+    rollup_number : Z.t;
+  }
+
+  type dummy_result = {
+    consumed_gas : Gas.Arith.fp;
+    allocated_storage : Z.t;
+    originated_contracts : Contract.t list;
+  }
+
+  type result =
+    | Rollup_creation_result of rollup_creation_result
+    | Block_commitment_result of dummy_result
+    | Micro_block_rejection_result of dummy_result
+    | Deposit_result of dummy_result
+    | Withdrawal_result of dummy_result
+
+  type rollup_creation_internal_result = {
+    id : Storage.Rollups.Global_counter.value;
+  }
+
+  type block_commitment_result = unit
+
+  val init : t -> t tzresult Lwt.t
+
+  val create_rollup :
+    operator:Contract.t ->
+    kind:rollup_kind ->
+    t ->
+    (rollup_creation_internal_result * t) tzresult Lwt.t
+
+  val commit_block :
+    Block_commitment.t ->
+    t ->
+    operator:Contract.t ->
+    (block_commitment_result * t) tzresult Lwt.t
+
+  val get_block : t -> Z.t -> Z.t -> Block_onchain_content.t tzresult Lwt.t
+
+  val get_rollup : t -> Z.t -> Rollup_onchain_content.t tzresult Lwt.t
+
+  module Dev : sig
+    val get_counter : t -> Z.t tzresult Lwt.t
+  end
+end
+
 module Block_header : sig
   type contents = {
     priority : int;
@@ -1335,7 +1387,7 @@ and _ manager_operation =
   | Delegation :
       Signature.Public_key_hash.t option
       -> Kind.delegation manager_operation
-  | Rollup : Rollup_repr.operation_content -> Kind.rollup manager_operation
+  | Rollup : Rollup.operation_content -> Kind.rollup manager_operation
 
 and counter = Z.t
 
@@ -1641,31 +1693,4 @@ module Parameters : sig
   }
 
   val encoding : t Data_encoding.t
-end
-
-module Rollup : sig
-  include module type of Rollup_repr
-  
-  type rollup_creation_result = {
-    consumed_gas : Gas.Arith.fp;
-    allocated_storage : Z.t;
-    originated_contracts : Contract.t list;
-    rollup_number : Z.t;
-  }
-
-  type dummy_result = {
-    consumed_gas : Gas.Arith.fp;
-    allocated_storage : Z.t;
-    originated_contracts : Contract.t list;
-  }
-
-  type result =
-    | Rollup_creation_result of rollup_creation_result
-    | Block_commitment_result of dummy_result
-    | Micro_block_rejection_result of dummy_result
-    | Deposit_result of dummy_result
-    | Withdrawal_result of dummy_result
-
-  include module type of Rollup_storage
-
 end

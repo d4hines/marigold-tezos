@@ -74,11 +74,6 @@ module Make : functor (P : PARAM) -> sig
     signed_hash -> aggregated_signed_hashes -> aggregated_signed_hashes
   module Dev : sig
     val create_account : ?seed:Fr.t -> unit -> account
-    module Fr = Fr
-    module Fq12 = Fq12
-    module G1 = G1
-    module G2 = G2
-    module Gt = Gt
     val miller_loop : (G1.t * G2.t) list -> Fq12.t
     val final_exponentiation_opt : Fq12.t -> Fq12.t option
     val pairing : G1.t -> G2.t -> Fq12.t
