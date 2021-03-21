@@ -997,7 +997,11 @@ module Keychain : sig
     public_key ->
     context tzresult Lwt.t
 
-  val init_with_manager : context -> public_key_hash -> context tzresult Lwt.t
+  val init_with_manager :
+    context ->
+    public_key_hash ->
+    public_key ->
+    context tzresult Lwt.t
 
   val find : context -> public_key_hash -> t option tzresult Lwt.t
 
@@ -1010,8 +1014,8 @@ module Keychain : sig
   val set :
     context ->
     public_key_hash ->
-    public_key ->
-    public_key ->
+    public_key option ->
+    public_key option ->
     context tzresult Lwt.t
 
   val set_consensus_key :

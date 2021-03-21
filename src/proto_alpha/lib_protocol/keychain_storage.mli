@@ -40,9 +40,9 @@ val exists : Raw_context.t -> pkh -> bool Lwt.t
     Do nothing if there is a mapping for given key hash already *)
 val init : Raw_context.t -> pkh -> pk -> pk -> context tzresult Lwt.t
 
-(** Init keychain with manager key
+(** Init keychain with manager key as consensus key
     Do nothing if there is a mapping for given key hash already *)
-val init_with_manager : Raw_context.t -> pkh -> context tzresult Lwt.t
+val init_with_manager : Raw_context.t -> pkh -> pk -> context tzresult Lwt.t
 
 (** Find a keychain for given key hash
     Return none if these is no mapping
@@ -57,7 +57,7 @@ val get_spending_key : context -> pkh -> pk option tzresult Lwt.t
 
 (** Update keychain with two given keys as consensus key and spending key
     Raises {!Unregistered_key_hash} if the keychain is non-existing *)
-val set : context -> pkh -> pk -> pk -> context tzresult Lwt.t
+val set : context -> pkh -> pk option -> pk option -> context tzresult Lwt.t
 
 (** Update record with given consensus key
     Raises {!Unregistered_key_hash} if the keychain is non-existing *)

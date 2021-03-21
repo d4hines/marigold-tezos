@@ -63,9 +63,9 @@ let init ctx pkh consensus_key spending_key =
     pkh
     {consensus_key; next_consensus_key ;spending_key}
 
-let init_with_manager ctx pkh =
+let init_with_manager ctx pkh pk =
   Contract_storage.get_manager_key ctx pkh
-  >>=? fun (manager_key) -> init ctx pkh manager_key manager_key
+  >>=? fun (manager_key) -> init ctx pkh manager_key pk
 
 let consensus_key_update_internal ctx keychain : Keychain_repr.t =
   match keychain.next_consensus_key with
@@ -113,14 +113,20 @@ let setup_next_key_internal ctx keychain pending_key : Keychain_repr.t =
   let next = Keychain_repr.Delay update in
   {keychain with Keychain_repr.next_consensus_key = next}
 
-let set ctx pkh consensus_key spending_key =
+let set ctx pkh consensus_key_opt spending_key_opt =
   exists ctx pkh
   >>= fun existing ->
   if existing then
     Storage.Keychain.get ctx pkh
     >>=? fun keychain ->
-    let keychain_next = setup_next_key_internal ctx keychain consensus_key in
-    Storage.Keychain.update ctx pkh {keychain_next with spending_key}
+    let keychain = match consensus_key_opt, spending_key_opt with
+      | None, None -> keychain
+      | None, Some spending_key -> {keychain with spending_key}
+      | Some consensus_key, None ->
+        setup_next_key_internal ctx keychain consensus_key
+      | Some consensus_key, Some spending_key ->
+        setup_next_key_internal ctx {keychain with spending_key} consensus_key
+    in Storage.Keychain.update ctx pkh keychain
   else fail (Unregistered_key_hash pkh)
 
 let set_consensus_key ctx pkh consensus_key =
