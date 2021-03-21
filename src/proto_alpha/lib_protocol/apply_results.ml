@@ -75,6 +75,10 @@ type _ successful_manager_operation_result =
       consumed_gas : Gas.Arith.fp;
     }
       -> Kind.delegation successful_manager_operation_result
+  | Baking_account_result : {
+      consumed_gas : Gas.Arith.fp;
+    }
+      -> Kind.baking_account successful_manager_operation_result
 
 type packed_successful_manager_operation_result =
   | Successful_manager_result :
@@ -463,6 +467,10 @@ let equal_manager_kind :
   | (Kind.Delegation_manager_kind, Kind.Delegation_manager_kind) ->
       Some Eq
   | (Kind.Delegation_manager_kind, _) ->
+      None
+  | (Kind.Baking_account_manager_kind, Kind.Baking_account_manager_kind) ->
+      Some Eq
+  | (Kind.Baking_account_manager_kind, _) ->
       None
 
 module Encoding = struct
@@ -1101,6 +1109,13 @@ let kind_equal :
           _ } ) ->
       Some Eq
   | (Manager_operation {operation = Delegation _; _}, _) ->
+      None
+  | (Manager_operation {operation = Baking_account _},
+     Manager_operation_result
+        {operation_result = Applied (Baking_account_result _); _} ) ->
+
+      Some Eq
+  | (Manager_operation {operation = Baking_account _}, _) ->
       None
 
 let rec kind_equal_list :

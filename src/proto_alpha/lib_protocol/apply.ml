@@ -802,6 +802,12 @@ let apply_manager_operation_content :
         Delegation_result
           {consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt},
         [] )
+  | Baking_account {key_hash = _; consensus_key = _; spending_key = _} ->
+    return (ctxt,
+            Baking_account_result
+              {consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt},
+            [])
+
 
 type success_or_failure = Success of context | Failure
 
@@ -1050,9 +1056,11 @@ let check_manager_signature ctxt chain_id (op : _ Kind.manager contents_list)
   >>=? fun (kc) ->
   (match kc, is_all_transaction with
   | Some {consensus_key; spending_key }, true ->
-    Operation.check_signature consensus_key chain_id raw_operation
-    >>?= fun () ->
-    Lwt.return (Operation.check_signature spending_key chain_id raw_operation)
+    (let check_sp = Operation.check_signature spending_key chain_id raw_operation in
+       match check_sp with
+    | Ok () -> Lwt.return check_sp
+    | Error _ ->
+       Lwt.return (Operation.check_signature consensus_key chain_id raw_operation))
   | Some {consensus_key; _ }, false ->
     Lwt.return (Operation.check_signature consensus_key chain_id raw_operation)
   | None, _ ->

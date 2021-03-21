@@ -130,7 +130,31 @@ let pp_manager_operation_content (type kind) source internal pp_result ppf
         Signature.Public_key_hash.pp
         delegate
         pp_result
-        result ) ;
+        result
+  | Baking_account { key_hash; consensus_key; spending_key } ->
+      match spending_key with
+      | Some s ->
+        ( Format.fprintf
+          ppf
+          "@[<v 2>%s:@,KeyHash: %a@,ConsensusKey: %a@, SpendingKey:%a@]"
+          "BackingAccount"
+          Signature.Public_key_hash.pp
+          key_hash
+          Signature.Public_key.pp
+          consensus_key 
+          Signature.Public_key.pp
+          s )
+      | None ->
+        ( Format.fprintf
+          ppf
+          "@[<v 2>%s:@,KeyHash: %a@,ConsensusKey: %a@, SpendingKey:None@]"
+          "BackingAccount"
+          Signature.Public_key_hash.pp
+          key_hash
+          Signature.Public_key.pp
+          consensus_key 
+          )
+        );
   Format.fprintf ppf "@]"
 
 let pp_balance_updates ppf = function
@@ -340,6 +364,13 @@ let pp_manager_operation_contents_and_result ppf
           "@[<v 0>This origination was BACKTRACKED, its expected effects (as \
            follow) were NOT applied.@]" ;
         pp_origination_result op
+    | Applied (Baking_account_result _) ->
+        Format.fprintf ppf "Baking_account op was successfully applied" ;
+    | Backtracked ((Baking_account_result _), _errs) ->
+        Format.fprintf
+          ppf
+          "@[<v 0>This baking_account was BACKTRACKED, its expected effects (as \
+           follow) were NOT applied.@]" ;
   in
   Format.fprintf
     ppf
