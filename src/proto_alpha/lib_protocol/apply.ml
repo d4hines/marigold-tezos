@@ -129,6 +129,8 @@ type error +=
       timestamp : Time.t;
     }
 
+type error += Not_Implicit_Account
+
 type error += (* `Permanent *) Failing_noop_error
 
 let () =
@@ -509,6 +511,19 @@ let () =
     (fun () -> Inconsistent_sources) ;
   register_error_kind
     `Permanent
+    ~id:"operation.not_implicit_account"
+    ~title:"Baking account should be implicit account"
+    ~description:
+      "Baking account should be implicit account."
+    ~pp:(fun ppf () ->
+      Format.pp_print_string
+        ppf
+        "Baking account should be implicit account.")
+    Data_encoding.empty
+    (function Not_Implicit_Account -> Some () | _ -> None)
+    (fun () -> Not_Implicit_Account) ;
+  register_error_kind
+    `Permanent
     ~id:"operation.not_enough_endorsements_for_priority"
     ~title:"Not enough endorsements for priority"
     ~description:
@@ -802,11 +817,24 @@ let apply_manager_operation_content :
         Delegation_result
           {consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt},
         [] )
-  | Baking_account {key_hash = _; consensus_key = _; spending_key = _} ->
-    return (ctxt,
+  | Baking_account {consensus_key; spending_key} ->
+    (match Contract.is_implicit source with
+    | Some kh ->
+        Keychain.exists ctxt kh
+        >>= fun (is_exist) ->
+        (match (is_exist, consensus_key, spending_key) with
+         | true, _, _ -> Keychain.set ctxt kh consensus_key spending_key
+         | false, None, Some _ ->   Keychain.init_with_manager ctxt kh spending_key
+         | false, Some c, Some s -> Keychain.init ctxt kh c s
+         | false, Some c, None ->   Keychain.init ctxt kh c c
+         | false, None, None ->     Keychain.init_with_manager ctxt kh None
+        )
+         >>=? fun (ctxt) ->
+         return ((ctxt,
             Baking_account_result
               {consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt},
-            [])
+            []))
+    | None -> fail Not_Implicit_Account)
 
 
 type success_or_failure = Success of context | Failure
