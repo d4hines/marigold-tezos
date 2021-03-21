@@ -112,8 +112,9 @@ let get_spending_key ctx pkh =
   else return_none
 
 let setup_next_key_internal ctx keychain pending_key : Keychain_repr.t =
+  let delayed_cycles = (Raw_context.constants ctx).preserved_cycles in
   let current_cycle = (Level_storage.current ctx).cycle in
-  let activate_cycle = Cycle_repr.add current_cycle 5 in
+  let activate_cycle = Cycle_repr.add current_cycle delayed_cycles in
   let update = Keychain_repr.{ activate_cycle; pending_key} in
   let next = Keychain_repr.Delay update in
   {keychain with Keychain_repr.next_consensus_key = next}
