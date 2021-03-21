@@ -63,9 +63,14 @@ let init ctx pkh consensus_key spending_key =
     pkh
     {consensus_key; next_consensus_key ;spending_key}
 
-let init_with_manager ctx pkh pk =
+let init_with_manager ctx pkh pk_opt =
   Contract_storage.get_manager_key ctx pkh
-  >>=? fun (manager_key) -> init ctx pkh manager_key pk
+  >>=? fun (manager_key) ->
+  let spending_key =
+    match pk_opt with
+    | None -> manager_key
+    | Some spending_key -> spending_key
+  in init ctx pkh manager_key spending_key
 
 let consensus_key_update_internal ctx keychain : Keychain_repr.t =
   match keychain.next_consensus_key with

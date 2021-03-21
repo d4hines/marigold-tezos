@@ -42,7 +42,8 @@ val init : Raw_context.t -> pkh -> pk -> pk -> context tzresult Lwt.t
 
 (** Init keychain with manager key as consensus key
     Do nothing if there is a mapping for given key hash already *)
-val init_with_manager : Raw_context.t -> pkh -> pk -> context tzresult Lwt.t
+val init_with_manager :
+  Raw_context.t -> pkh -> pk option -> context tzresult Lwt.t
 
 (** Find a keychain for given key hash
     Return none if these is no mapping

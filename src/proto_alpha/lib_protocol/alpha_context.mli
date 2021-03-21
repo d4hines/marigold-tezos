@@ -1000,7 +1000,7 @@ module Keychain : sig
   val init_with_manager :
     context ->
     public_key_hash ->
-    public_key ->
+    public_key option ->
     context tzresult Lwt.t
 
   val find : context -> public_key_hash -> t option tzresult Lwt.t
