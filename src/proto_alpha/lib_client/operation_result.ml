@@ -131,28 +131,36 @@ let pp_manager_operation_content (type kind) source internal pp_result ppf
         delegate
         pp_result
         result
-  | Baking_account { key_hash; consensus_key; spending_key } ->
-      match spending_key with
-      | Some s ->
+  | Baking_account {consensus_key; spending_key } ->
+      match (consensus_key, spending_key) with
+      | Some c, Some s ->
         ( Format.fprintf
           ppf
-          "@[<v 2>%s:@,KeyHash: %a@,ConsensusKey: %a@, SpendingKey:%a@]"
+          "@[<v 2>%s:@, ConsensusKey: %a@, SpendingKey:%a@]"
           "BackingAccount"
-          Signature.Public_key_hash.pp
-          key_hash
           Signature.Public_key.pp
-          consensus_key 
+          c 
           Signature.Public_key.pp
           s )
-      | None ->
+      | Some c, None ->
         ( Format.fprintf
           ppf
-          "@[<v 2>%s:@,KeyHash: %a@,ConsensusKey: %a@, SpendingKey:None@]"
+          "@[<v 2>%s:@, Consensus Key: %a@@]"
           "BackingAccount"
-          Signature.Public_key_hash.pp
-          key_hash
           Signature.Public_key.pp
-          consensus_key 
+          c )
+      | None, Some s ->
+        ( Format.fprintf
+          ppf
+          "@[<v 2>%s:@, Spending Key: %a@@]"
+          "BackingAccount"
+          Signature.Public_key.pp
+          s )
+      | (None, None) ->
+        ( Format.fprintf
+          ppf
+          "@[<v 2>%s:@@]"
+          "BackingAccount"
           )
         );
   Format.fprintf ppf "@]"
