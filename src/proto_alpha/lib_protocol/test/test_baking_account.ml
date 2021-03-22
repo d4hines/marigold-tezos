@@ -43,7 +43,9 @@ module Test_Baking_account = struct
       let sk = Account.new_account () in 
       (* Create the contract *)
       Op.baking_account (B blk) new_c (Some ck.pk) (Some sk.pk)
-      >>=? fun _operation ->
+      >>=? fun operation ->
+      Block.bake blk ~operation
+      >>=? fun blk ->
       Incremental.begin_construction blk
       >>=? fun incr ->
       let ctxt = Incremental.alpha_ctxt incr in
