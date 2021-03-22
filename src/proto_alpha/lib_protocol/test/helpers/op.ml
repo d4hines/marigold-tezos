@@ -400,6 +400,30 @@ let ballot ctxt (pkh : Contract.t) proposal ballot =
   Account.find source
   >|=? fun account -> sign account.sk ctxt (Contents_list (Single op))
 
+let baking_account ?(fee = Tez.zero) ctxt source consensus_key spending_key =
+  Context.Contract.counter ctxt source
+  >>=? fun counter ->
+  Context.Contract.manager ctxt source
+  >|=? fun account ->
+  let counter = Z.succ counter in
+  let sop =
+    Contents_list
+      (Single
+        (Manager_operation
+        {
+           source = Signature.Public_key.hash account.pk;
+           fee;
+           counter;
+           operation = Baking_account {
+               consensus_key;
+               spending_key;
+             };
+           gas_limit = Gas.Arith.integral_of_int_exn 10000;
+           storage_limit = Z.zero;
+        }))
+  in
+  sign account.sk ctxt sop
+
 let dummy_script =
   let open Micheline in
   Script.

@@ -34,6 +34,28 @@ let keychain_pp = Keychain.pp
 
 let wrap e = Lwt.return (Environment.wrap_tzresult e)
 
+module Test_Baking_account = struct
+  let test_sample_baking_account_op () =
+      Context.init 1
+      >>=? fun (blk, contracts) ->
+      let new_c = WithExceptions.Option.get ~loc:__LOC__ @@ List.hd contracts in
+      let ck = Account.new_account () in 
+      let sk = Account.new_account () in 
+      (* Create the contract *)
+      Op.baking_account (B blk) new_c (Some ck.pk) (Some sk.pk)
+      >>=? fun _operation ->
+      Incremental.begin_construction blk
+      >>=? fun incr ->
+      let ctxt = Incremental.alpha_ctxt incr in
+      (match Contract.is_implicit new_c with
+      | Some kh ->
+        (Keychain.exists ctxt kh
+        >>= function
+        | true -> return () | false -> Stdlib.failwith "key hash should be found.")
+      | None ->
+        Stdlib.failwith "not implicit account")
+end
+
 module Test_Keychain = struct
   let test_init () =
     (*
@@ -93,5 +115,6 @@ let tests =
       "baking account keychain exist/init"
       `Quick
       Test_Keychain.test_init;
-    Test_services.tztest "baking account empty test" `Quick test_none
+    Test_services.tztest "baking account empty test" `Quick test_none;
+    Test_services.tztest "baking account test creating keys" `Quick Test_Baking_account.test_sample_baking_account_op;
   ]
