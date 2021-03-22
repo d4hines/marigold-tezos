@@ -77,7 +77,7 @@ let consensus_key_update_internal ctx keychain : Keychain_repr.t =
   | No_next_key -> keychain
   | Delay update ->
     let current_cycle = (Level_storage.current ctx).cycle in
-    if Cycle_repr.(current_cycle <= update.activate_cycle) then
+    if Cycle_repr.(current_cycle >= update.activate_cycle) then
       let consensus_key = update.pending_key in
       let next_consensus_key = No_next_key in
       {keychain with consensus_key; next_consensus_key}
