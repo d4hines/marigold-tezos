@@ -198,6 +198,32 @@ module Manager_result = struct
         assert (Gas.Arith.(equal (ceil consumed_milligas) consumed_gas)) ;
         Reveal_result {consumed_gas = consumed_milligas})
 
+  let baking_account_case =
+    make
+      ~op_case:Operation.Encoding.Manager_operations.baking_account_case
+      ~encoding:
+        Data_encoding.(
+          obj2
+            (dft "consumed_gas" Gas.Arith.n_integral_encoding Gas.Arith.zero)
+            (dft "consumed_milligas" Gas.Arith.n_fp_encoding Gas.Arith.zero))
+      ~iselect:(function
+        | Internal_operation_result (({operation = Baking_account _; _} as op), res) ->
+            Some (op, res)
+        | _ ->
+            None)
+      ~select:(function
+        | Successful_manager_result (Baking_account_result _ as op) ->
+            Some op
+        | _ ->
+            None)
+      ~kind:Kind.Baking_account_manager_kind
+      ~proj:(function
+        | Baking_account_result {consumed_gas} ->
+            (Gas.Arith.ceil consumed_gas, consumed_gas))
+      ~inj:(fun (consumed_gas, consumed_milligas) ->
+        assert (Gas.Arith.(equal (ceil consumed_milligas) consumed_gas)) ;
+        Baking_account_result {consumed_gas = consumed_milligas})
+
   let transaction_case =
     make
       ~op_case:Operation.Encoding.Manager_operations.transaction_case
@@ -405,7 +431,9 @@ let internal_operation_result_encoding :
        [ make Manager_result.reveal_case;
          make Manager_result.transaction_case;
          make Manager_result.origination_case;
-         make Manager_result.delegation_case ]
+         make Manager_result.delegation_case;
+         make Manager_result.baking_account_case;
+       ]
 
 type 'kind contents_result =
   | Endorsement_result : {
@@ -780,6 +808,17 @@ module Encoding = struct
         | _ ->
             None)
 
+  let baking_account_case =
+    make_manager_case
+      Operation.Encoding.baking_account_case
+      Manager_result.baking_account_case
+      (function
+        | Contents_and_result
+            ((Manager_operation {operation = Baking_account _; _} as op), res) ->
+            Some (op, res)
+        | _ ->
+            None)
+
   let transaction_case =
     make_manager_case
       Operation.Encoding.transaction_case
@@ -841,6 +880,7 @@ let contents_result_encoding =
          make proposals_case;
          make ballot_case;
          make reveal_case;
+         make baking_account_case;
          make transaction_case;
          make origination_case;
          make delegation_case ]
@@ -877,6 +917,7 @@ let contents_and_result_encoding =
          make proposals_case;
          make ballot_case;
          make reveal_case;
+         make baking_account_case;
          make transaction_case;
          make origination_case;
          make delegation_case ]

@@ -1539,6 +1539,8 @@ module Operation : sig
 
     val delegation_case : Kind.delegation Kind.manager case
 
+    val baking_account_case : Kind.baking_account Kind.manager case
+
     module Manager_operations : sig
       type 'b case =
         | MCase : {
@@ -1559,6 +1561,8 @@ module Operation : sig
       val origination_case : Kind.origination case
 
       val delegation_case : Kind.delegation case
+
+      val baking_account_case : Kind.baking_account case
     end
   end
 
