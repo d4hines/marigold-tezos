@@ -75,4 +75,6 @@ val quorum_max : Raw_context.t -> int32
 
 val min_proposal_quorum : Raw_context.t -> int32
 
+val master_key_delay_cycles : Raw_context.t -> int
+
 val parametric : Raw_context.t -> Constants_repr.parametric

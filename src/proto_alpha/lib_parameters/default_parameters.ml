@@ -56,6 +56,7 @@ let constants_mainnet =
       min_proposal_quorum = 5_00l;
       initial_endorsers = 24;
       delay_per_missing_endorsement = Period.of_seconds_exn 8L;
+      master_key_delay_cycles = 8;
     }
 
 let constants_sandbox =

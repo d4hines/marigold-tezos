@@ -154,7 +154,7 @@ and _ manager_operation =
       Signature.Public_key_hash.t option
       -> Kind.delegation manager_operation
   | Baking_account : {
-      consensus_key : Signature.Public_key.t option;
+      master_key : Signature.Public_key.t option;
       spending_key: Signature.Public_key.t option;
       }
       -> Kind.baking_account manager_operation

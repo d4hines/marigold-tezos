@@ -33,8 +33,8 @@ type next_key =
   | Delay of delayed_update
 
 type t = {
-  consensus_key : Signature.Public_key.t;
-  next_consensus_key : next_key;
+  master_key : Signature.Public_key.t;
+  next_master_key : next_key;
   spending_key : Signature.Public_key.t;
 }
 
@@ -92,32 +92,32 @@ let next_key_encoding =
         (function Delay du -> Some ((), du) | _ -> None )
         (fun ((), du) -> Delay du) ]
 
-let pp ppf {consensus_key; next_consensus_key; spending_key} =
-  Format.fprintf ppf "consensus_key: %a (%a), spending_key: %a"
+let pp ppf {master_key; next_master_key; spending_key} =
+  Format.fprintf ppf "master_key: %a (%a), spending_key: %a"
     Signature.Public_key.pp
-    consensus_key
+    master_key
     next_key_pp
-    next_consensus_key
+    next_master_key
     Signature.Public_key.pp
     spending_key
 
 let encoding =
   let open Data_encoding in
   conv
-    (fun {consensus_key; next_consensus_key; spending_key} ->
-      (consensus_key, next_consensus_key, spending_key))
-    (fun (consensus_key, next_consensus_key, spending_key) ->
-       {consensus_key; next_consensus_key;spending_key})
+    (fun {master_key; next_master_key; spending_key} ->
+      (master_key, next_master_key, spending_key))
+    (fun (master_key, next_master_key, spending_key) ->
+       {master_key; next_master_key;spending_key})
     (obj3
       (req
-         "consensus_key"
+         "master_key"
          ~description:
-           "The consensus keys"
+           "The master keys"
          Signature.Public_key.encoding)
       (req
-         "next_consensus_key"
+         "next_master_key"
          ~description:
-           "The next consensus key"
+           "The next master key"
          next_key_encoding)
       (req
          "spending_key"

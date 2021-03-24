@@ -74,6 +74,17 @@ let equal_bool ~loc (a : bool) (b : bool) =
 let not_equal_bool ~loc (a : bool) (b : bool) =
   not_equal ~loc ( = ) "Booleans are equal" Format.pp_print_bool a b
 
+(* pk *)
+let equal_pk ~loc (a : Signature.Public_key.t)
+    (b : Signature.Public_key.t) =
+  let module PK = Signature.Public_key in
+  equal ~loc PK.equal "Public keys aren't equal" PK.pp a b
+
+let not_equal_pk ~loc (a : Signature.Public_key.t)
+    (b : Signature.Public_key.t) =
+  let module PK = Signature.Public_key in
+  not_equal ~loc PK.equal "Public keys are equal" PK.pp a b
+
 (* pkh *)
 let equal_pkh ~loc (a : Signature.Public_key_hash.t)
     (b : Signature.Public_key_hash.t) =

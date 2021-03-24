@@ -41,6 +41,7 @@ module Protocol_constants_overrides = struct
     blocks_per_voting_period : int32 option;
     time_between_blocks : Period.t list option;
     endorsers_per_block : int option;
+    master_key_delay_cycles : int option;
     hard_gas_limit_per_operation : Gas.Arith.integral option;
     hard_gas_limit_per_block : Gas.Arith.integral option;
     proof_of_work_threshold : int64 option;
@@ -76,6 +77,7 @@ module Protocol_constants_overrides = struct
             c.blocks_per_voting_period,
             c.time_between_blocks,
             c.endorsers_per_block,
+            c.master_key_delay_cycles,
             c.hard_gas_limit_per_operation,
             c.hard_gas_limit_per_block ),
           ( ( c.proof_of_work_threshold,
@@ -103,6 +105,7 @@ module Protocol_constants_overrides = struct
                blocks_per_voting_period,
                time_between_blocks,
                endorsers_per_block,
+               master_key_delay_cycles,
                hard_gas_limit_per_operation,
                hard_gas_limit_per_block ),
              ( ( proof_of_work_threshold,
@@ -131,6 +134,7 @@ module Protocol_constants_overrides = struct
           blocks_per_voting_period;
           time_between_blocks;
           endorsers_per_block;
+          master_key_delay_cycles;
           hard_gas_limit_per_operation;
           hard_gas_limit_per_block;
           proof_of_work_threshold;
@@ -153,7 +157,7 @@ module Protocol_constants_overrides = struct
           timestamp;
         })
       (merge_objs
-         (obj9
+         (obj10
             (opt "preserved_cycles" uint8)
             (opt "blocks_per_cycle" int32)
             (opt "blocks_per_commitment" int32)
@@ -161,6 +165,7 @@ module Protocol_constants_overrides = struct
             (opt "blocks_per_voting_period" int32)
             (opt "time_between_blocks" (list Period.encoding))
             (opt "endorsers_per_block" uint16)
+            (opt "master_key_delay_cycles" uint8)
             (opt "hard_gas_limit_per_operation" Gas.Arith.z_integral_encoding)
             (opt "hard_gas_limit_per_block" Gas.Arith.z_integral_encoding))
          (merge_objs
@@ -206,6 +211,7 @@ module Protocol_constants_overrides = struct
         blocks_per_voting_period = Some parametric.blocks_per_voting_period;
         time_between_blocks = Some parametric.time_between_blocks;
         endorsers_per_block = Some parametric.endorsers_per_block;
+        master_key_delay_cycles = Some parametric.master_key_delay_cycles;
         hard_gas_limit_per_operation =
           Some parametric.hard_gas_limit_per_operation;
         hard_gas_limit_per_block = Some parametric.hard_gas_limit_per_block;
@@ -244,6 +250,7 @@ module Protocol_constants_overrides = struct
       blocks_per_voting_period = None;
       time_between_blocks = None;
       endorsers_per_block = None;
+      master_key_delay_cycles = None;
       hard_gas_limit_per_operation = None;
       hard_gas_limit_per_block = None;
       proof_of_work_threshold = None;
@@ -532,8 +539,12 @@ module Protocol_constants_overrides = struct
           delay_per_missing_endorsement =
             Option.value
               ~default:c.delay_per_missing_endorsement
-              o.delay_per_missing_endorsement
-            (* Notice that the chain_id and the timestamp are not used here as they are not protocol constants... *);
+              o.delay_per_missing_endorsement;
+            (* Notice that the chain_id and the timestamp are not used here as they are not protocol constants... *)
+          master_key_delay_cycles =
+            Option.value
+              ~default:c.master_key_delay_cycles
+              o.master_key_delay_cycles;
         }
         : Constants.parametric )
 end

@@ -462,7 +462,7 @@ let ballot ctxt (pkh : Contract.t) proposal ballot =
   Account.find source
   >|=? fun account -> sign account.sk ctxt (Contents_list (Single op))
 
-let baking_account ?(fee = Tez.zero) ctxt source consensus_key spending_key =
+let baking_account ?(fee = Tez.zero) ctxt source master_key spending_key =
   Context.Contract.counter ctxt source
   >>=? fun counter ->
   Context.Contract.manager ctxt source
@@ -477,7 +477,7 @@ let baking_account ?(fee = Tez.zero) ctxt source consensus_key spending_key =
            fee;
            counter;
            operation = Baking_account {
-               consensus_key;
+               master_key;
                spending_key;
              };
            gas_limit = Gas.Arith.integral_of_int_exn 10000;

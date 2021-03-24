@@ -131,12 +131,12 @@ let pp_manager_operation_content (type kind) source internal pp_result ppf
         delegate
         pp_result
         result
-  | Baking_account {consensus_key; spending_key } ->
-      match (consensus_key, spending_key) with
+  | Baking_account {master_key; spending_key } ->
+      match (master_key, spending_key) with
       | Some c, Some s ->
         ( Format.fprintf
           ppf
-          "@[<v 2>%s:@, ConsensusKey: %a@, SpendingKey:%a@]"
+          "@[<v 2>%s:@, MasterKey: %a@, SpendingKey:%a@]"
           "BackingAccount"
           Signature.Public_key.pp
           c 
@@ -145,7 +145,7 @@ let pp_manager_operation_content (type kind) source internal pp_result ppf
       | Some c, None ->
         ( Format.fprintf
           ppf
-          "@[<v 2>%s:@, Consensus Key: %a@@]"
+          "@[<v 2>%s:@, Master Key: %a@@]"
           "BackingAccount"
           Signature.Public_key.pp
           c )

@@ -34,7 +34,18 @@ let pk_pp = Signature.Public_key.pp
 
 let keychain_pp = Keychain.pp
 
-let wrap e = Lwt.return (Environment.wrap_tzresult e)
+let wrap x = Lwt.return (Environment.wrap_tzresult x)
+let wrap_result x = Lwt.return (Environment.wrap_tztrace x)
+
+let is_none msg k =
+  k >>= wrap >>=? function
+  | None -> return ()
+  | Some _ -> failwith "expect a Some (%s)" msg
+
+let is_some msg k =
+  k >>= wrap >>=? function
+  | Some x -> return x
+  | None -> failwith "expect a None (%s)" msg
 
 module Test_Baking_account = struct
   let test_sample_baking_account_op () =
@@ -63,8 +74,8 @@ module Test_Baking_account = struct
       let ctxt = Incremental.alpha_ctxt incr in
       Keychain.find ctxt kh'
       >>= wrap >>=? function
-        | Some {consensus_key; spending_key; _} ->
-          (if Signature.Public_key.(consensus_key <> c_pk) then
+        | Some {master_key; spending_key; _} ->
+          (if Signature.Public_key.(master_key<> c_pk) then
              Stdlib.failwith "consensus_key wasn't set correctly."
            else if Signature.Public_key.(spending_key <> s_pk) then
              Stdlib.failwith "spending_key wasn't set correctly."
@@ -119,27 +130,24 @@ module Test_Baking_account = struct
 end
 
 module Test_Keychain = struct
-  let test_init () =
-    (*
-    let open Format in
-    let () = fprintf std_formatter "test=keychain exist/init\n" in
-    Context.init 2
-    >>=? fun (b ,bootstrap_contracts) ->
-    (* obtain pkhs *)
-    let bootstrap0 = WithExceptions.Option.get ~loc:__LOC__ @@
-      List.nth bootstrap_contracts 0 in
-    let bootstrap1 = WithExceptions.Option.get ~loc:__LOC__ @@
-      List.nth bootstrap_contracts 1 in
-    Context.Contract.pkh bootstrap0
-    >>=? fun pkh0 ->
-    Context.Contract.pkh bootstrap1
-    >>=? fun pkh1 ->
-    let () = fprintf std_formatter "PKH0 = %a\n" pkh_pp pkh0 in
-    let () = fprintf std_formatter "PKH1 = %a\n" pkh_pp pkh1 in
-    (* obtain context *)
+  let init n =
+    Context.init n
+    >>=? fun (b, cs) ->
+    let cs' = List.map Context.Contract.pkh cs in
+    all_ep cs'
+    >>=? fun pkhs ->
     Incremental.begin_construction b
     >>=? fun incr ->
     let ctx = Incremental.alpha_ctxt incr in
+    return (ctx, pkhs)
+
+  let test_create () =
+    init 2
+    >>=? fun (ctx, pkhs) ->
+    let pkh0 =
+      WithExceptions.Option.get ~loc:__LOC__ @@ List.nth pkhs 0 in
+    let pkh1 =
+      WithExceptions.Option.get ~loc:__LOC__ @@ List.nth pkhs 1 in
     (* absence of keychain*)
     Keychain.exists ctx pkh0
     >>= fun existing ->
@@ -149,11 +157,9 @@ module Test_Keychain = struct
     >>= fun existing ->
     Assert.equal_bool ~loc:__LOC__ existing false
     >>=? fun () ->
-    (* keychain initializing *)
-    let (pkh, pk, _sk) = Signature.generate_key () in
-    let () = fprintf std_formatter "pkh = %a\n" pkh_pp pkh in
-    let () = fprintf std_formatter "pk = %a\n" pk_pp pk in
-    Keychain.init ctx pkh0 {consensus_key = pk; spending_key = pk}
+    (* keychain initializing: first one *)
+    let (_pkh, pk, _sk) = Signature.generate_key () in
+    Keychain.init ctx pkh0 pk pk
     >>= wrap
     >>=? fun ctx ->
     (* presence and ansence of keychain after init *)
@@ -165,19 +171,127 @@ module Test_Keychain = struct
     >>= fun existing ->
     Assert.equal_bool ~loc:__LOC__ existing false
     >>=? fun () ->
-       *)
+    (* keychain initializing: second one *)
+    Keychain.init_with_manager ctx pkh1 None
+    >>= wrap
+    >>=? fun ctx ->
+    (* presence and ansence of keychain after init *)
+    Keychain.exists ctx pkh0
+    >>= fun existing ->
+    Assert.equal_bool ~loc:__LOC__ existing true
+    >>=? fun () ->
+    Keychain.exists ctx pkh1
+    >>= fun existing ->
+    Assert.equal_bool ~loc:__LOC__ existing true
+    >>=? fun () ->
+        (* reinitializing is impossible *)
+    Keychain.init_with_manager ctx pkh0 (Some pk)
+    >>= function Ok _ -> assert false
+      (* [TODO] specify which error *)
+      | Error _ -> return_unit
+    >>=? fun () ->
+    Keychain.init ctx pkh1 pk pk
+    >>= function Ok _ -> assert false
+      (* [TODO] specify which error *)
+      | Error _ -> return_unit
+    >>=? fun () ->
+    return_unit
+
+  let test_access () =
+    init 2
+    >>=? fun (ctx, pkhs) ->
+    let pkh0 =
+      WithExceptions.Option.get ~loc:__LOC__ @@ List.nth pkhs 0 in
+    let pkh1 =
+      WithExceptions.Option.get ~loc:__LOC__ @@ List.nth pkhs 1 in
+    let (_pkh, pkA, _sk) = Signature.generate_key () in
+    let (_pkh, pkB, _sk) = Signature.generate_key () in
+    Contract.get_manager_key ctx pkh1
+    >>= wrap
+    >>=? fun mgtk1 ->
+    (* init keychain for pkh0 with pkA, pkB *)
+    Keychain.init ctx pkh0 pkA pkB
+    >>= wrap >>=? fun ctx ->
+    (* getting keys on pkhs:
+       spending key from pkh0 == pkB
+       spending key from pkh1 == None
+       master key from pkh0 == pkA
+       master key from pkh1 == None *)
+    is_some "get spending key from pkh0"
+    @@ Keychain.get_spending_key ctx pkh0
+    >>=? fun sk0 ->
+    Assert.equal_pk ~loc:__LOC__ pkB sk0
+    >>=? fun () ->
+    is_none "get spending key from pkh1"
+    @@ Keychain.get_spending_key ctx pkh1
+    >>=? fun () ->
+    is_some "get master key from pkh0"
+    @@ Keychain.get_master_key ctx pkh0
+    >>=? fun mk0 ->
+    Assert.equal_pk ~loc:__LOC__ pkA mk0
+    >>=? fun () ->
+    is_none "get master key from pkh1"
+    @@ Keychain.get_master_key ctx pkh1
+    >>=? fun () ->
+    (* init keychain for pkh1 with its manager*)
+    Keychain.init_with_manager ctx pkh1 None
+    >>= wrap >>=? fun ctx ->
+    (* getting keys on pkhs:
+       spending key from pkh1 == mgtk1
+       master key from pkh1 == mgtk1 *)
+    is_some "get master key from pkh1"
+    @@ Keychain.get_master_key ctx pkh1
+    >>=? fun mk1 ->
+    Assert.equal_pk ~loc:__LOC__ mk1 mgtk1
+    >>=? fun () ->
+    is_some "get spending key from pkh1"
+    @@ Keychain.get_spending_key ctx pkh1
+    >>=? fun sk1 ->
+    Assert.equal_pk ~loc:__LOC__ sk1 mgtk1
+    >>=? fun () ->
+    (* setting spending key:
+       update spending key for pkh1 with pkB
+       spending key from pkh1 == pkB *)
+    Keychain.set_spending_key ctx pkh1 pkB
+    >>= wrap >>=? fun ctx ->
+    is_some "get spending key from pkh1"
+    @@ Keychain.get_spending_key ctx pkh1
+    >>=? fun sk1 ->
+    Assert.not_equal_pk ~loc:__LOC__ sk1 mgtk1
+    >>=? fun () ->
+    Assert.equal_pk ~loc:__LOC__ sk1 pkB
+    >>=? fun () ->
+    (* setting master key:
+       update master key for pkh1 with pkA
+       master key from pkh1 == mgtk1 *)
+    Keychain.set_master_key ctx pkh1 pkA
+    >>= wrap >>=? fun ctx ->
+    is_some "get master key from pkh1"
+    @@ Keychain.get_master_key ctx pkh1
+    >>=? fun mk1 ->
+    Assert.equal_pk ~loc:__LOC__ mk1 mgtk1
+    >>=? fun () ->
+    return_unit
+
+  (* [TODO] test case for delayed master key update *)
+  let test_delayed_update () =
     return_unit
 
 end
 
-let test_none () = return_unit
-
 let tests =
   [ Test_services.tztest
-      "baking account keychain exist/init"
+      "keychain: initializing and existence"
       `Quick
-      Test_Keychain.test_init;
-    Test_services.tztest "baking account empty test" `Quick test_none;
+      Test_Keychain.test_create;
+    Test_services.tztest
+      "keychain: accessing"
+      `Quick
+      Test_Keychain.test_access;
+    Test_services.tztest
+      "keychain: delayed updating"
+      `Quick
+      Test_Keychain.test_delayed_update;
     Test_services.tztest "baking account test creating keys" `Quick Test_Baking_account.test_sample_baking_account_op;
     Test_services.tztest "baking account test transaction by consensus key" `Quick Test_Baking_account.test_baking_account_transaction_by_consensus_key;
     Test_services.tztest "baking account test transaction by spending key" `Quick Test_Baking_account.test_baking_account_transaction_by_spending_key;

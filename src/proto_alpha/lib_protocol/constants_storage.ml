@@ -123,4 +123,8 @@ let min_proposal_quorum c =
   let constants = Raw_context.constants c in
   constants.min_proposal_quorum
 
+let master_key_delay_cycles c =
+  let constants = Raw_context.constants c in
+  constants.master_key_delay_cycles
+
 let parametric c = Raw_context.constants c
