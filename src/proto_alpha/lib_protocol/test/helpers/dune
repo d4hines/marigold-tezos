@@ -8,6 +8,7 @@
             tezos-protocol-environment
             tezos-protocol-alpha
             tezos-protocol-alpha-parameters
+	    tezos-rollup-alpha
             tezos-client-alpha)
  (flags (:standard -open Tezos_base__TzPervasives
                    -open Tezos_micheline

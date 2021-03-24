@@ -29,31 +29,37 @@ end
 
 open Bls12_381
 
+type public_key = Public_key of G1.t
+type secret_key = Secret_key of Fr.t
+type signature = Signature of G2.t
+val public_key_encoding : public_key Data_encoding.t
+val secret_key_encoding : secret_key Data_encoding.t
+val signature_encoding : signature Data_encoding.t
+
+val generator : G1.t
+val g : G1.t
+type account = {
+  secret_key : secret_key;
+  public_key : public_key;
+}
+type message = Message of bytes
+type hash = Hash of G2.t
+type left_pair = Left_pair of Fq12.t
+type right_pair = Right_pair of Fq12.t
+type signed_hash = {
+  signer : public_key;
+  hash : hash;
+  signature : signature;
+}
+type aggregated_signed_hashes = {
+  aggregated_signature : signature;
+  identified_hashes : (public_key * hash) list;
+}
+val secret_to_public : secret_key -> public_key
+
+
 module Make : functor (P : PARAM) -> sig
 
-  val generator : G1.t
-  val g : G1.t
-  type secret_key = Secret_key of Fr.t
-  type public_key = Public_key of G1.t
-  type account = {
-    secret_key : secret_key;
-    public_key : public_key;
-  }
-  type message = Message of bytes
-  type hash = Hash of G2.t
-  type signature = Signature of G2.t
-  type left_pair = Left_pair of Fq12.t
-  type right_pair = Right_pair of Fq12.t
-  type signed_hash = {
-    signer : public_key;
-    hash : hash;
-    signature : signature;
-  }
-  type aggregated_signed_hashes = {
-    aggregated_signature : signature;
-    identified_hashes : (public_key * hash) list;
-  }
-  val secret_to_public : secret_key -> public_key
   val hash_aux : current:bytes -> G2.t
   val do_hash : message -> hash
   val right_pairing : public_key -> hash -> right_pair

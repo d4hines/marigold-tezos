@@ -23,9 +23,13 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module Signature = Bls_signature.Make(struct
+module Signature = struct
+  include Bls_signature
+  include Make(struct
     let hash_function = Raw_hashes.sha256
   end)
+
+end
 
 open Signature
 
@@ -147,23 +151,38 @@ module Rollup_onchain_content = struct
 end
 
 module Block_onchain_content = struct
-  type t = {
+  
+  type micro = {
     transactions : transaction list ;
     aggregated_signature : Signature.signature ;
     events : Event.t list ;
     before_root : root ;
     after_root : root ;
+  }
+  
+  type t = {
+    micro_blocks : micro list ;
     tezos_level : Level_repr.t ;
   }
 
+  let micro_encoding : micro Data_encoding.t = Data_encoding.(
+      conv
+        ( fun { transactions = t ; aggregated_signature = a ; events = e ; before_root = br ; after_root = ar } ->
+            ( t , a , e , br , ar) )
+        ( fun ( t , a , e , br , ar) ->
+            { transactions = t ; aggregated_signature = a ; events = e ; before_root = br ; after_root = ar})
+      @@ tup5 (list transaction_encoding) Signature_encoding.encoding (list Event.encoding) root_encoding root_encoding
+    )
+
   let encoding : t Data_encoding.t = Data_encoding.(
       conv
-        ( fun { transactions = t ; aggregated_signature = a ; events = e ; before_root = br ; after_root = ar ; tezos_level = tl } ->
-            ( t , a , e , br , ar , tl) )
-        ( fun ( t , a , e , br , ar , tl) ->
-            { transactions = t ; aggregated_signature = a ; events = e ; before_root = br ; after_root = ar ; tezos_level = tl })
-      @@ tup6 (list transaction_encoding) Signature_encoding.encoding (list Event.encoding) root_encoding root_encoding Level_repr.encoding
+        ( fun { micro_blocks = mb ; tezos_level = tl } ->
+            ( mb , tl) )
+        ( fun ( mb , tl) ->
+            { micro_blocks = mb ; tezos_level = tl })
+      @@ tup2 (list micro_encoding) Level_repr.encoding
     )
+
 end
 
 module Rollup_creation = struct
@@ -181,54 +200,77 @@ module Rollup_creation = struct
 end
 
 module Block_commitment = struct
-  type t = {
+  type micro = {
     transactions : transaction list ;
-    aggregated_signature : Signature.signature;
+    aggregated_signature : Signature.signature ;
     after_root : root ;
+  }    
+  
+  type t = {
+    micro_block_commitments : micro list ;
     rollup_id : Z.t ;
   }
 
+  let micro_encoding : micro Data_encoding.t = Data_encoding.(
+      conv
+        (fun { transactions = t ; aggregated_signature = a ; after_root = r } -> (t , a , r))
+        (fun (t , a , r) -> { transactions = t ; aggregated_signature = a ; after_root = r })
+      @@ tup3 (list transaction_encoding) Signature_encoding.encoding root_encoding
+    )
+
   let encoding : t Data_encoding.t = Data_encoding.(
       conv
-        (fun { transactions = t ; aggregated_signature = a ; after_root = r ; rollup_id = id } -> (t , a , r , id))
-        (fun (t , a , r , id) -> { transactions = t ; aggregated_signature = a ; after_root = r ; rollup_id = id})
-      @@ tup4 (list transaction_encoding) Signature_encoding.encoding root_encoding z
+        (fun { micro_block_commitments = m ; rollup_id = i } -> (m , i))
+        (fun (m , i) -> { micro_block_commitments = m ; rollup_id = i })
+      @@ tup2 (list micro_encoding) z
     )
 end
 
+type micro_block_index = int
+let micro_block_index_encoding : micro_block_index Data_encoding.t = Data_encoding.int31
+
+type transaction_index = int
+let transaction_index_encoding : transaction_index Data_encoding.t = Data_encoding.int31
+
+
 module Micro_block_rejection = struct
-  type invalid_signature = {
-    transaction_index : int ;
-  }
+  
+  type invalid_signature = unit
   let invalid_signature_encoding : invalid_signature Data_encoding.t =
-    Data_encoding.(
-      conv
-        (fun { transaction_index = ti } -> ( ti ))
-        (fun ( ti ) -> { transaction_index = ti })
-        int31
-    )
+    Data_encoding.unit
 
   type state_trace = New_storage.stream
   let state_trace_encoding : state_trace Data_encoding.t = Data_encoding.(list bytes)
+
+  type gas_overflow = state_trace
+  let gas_overflow_encoding : gas_overflow Data_encoding.t = state_trace_encoding
+
+  type state_overflow = state_trace
+  let state_overflow_encoding : state_overflow Data_encoding.t = state_trace_encoding
   
+  type invalid_block_id = transaction_index
+  let invalid_block_id_encoding : invalid_block_id Data_encoding.t =
+    transaction_index_encoding
+
   type rejection_content =
-    | Gas_overflow of state_trace
-    | State_overflow of state_trace
-    | Invalid_signature of invalid_signature
-    | Invalid_state_hash of state_trace
-    | Persisting_state_too_big of state_trace
+    | Gas_overflow of gas_overflow (* A micro block goes over the gas limit *)
+    | State_overflow of state_overflow (* A micro block requires too much state to check *)
+    | Invalid_signature of invalid_signature (* A tx has an invalid signature (public key, tx and sig don't match) *)
+    | Invalid_state_hash of state_trace   (* The resulting state hash is not correct *)
+    | Persisting_state_too_big of state_trace (* Evaluation results in persisting a leaf too big in the store *)
+    | Invalid_block_id of invalid_block_id (* A tx signed a different rollup block id *)
     (* TODO: | Invalid_event_hash *) 
 
   let rejection_content_encoding : rejection_content Data_encoding.t = Data_encoding.(
       union [
         case (Tag 0) ~title:"gas_overflow"
-          state_trace_encoding
-          (function Gas_overflow st -> Some st | _ -> None)
-          (fun st -> Gas_overflow st) ;
+          gas_overflow_encoding
+          (function Gas_overflow go -> Some go | _ -> None)
+          (fun go -> Gas_overflow go) ;
         case (Tag 1) ~title:"state_overflow"
-          state_trace_encoding
-          (function State_overflow st -> Some st | _ -> None)
-          (fun st -> State_overflow st) ;
+          state_overflow_encoding
+          (function State_overflow so -> Some so | _ -> None)
+          (fun so -> State_overflow so) ;
         case (Tag 2) ~title:"invalid_signature"
           invalid_signature_encoding
           (function Invalid_signature is -> Some is | _ -> None)
@@ -241,30 +283,78 @@ module Micro_block_rejection = struct
           state_trace_encoding
           (function Persisting_state_too_big st -> Some st | _ -> None)
           (fun st -> Persisting_state_too_big st) ;
+        case (Tag 5) ~title:"invalid_block_id"
+          invalid_block_id_encoding
+          (function Invalid_block_id ibi -> Some ibi | _ -> None)
+          (fun ibi -> Invalid_block_id ibi) ;
       ]
     )
   
   type t = {
-    rollup_id : Z.t ;
-    level : Rollup_level.t ;
+    micro_block_index : micro_block_index ;
     rejection_content : rejection_content ;
   }
 
   let encoding : t Data_encoding.t = Data_encoding.(
       conv
-        (fun { level = l ; rollup_id = ri ; rejection_content = rc } -> ( l , ri , rc ))
-        (fun ( l , ri , rc ) -> { level = l ; rollup_id = ri ; rejection_content = rc })
-      @@ tup3 z z rejection_content_encoding
+        (fun { micro_block_index = mbi ; rejection_content = rc } -> ( mbi , rc ))
+        (fun ( mbi , rc ) -> { micro_block_index = mbi ; rejection_content = rc })
+      @@ tup2 micro_block_index_encoding rejection_content_encoding
     )
 end
 
 type deposit = unit
 type withdrawal = unit
 
+module Block_rejection = struct
+  type double_injection =
+    (micro_block_index * transaction_index) * (micro_block_index * transaction_index)
+  let double_injection_encoding : double_injection Data_encoding.t = Data_encoding.(
+      conv
+        (fun ((mb_i_a , tx_i_a) , (mb_i_b , tx_i_b)) -> (mb_i_a , tx_i_a , mb_i_b , tx_i_b))
+        (fun (mb_i_a , tx_i_a , mb_i_b , tx_i_b) -> ((mb_i_a , tx_i_a) , (mb_i_b , tx_i_b)))
+      @@ Data_encoding.tup4
+        transaction_index_encoding transaction_index_encoding
+        transaction_index_encoding transaction_index_encoding
+    )
+      
+  type content =
+  | Reject_micro_block of Micro_block_rejection.t (* A micro block was invalid *)
+  | Double_injection of double_injection (* A tx was included twice in a block *)
+
+  let content_encoding : content Data_encoding.t = Data_encoding.(
+      union [
+        case
+          "reject_micro_block"
+          (Tag 0)
+          Micro_block_rejection.encoding
+          (function Reject_micro_block mbr -> Some mbr | _ -> None)
+          (fun mbr -> Reject_micro_block mbr) ;
+        case (Tag 1) ~title:"double_injection"
+          double_injection_encoding
+          (function Double_injection di -> Some di | _ -> None)
+          (fun di -> Double_injection di) ;
+      ]
+    )
+
+  type t = {
+    rollup_id : Z.t ;
+    level : Rollup_level.t ;
+    rejection_content : content ;
+  }
+  let encoding : t Data_encoding.t = Data_encoding.(
+      conv
+        (fun { level = l ; rollup_id = ri ; rejection_content = rc } -> ( l , ri , rc ))
+        (fun ( l , ri , rc ) -> { level = l ; rollup_id = ri ; rejection_content = rc })
+      @@ tup3 z z content_encoding
+    )
+  
+end
+
 type operation_content =
   | Create_rollup of Rollup_creation.t
   | Commit_block of Block_commitment.t
-  | Reject_micro_block of Micro_block_rejection.t
+  | Reject_block of Block_rejection.t
   | Deposit of deposit
   | Withdraw of withdrawal
 
@@ -278,13 +368,13 @@ let encoding : operation_content Data_encoding.t =
         (function Commit_block cb -> Some cb | _ -> None)
         (fun cb -> Commit_block cb)
     in
-    let case_reject_micro_block =
+    let case_reject_block =
       case
-        "reject_micro_block"
+        "reject_block"
         (Tag 1)
-        Micro_block_rejection.encoding
-        (function Reject_micro_block mbr -> Some mbr | _ -> None)
-        (fun mbr -> Reject_micro_block mbr)
+        Block_rejection.encoding
+        (function Reject_block br -> Some br | _ -> None)
+        (fun br -> Reject_block br)
     in
     let case_create_rollup =
       case
@@ -310,7 +400,7 @@ let encoding : operation_content Data_encoding.t =
         (function Withdraw () -> Some () | _ -> None)
         (fun () -> Withdraw ())
     in
-    union [case_commit_block; case_reject_micro_block; case_create_rollup; case_deposit; case_withdraw])
+    union [case_commit_block; case_reject_block; case_create_rollup; case_deposit; case_withdraw])
 
 module Chain_state = struct
   type t = unit
@@ -332,9 +422,18 @@ module type ROLLUP_STORAGE = sig
   val set : key -> value -> unit
 end
 
-module type ROLLUP = functor (M : ROLLUP_STORAGE) -> sig
+module type ROLLUP = sig
 
-  val transition : source:Signature.public_key -> message:bytes -> unit
+  type operation
+  val operation_encoding : operation Data_encoding.t
+  
+  module Make : functor (M : ROLLUP_STORAGE) -> sig
+
+    val init : unit -> unit
+    val transition : source:Signature.public_key -> operation:operation -> unit
+    (* val raw_transition : source:Signature.public_key -> message:bytes -> unit *)
+
+  end
   
 end
 

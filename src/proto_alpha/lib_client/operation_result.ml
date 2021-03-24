@@ -140,7 +140,7 @@ let pp_manager_operation_content (type kind) source internal pp_result ppf
           (if internal then "Internal Rollup" else "Rollup")
           pp_result
           result
-    | Reject_micro_block _ ->   (* TODO *)
+    | Reject_block _ ->   (* TODO *)
         Format.fprintf
           ppf
           "@[<v 2>%s:@,Type: Reject micro block@,%a@]"

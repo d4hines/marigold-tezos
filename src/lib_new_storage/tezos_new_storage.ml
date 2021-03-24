@@ -49,24 +49,32 @@ let empty_stream : stream = []
 
 module Patricia = struct
 
+  [@@@ocaml.warning "-30"]
   
-  type node_content = { left : t ; right : t }
-  and leaf_content = { content : bytes }
+  type node_content = { left : t ; right : t ; hash : hash }
+  and leaf_content = { content : bytes ; hash : hash }
   and t =
     | Node of node_content
     | Leaf of leaf_content
 
+  let get_hash = function Leaf { hash ; _ } | Node { hash ; _ } -> hash
+  
+  let lr_hash l r = do_hash @@ Bytes.cat (get_hash l) (get_hash r)
+  
   let rec empty : int -> t = fun k ->
-    if k = 0 then Leaf { content = nul }
-    else Node { left = empty (k - 1) ; right = empty (k - 1) }
+    if k = 0 then Leaf { content = nul ; hash = do_hash nul }
+    else (
+      let e = empty (k - 1) in
+      Node { left = e ; right = e ; hash = lr_hash e e }
+    )
 
   let empty = empty max_height
   
   let rec get : t -> key -> value = fun t path ->
     match path , t with
-    | [] , Leaf { content } -> content
+    | [] , Leaf { content ; _ } -> content
     | [] , _ -> assert false
-    | hd :: tl , Node { left ; right } -> (
+    | hd :: tl , Node { left ; right ; _ } -> (
         match hd with
         | false -> get left tl
         | true -> get right tl
@@ -79,12 +87,18 @@ module Patricia = struct
 
   let rec set : t -> key -> value -> t = fun t path value ->
     match path , t with
-    | [] , Leaf { content = _ } -> Leaf { content = value }
+    | [] , Leaf { hash = _ ; content = _ } -> Leaf { content = value ; hash = do_hash value }
     | [] , _ -> assert false
-    | hd :: tl , Node { left ; right } -> (
+    | hd :: tl , Node { left ; right ; hash = _ } -> (
         match hd with
-        | false -> Node { left = set left tl value ; right }
-        | true -> Node { left ; right = set right tl value }
+        | false -> Node (
+            let l = set left tl value in
+            { left = l ; right ; hash = lr_hash l right }
+          )
+        | true -> Node (
+            let r = set right tl value in
+            { left ; right = r ; hash = lr_hash left r }
+          )
       )
     | _ :: _ , _ -> assert false
 
@@ -94,12 +108,18 @@ module Patricia = struct
 
   let rec unset : t -> key -> t = fun t path ->
     match path , t with
-    | [] , Leaf { content = _ } -> Leaf { content = nul }
+    | [] , Leaf { content = _ ; hash = _ } -> Leaf { content = nul ; hash = do_hash nul }
     | [] , _ -> assert false
-    | hd :: tl , Node { left ; right } -> (
+    | hd :: tl , Node { left ; right ; hash = _ } -> (
         match hd with
-        | false -> Node { left = unset left tl ; right }
-        | true -> Node { left ; right = unset right tl }
+        | false -> Node (
+            let l = unset left tl in
+            { left = l ; right ; hash = lr_hash l right }
+          )
+        | true -> Node (
+            let r = unset right tl in
+            { left ; right = r ; hash = lr_hash left r }
+          )
       )
     | _ :: _ , _ -> assert false
 
@@ -130,11 +150,11 @@ module Patricia_produce_stream = struct
   let node_hash left right = do_hash (Bytes.cat (get_hash left) (get_hash right))
   
   let rec of_patricia : Patricia.t -> t = function
-    | Leaf { content } -> Leaf { content ; hash = do_hash content ; visited = false }
-    | Node { left ; right } -> (
+    | Leaf { content ; hash } -> Leaf { content ; hash ; visited = false }
+    | Node { left ; right ; hash = _ } -> (
         let left = of_patricia left in
         let right = of_patricia right in
-        let hash = Bytes.cat (get_hash left) (get_hash right) in
+        let hash = node_hash left right in
         Node { left ; right ; visited = false ; hash }
       )
 
@@ -358,6 +378,10 @@ module Stub = struct
     in
     fun x -> List.concat @@ List.map bits_of_bytes @@ List.of_seq @@ Bytes.to_seq x
     
+
+  let get_hash : value Map.t -> hash =
+    fun t ->
+    do_hash @@ Bytes.concat Bytes.empty @@ List.map snd @@ List.of_seq @@ Map.to_seq t
   
   module Patricia = struct
     type t = value Map.t
@@ -365,14 +389,14 @@ module Stub = struct
     let get : t -> key -> value = fun t k -> Map.find k t
     let set : t -> key -> value -> t = fun t k v -> Map.add k v t
     let unset : t -> key -> t = fun t k -> Map.remove k t
+    let get_hash = get_hash
   end
 
   module Patricia_produce_stream = struct
     type t = Patricia.t
     type tt = t * stream
 
-    let get_hash : t -> hash = fun t ->
-      do_hash @@ Bytes.concat Bytes.empty @@ List.map snd @@ List.of_seq @@ Map.to_seq t
+    let get_hash : t -> hash = get_hash
 
     let of_patricia : Patricia.t -> t = fun t -> t
 

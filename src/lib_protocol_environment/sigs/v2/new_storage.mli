@@ -32,7 +32,7 @@ val key_of_bits : bool list -> key
 type value = bytes
 val nul : value
 
-type hash = value
+type hash = bytes
 val do_hash : value -> hash
 
 type stream = hash list
@@ -41,6 +41,7 @@ val empty_stream : stream
 module Patricia : sig
   type t
   val empty : t
+  val get_hash : t -> hash
   val get : t -> key -> value
   val set : t -> key -> value -> t
   val unset : t -> key -> t

@@ -29,22 +29,44 @@ module type PARAM = sig
   val hash_function : bytes -> bytes
 end
 
-module Make(P : PARAM) = struct
-  open P
-  let generator = G1.one
-  let g = generator
+type secret_key = Secret_key of Fr.t
+type public_key = Public_key of G1.t
+type signature = Signature of G2.t
 
-  type secret_key = Secret_key of Fr.t
-  type public_key = Public_key of G1.t
+let secret_key_encoding : secret_key Data_encoding.t =
+  Data_encoding.(
+    conv
+      (fun (Secret_key sk) -> Fr.to_z sk) (fun sk -> Secret_key (Fr.of_z sk))
+    @@ z
+  )
 
-  type account = {
-    secret_key : secret_key ;
-    public_key : public_key ;
-  }
+let public_key_encoding : public_key Data_encoding.t =
+  Data_encoding.(
+    conv
+      (fun (Public_key pk) -> G1.to_bytes pk) (fun pk -> Public_key (G1.of_bytes_exn pk))
+    @@ bytes
+  )
 
-  type message = Message of bytes
-  type hash = Hash of G2.t
-  type signature = Signature of G2.t
+let signature_encoding : signature Data_encoding.t =
+  Data_encoding.(
+    conv
+      (fun (Signature s) -> G2.to_bytes s) (fun s -> Signature (G2.of_bytes_exn s))
+    @@ bytes
+  )
+
+
+  
+let generator = G1.one
+let g = generator
+
+type account = {
+  secret_key : secret_key ;
+  public_key : public_key ;
+}
+
+type message = Message of bytes
+type hash = Hash of G2.t
+
 
 (*
   E(g , signature) = E(signer , hash)
@@ -66,6 +88,10 @@ module Make(P : PARAM) = struct
   }
 
   let secret_to_public (Secret_key sk) = (Public_key (G1.mul g sk))
+
+
+module Make(P : PARAM) = struct
+  open P
 
   let hash_aux ~(current : bytes) =
     let z = Z.of_bits (Bytes.to_string current) in

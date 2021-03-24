@@ -29,7 +29,9 @@ let (let*) x f = x >>=? f
 let (!*) i = Incremental.alpha_ctxt i
 let (let**) x f = x >>= fun x -> Lwt.return @@ Environment.wrap_tzresult x >>=? f
 
-let assert_rollup : Protocol.operation_receipt -> (_ -> unit tzresult Lwt.t) -> _ = fun x f ->
+module Rollup = Protocol.Alpha_context.Rollup
+
+let assert_rollup : Protocol.operation_receipt -> (_ -> _ tzresult Lwt.t) -> _ = fun x f ->
   match x with
   | No_operation_metadata -> failwith "operation has no result"
   | Operation_metadata { contents  } -> (
@@ -53,46 +55,134 @@ let assert_rollup : Protocol.operation_receipt -> (_ -> unit tzresult Lwt.t) -> 
 let check condition msg =
   if condition then return () else failwith msg
 
-let noop = test "noop" @@ fun () ->
+let counter_good = test "counter-good" @@ fun () ->
   let* (b , bootstrap_contracts) = Context.init 10 in
-  let bootstrap0 =
+  let rollup_operator =
     WithExceptions.Option.get ~loc:__LOC__ @@ List.nth bootstrap_contracts 0
   in
   let* i = Incremental.begin_construction b in
-
-  let* rollup_block_commitment = Op.rollup_block_commitment (I i) bootstrap0 in
-  let* i = Incremental.add_operation i rollup_block_commitment in
-  let* result1 = Incremental.get_last_operation_result i in
-  let* () =
-    assert_rollup result1 @@ function
-    | Block_commitment_result _ -> return ()
-    | _ -> failwith "expected a block commitment result"
-  in
+  let module Counter = Tezos_rollup_alpha.Counter in
+  let open Counter in
   
-  let* rollup_micro_block_rejection = Op.rollup_micro_block_rejection (I i) bootstrap0 in
-  let* i = Incremental.add_operation i rollup_micro_block_rejection in
-  let* result2 = Incremental.get_last_operation_result i in
-  let* () =
-    assert_rollup result2 @@ function
-    | Micro_block_rejection_result _ -> return ()
-    | _ -> failwith "expected a tx rejection result"
-  in
+  (* Create Rollup Offchain *)
+  let module R = Make() in
+  let (bls_a , bls_b) = S.Dev.(
+      create_account () , create_account ()
+    ) in
 
-  let** counter = Protocol.Alpha_context.Rollup.Dev.get_counter !*i in
-  let* () = check Z.(counter = zero) "rollup counter didn't start at 0" in
-  let* rollup_creation = Op.rollup_creation (I i) bootstrap0 in
-  let* i = Incremental.add_operation i rollup_creation in
-  let* result3 = Incremental.get_last_operation_result i in
-  let* () =
-    assert_rollup result3 @@ function
-    | Rollup_creation_result _ -> return ()
+  (* Create Rollup Onchain *)
+  let* i =
+    let source = rollup_operator in
+    let kind = Rollup.Counter in
+    let* op = Op.rollup_creation ~source ~kind (I i) in
+    let* i = Incremental.add_operation i op in
+    return i
+  in
+  let* rollup_id =
+    let* result = Incremental.get_last_operation_result i in
+    assert_rollup result @@ function
+    | Rollup_creation_result { rollup_number ; _ } -> return rollup_number
     | _ -> failwith "expected a rollup creation result"
   in
-  let** counter = Protocol.Alpha_context.Rollup.Dev.get_counter !*i in
-  let* () = check Z.(counter = one) "rollup counter didn't increment to 1" in
+
+  (* Need to bake, rollups can start only in next block *)
+  let* i =
+    let* b = Incremental.finalize_block i in
+    let* b = Block.bake b in
+    let* i = Incremental.begin_construction b in
+    return i
+  in
+
+  (* Validate some operations Offchain *)
+  let () =
+    let op_a =
+      let operation =
+        let content = Add (Z.of_int 42) in
+        Client.make_operation ~content ~block_level
+      in
+      Client.sign_operation ~account:bls_a ~operation
+    in
+    let op_b =
+      let operation = Add (Z.of_int (-23)) in
+      Client.sign_operation ~account:bls_b ~operation
+    in
+    R.process_signed_operation op_a ;
+    R.process_signed_operation op_b ;
+    ()
+  in
+  
+  (* Commit the result Onchain *)
+  let* _i =
+    let { rev_transactions ; after_root ; before_root = _ ; aggregated_signature_opt } = R.finish_micro_block () in
+    let transactions =
+      let aux { signer ; content ; signature = _ } = Rollup.{ signer ; content } in
+      List.map aux @@
+      List.rev rev_transactions
+    in
+    let aggregated_signature = match aggregated_signature_opt with
+      | Some x -> x
+      | None -> raise (Failure "no aggregated signature")
+    in
+        
+    let bc = Rollup.Block_commitment.{
+      transactions ;
+      aggregated_signature ;
+      after_root ;
+      rollup_id ;
+    } in
+    let* op = Op.rollup_block_commitment (I i) ~source:rollup_operator bc in
+    Incremental.add_operation i op
+  in
+
+  (* Do the same thing multiple times *)
+
+  (* Withdraw money *)
   
   return ()
 
+
 let tests = [
-  noop ;
+  counter_good ;
 ]
+
+
+
+(* let noop = test "noop" @@ fun () ->
+ *   let* (b , bootstrap_contracts) = Context.init 10 in
+ *   let bootstrap0 =
+ *     WithExceptions.Option.get ~loc:__LOC__ @@ List.nth bootstrap_contracts 0
+ *   in
+ *   let* i = Incremental.begin_construction b in
+ * 
+ *   let* rollup_block_commitment = Op.rollup_block_commitment (I i) bootstrap0 in
+ *   let* i = Incremental.add_operation i rollup_block_commitment in
+ *   let* result1 = Incremental.get_last_operation_result i in
+ *   let* () =
+ *     assert_rollup result1 @@ function
+ *     | Block_commitment_result _ -> return ()
+ *     | _ -> failwith "expected a block commitment result"
+ *   in
+ *   
+ *   let* rollup_micro_block_rejection = Op.rollup_micro_block_rejection (I i) bootstrap0 in
+ *   let* i = Incremental.add_operation i rollup_micro_block_rejection in
+ *   let* result2 = Incremental.get_last_operation_result i in
+ *   let* () =
+ *     assert_rollup result2 @@ function
+ *     | Micro_block_rejection_result _ -> return ()
+ *     | _ -> failwith "expected a tx rejection result"
+ *   in
+ * 
+ *   let** counter = Protocol.Alpha_context.Rollup.Dev.get_counter !*i in
+ *   let* () = check Z.(counter = zero) "rollup counter didn't start at 0" in
+ *   let* rollup_creation = Op.rollup_creation (I i) bootstrap0 in
+ *   let* i = Incremental.add_operation i rollup_creation in
+ *   let* result3 = Incremental.get_last_operation_result i in
+ *   let* () =
+ *     assert_rollup result3 @@ function
+ *     | Rollup_creation_result _ -> return ()
+ *     | _ -> failwith "expected a rollup creation result"
+ *   in
+ *   let** counter = Protocol.Alpha_context.Rollup.Dev.get_counter !*i in
+ *   let* () = check Z.(counter = one) "rollup counter didn't increment to 1" in
+ *   
+ *   return () *)

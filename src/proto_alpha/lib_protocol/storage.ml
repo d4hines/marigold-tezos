@@ -1255,14 +1255,6 @@ module Rollups = struct
       in
       RPC_arg.make ~descr:"a rollup identifier" ~name:"rollup_id" ~construct ~destruct ()
 
-    let init = Z.zero
-
-    let parse_z (z : Z.t) : t = z
-
-    let unparse_to_z (z : t) : Z.t = z
-
-    let next = Z.succ
-
     let path_length = 1
 
     let to_path z l = Z.to_string z :: l

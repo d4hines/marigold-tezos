@@ -339,20 +339,20 @@ let delegation ?fee ctxt source dst =
   Context.Contract.manager ctxt source
   >|=? fun account -> sign account.sk ctxt sop
 
-let rollup_block_commitment ctxt source =
-  let rollup = Rollup (Commit_block (assert false)) in (* TODO *)
+let rollup_block_commitment ctxt ~source bc =
+  let rollup = Rollup (Commit_block bc) in
   let* sop = manager_operation ~source ctxt rollup in
   let* account = Context.Contract.manager ctxt source in
   return (sign account.sk ctxt sop)
 
 let rollup_micro_block_rejection ctxt source =
-  let rollup = Rollup (Reject_micro_block (assert false)) in (* TODO *)
+  let rollup = Rollup (Reject_block (assert false)) in (* TODO *)
   let* sop = manager_operation ~source ctxt rollup in
   let* account = Context.Contract.manager ctxt source in
   return (sign account.sk ctxt sop)
 
-let rollup_creation ctxt source =
-  let rollup = Rollup (Create_rollup (assert false)) in (* TODO *)
+let rollup_creation ~source ?(operator = source) ~kind ctxt =
+  let rollup = Rollup (Create_rollup { operator ; kind }) in (* TODO *)
   let* sop = manager_operation ~source ctxt rollup in
   let* account = Context.Contract.manager ctxt source in
   return (sign account.sk ctxt sop)
