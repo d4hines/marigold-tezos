@@ -978,8 +978,8 @@ module Keychain : sig
   type next_key
 
   type t = {
-    consensus_key : Signature.Public_key.t;
-    next_consensus_key : next_key;
+    master_key : Signature.Public_key.t;
+    next_master_key : next_key;
     spending_key : Signature.Public_key.t;
   }
 
@@ -1006,7 +1006,7 @@ module Keychain : sig
 
   val find : context -> public_key_hash -> t option tzresult Lwt.t
 
-  val get_consensus_key :
+  val get_master_key :
     context -> public_key_hash -> public_key option tzresult Lwt.t
 
   val get_spending_key :
@@ -1019,7 +1019,7 @@ module Keychain : sig
     public_key option ->
     context tzresult Lwt.t
 
-  val set_consensus_key :
+  val set_master_key :
     context -> public_key_hash -> public_key -> context tzresult Lwt.t
 
   val set_spending_key :
@@ -1391,7 +1391,7 @@ and _ manager_operation =
       Signature.Public_key_hash.t option
       -> Kind.delegation manager_operation
   | Baking_account : {
-      consensus_key : Signature.Public_key.t option;
+      master_key : Signature.Public_key.t option;
       spending_key: Signature.Public_key.t option;
       }
       -> Kind.baking_account manager_operation

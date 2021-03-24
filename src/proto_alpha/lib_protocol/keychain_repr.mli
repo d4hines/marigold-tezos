@@ -33,8 +33,8 @@ type next_key =
   | Delay of delayed_update
 
 type t = {
-  consensus_key : Signature.Public_key.t;
-  next_consensus_key : next_key;
+  master_key : Signature.Public_key.t;
+  next_master_key : next_key;
   spending_key : Signature.Public_key.t;
 }
 

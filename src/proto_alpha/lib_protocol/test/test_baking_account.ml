@@ -72,9 +72,9 @@ module Test_Baking_account = struct
     let ctxt = Incremental.alpha_ctxt incr in
     Keychain.find ctxt kh'
     >>= wrap >>=? function
-    | Some {consensus_key; spending_key; _} ->
-      (if Signature.Public_key.(consensus_key <> ck.pk) then
-         Stdlib.failwith "consensus_key wasn't set correctly."
+    | Some {master_key; spending_key; _} ->
+      (if Signature.Public_key.(master_key <> ck.pk) then
+         Stdlib.failwith "master_key wasn't set correctly."
        else if Signature.Public_key.(spending_key <> sk.pk) then
          Stdlib.failwith "spending_key wasn't set correctly."
        else
@@ -179,12 +179,12 @@ module Test_Keychain = struct
     @@ Keychain.get_spending_key ctx pkh1
     >>=? fun () ->
     is_some "get master key from pkh0"
-    @@ Keychain.get_consensus_key ctx pkh0
+    @@ Keychain.get_master_key ctx pkh0
     >>=? fun mk0 ->
     Assert.equal_pk ~loc:__LOC__ pkA mk0
     >>=? fun () ->
     is_none "get master key from pkh1"
-    @@ Keychain.get_consensus_key ctx pkh1
+    @@ Keychain.get_master_key ctx pkh1
     >>=? fun () ->
     (* init keychain for pkh1 with its manager*)
     Keychain.init_with_manager ctx pkh1 None
@@ -193,7 +193,7 @@ module Test_Keychain = struct
        spending key from pkh1 == mgtk1
        master key from pkh1 == mgtk1 *)
     is_some "get master key from pkh1"
-    @@ Keychain.get_consensus_key ctx pkh1
+    @@ Keychain.get_master_key ctx pkh1
     >>=? fun mk1 ->
     Assert.equal_pk ~loc:__LOC__ mk1 mgtk1
     >>=? fun () ->
@@ -217,10 +217,10 @@ module Test_Keychain = struct
     (* setting master key:
        update master key for pkh1 with pkA
        master key from pkh1 == mgtk1 *)
-    Keychain.set_consensus_key ctx pkh1 pkA
+    Keychain.set_master_key ctx pkh1 pkA
     >>= wrap >>=? fun ctx ->
     is_some "get master key from pkh1"
-    @@ Keychain.get_consensus_key ctx pkh1
+    @@ Keychain.get_master_key ctx pkh1
     >>=? fun mk1 ->
     Assert.equal_pk ~loc:__LOC__ mk1 mgtk1
     >>=? fun () ->

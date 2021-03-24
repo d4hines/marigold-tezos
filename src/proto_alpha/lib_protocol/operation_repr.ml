@@ -154,7 +154,7 @@ and _ manager_operation =
       Signature.Public_key_hash.t option
       -> Kind.delegation manager_operation
   | Baking_account : {
-      consensus_key : Signature.Public_key.t option;
+      master_key : Signature.Public_key.t option;
       spending_key : Signature.Public_key.t option;
       }
       -> Kind.baking_account manager_operation
@@ -373,12 +373,12 @@ module Encoding = struct
         {
           tag = 4;
           name = "baking_account";
-          encoding = obj2 (opt "consensus_key" Signature.Public_key.encoding)
+          encoding = obj2 (opt "master_key" Signature.Public_key.encoding)
                           (opt "spending_key" Signature.Public_key.encoding);
           select =
             (function Manager (Baking_account _ as op) -> Some op | _ -> None);
-          proj = (function | Baking_account {consensus_key; spending_key;} -> (consensus_key, spending_key));
-          inj = (fun (consensus_key, spending_key) -> Baking_account {consensus_key; spending_key});
+          proj = (function | Baking_account {master_key; spending_key;} -> (master_key, spending_key));
+          inj = (fun (master_key, spending_key) -> Baking_account {master_key; spending_key});
         }
 
     let encoding =

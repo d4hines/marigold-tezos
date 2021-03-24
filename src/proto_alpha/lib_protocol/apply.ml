@@ -817,13 +817,13 @@ let apply_manager_operation_content :
         Delegation_result
           {consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt},
         [] )
-  | Baking_account {consensus_key; spending_key} ->
+  | Baking_account {master_key; spending_key} ->
     (match Contract.is_implicit source with
     | Some kh ->
         Keychain.exists ctxt kh
         >>= fun (is_exist) ->
-        (match (is_exist, consensus_key, spending_key) with
-         | true, _, _ -> Keychain.set ctxt kh consensus_key spending_key
+        (match (is_exist, master_key, spending_key) with
+         | true, _, _ -> Keychain.set ctxt kh master_key spending_key
          | false, None, Some _ ->   Keychain.init_with_manager ctxt kh spending_key
          | false, Some c, Some s -> Keychain.init ctxt kh c s
          | false, Some c, None ->   Keychain.init ctxt kh c c
@@ -1083,14 +1083,14 @@ let check_manager_signature ctxt chain_id (op : _ Kind.manager contents_list)
   Keychain.find ctxt source
   >>=? fun (kc) ->
   (match kc, is_all_transaction with
-  | Some {consensus_key; spending_key }, true ->
+  | Some {master_key; spending_key }, true ->
     (let check_sp = Operation.check_signature spending_key chain_id raw_operation in
        match check_sp with
     | Ok () -> Lwt.return check_sp
     | Error _ ->
-       Lwt.return (Operation.check_signature consensus_key chain_id raw_operation))
-  | Some {consensus_key; _ }, false ->
-    Lwt.return (Operation.check_signature consensus_key chain_id raw_operation)
+       Lwt.return (Operation.check_signature master_key chain_id raw_operation))
+  | Some {master_key; _ }, false ->
+    Lwt.return (Operation.check_signature master_key chain_id raw_operation)
   | None, _ ->
     (( match source_key with
     | Some key ->
