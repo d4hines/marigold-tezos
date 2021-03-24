@@ -514,6 +514,7 @@ module Constants : sig
     min_proposal_quorum : int32;
     initial_endorsers : int;
     delay_per_missing_endorsement : Period.t;
+    master_key_delay_cycles : int;
   }
 
   val parametric_encoding : parametric Data_encoding.t

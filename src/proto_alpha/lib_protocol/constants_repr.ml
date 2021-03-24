@@ -108,6 +108,7 @@ type parametric = {
   min_proposal_quorum : int32;
   initial_endorsers : int;
   delay_per_missing_endorsement : Period_repr.t;
+  master_key_delay_cycles : int;
 }
 
 let parametric_encoding =
@@ -144,7 +145,8 @@ let parametric_encoding =
             c.quorum_max,
             c.min_proposal_quorum,
             c.initial_endorsers,
-            c.delay_per_missing_endorsement ) ) ))
+            c.delay_per_missing_endorsement,
+            c.master_key_delay_cycles) ) ))
     (fun ( ( preserved_cycles,
              blocks_per_cycle,
              blocks_per_commitment,
@@ -170,7 +172,8 @@ let parametric_encoding =
                quorum_max,
                min_proposal_quorum,
                initial_endorsers,
-               delay_per_missing_endorsement ) ) ) ->
+               delay_per_missing_endorsement,
+               master_key_delay_cycles) ) ) ->
       {
         preserved_cycles;
         blocks_per_cycle;
@@ -197,6 +200,7 @@ let parametric_encoding =
         min_proposal_quorum;
         initial_endorsers;
         delay_per_missing_endorsement;
+        master_key_delay_cycles;
       })
     (merge_objs
        (obj9
@@ -223,7 +227,7 @@ let parametric_encoding =
              (req "block_security_deposit" Tez_repr.encoding)
              (req "endorsement_security_deposit" Tez_repr.encoding)
              (req "baking_reward_per_endorsement" (list Tez_repr.encoding)))
-          (obj9
+          (obj10
              (req "endorsement_reward" (list Tez_repr.encoding))
              (req "cost_per_byte" Tez_repr.encoding)
              (req "hard_storage_limit_per_operation" z)
@@ -232,7 +236,8 @@ let parametric_encoding =
              (req "quorum_max" int32)
              (req "min_proposal_quorum" int32)
              (req "initial_endorsers" uint16)
-             (req "delay_per_missing_endorsement" Period_repr.encoding))))
+             (req "delay_per_missing_endorsement" Period_repr.encoding)
+             (req "master_key_delay_cycles" uint8))))
 
 type t = {fixed : fixed; parametric : parametric}
 
