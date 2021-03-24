@@ -26,6 +26,8 @@
 open Protocol
 open Alpha_context
 
+open Account.Baking_account
+
 let pkh_pp = Signature.Public_key_hash.pp
 
 let pk_pp = Signature.Public_key.pp
@@ -39,11 +41,11 @@ module Test_Baking_account = struct
       Context.init 1
       >>=? fun (blk, contracts) ->
       let new_c = WithExceptions.Option.get ~loc:__LOC__ @@ List.hd contracts in
-      let ck = Account.new_account () in 
-      let sk = Account.new_account () in 
       let kh' = (match Contract.is_implicit new_c with
       | Some kh -> kh
       | None -> Stdlib.failwith "not implicit account")
+      in
+      let {c_pk; s_pk; _} = new_baking_account kh' Spending_key
       in
       Incremental.begin_construction blk
       >>=? fun incr ->
@@ -52,7 +54,7 @@ module Test_Baking_account = struct
       >>= fun (is_exist) ->
       Assert.equal_bool ~loc:__LOC__ is_exist false
       >>=? fun () ->
-      Op.baking_account (B blk) new_c (Some ck.pk) (Some sk.pk)
+      Op.baking_account (B blk) new_c (Some c_pk) (Some s_pk)
       >>=? fun operation ->
       Block.bake blk ~operation
       >>=? fun blk ->
@@ -62,13 +64,58 @@ module Test_Baking_account = struct
       Keychain.find ctxt kh'
       >>= wrap >>=? function
         | Some {consensus_key; spending_key; _} ->
-          (if Signature.Public_key.(consensus_key <> ck.pk) then
+          (if Signature.Public_key.(consensus_key <> c_pk) then
              Stdlib.failwith "consensus_key wasn't set correctly."
-           else if Signature.Public_key.(spending_key <> sk.pk) then
+           else if Signature.Public_key.(spending_key <> s_pk) then
              Stdlib.failwith "spending_key wasn't set correctly."
            else
               return ())
         | None -> Stdlib.failwith "key hash should be found."
+
+  let test_baking_account_transaction key () =
+      Context.init 2
+      >>=? fun (blk, accounts) ->
+      let src_contract = WithExceptions.Option.get ~loc:__LOC__ @@ List.nth accounts 0 in
+      let dst_contract = WithExceptions.Option.get ~loc:__LOC__ @@ List.nth accounts 1 in
+      Context.Contract.manager (B blk) src_contract
+      >>=? fun src ->
+      let ({c_pk; s_pk; _ } as ba) =
+      match key with
+      | None -> new_baking_account src.pkh Consensus_key
+      | Some k -> new_baking_account src.pkh k
+      in
+      Context.Contract.balance (B blk) dst_contract
+      >>=? fun bal_dst ->
+      Op.baking_account (B blk) src_contract (Some c_pk) (Some s_pk)
+      >>=? fun op_ba ->
+      Block.bake blk ~operation:op_ba
+      >>=? fun blk ->
+      let amount = Tez.one_mutez in
+      (match key with
+      | None ->
+         Op.transaction_baking_account (B blk) ba dst_contract amount ~sk:src.sk
+      | Some _ ->
+         Op.transaction_baking_account (B blk) ba dst_contract amount)
+      >>=? fun op_tx ->
+      Block.bake blk ~operation:op_tx
+      >>= fun res ->
+      (match key with
+       | None ->
+         (Assert.proto_error ~loc:__LOC__ res (function
+              | Operation_repr.Invalid_signature -> true
+              | _ -> false ))
+       | Some _ -> res >>?= fun blk ->
+         Assert.balance_was_credited ~loc:__LOC__ (B blk) dst_contract bal_dst amount
+      )
+
+   let test_baking_account_transaction_by_spending_key =
+     test_baking_account_transaction (Some Spending_key)
+
+   let test_baking_account_transaction_by_consensus_key =
+     test_baking_account_transaction (Some Consensus_key)
+
+   let test_baking_account_transaction_by_arbitrary_key =
+     test_baking_account_transaction None
 end
 
 module Test_Keychain = struct
@@ -132,4 +179,7 @@ let tests =
       Test_Keychain.test_init;
     Test_services.tztest "baking account empty test" `Quick test_none;
     Test_services.tztest "baking account test creating keys" `Quick Test_Baking_account.test_sample_baking_account_op;
+    Test_services.tztest "baking account test transaction by consensus key" `Quick Test_Baking_account.test_baking_account_transaction_by_consensus_key;
+    Test_services.tztest "baking account test transaction by spending key" `Quick Test_Baking_account.test_baking_account_transaction_by_spending_key;
+    Test_services.tztest "baking account test transaction by arbitrary key" `Quick Test_Baking_account.test_baking_account_transaction_by_arbitrary_key ;
   ]

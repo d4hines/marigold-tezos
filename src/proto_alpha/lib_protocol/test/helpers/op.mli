@@ -60,6 +60,20 @@ val transaction :
   Tez.t ->
   Operation.packed tzresult Lwt.t
 
+val transaction_baking_account :
+  ?counter:Z.t ->
+  ?fee:Tez.tez ->
+  ?gas_limit:Gas.Arith.integral ->
+  ?storage_limit:Z.t ->
+  ?parameters:Script.lazy_expr ->
+  ?entrypoint:string ->
+  ?sk:Signature.Secret_key.t ->
+  Context.t ->
+  Account.Baking_account.t ->
+  Contract.t ->
+  Tez.t ->
+  Operation.packed tzresult Lwt.t
+
 val delegation :
   ?fee:Tez.tez ->
   Context.t ->

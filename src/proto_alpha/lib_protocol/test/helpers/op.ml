@@ -187,6 +187,48 @@ let combine_operations ?public_key ?counter ?spurious_operation ~source ctxt
   let operations = Operation.of_list operations in
   sign account.sk ctxt operations
 
+open Account.Baking_account
+let manager_operation_baking_account
+    ?counter
+    ?(fee = Tez.zero)
+    ?gas_limit
+    ?storage_limit
+    { ba_pkh; _ }
+    ctxt
+    operation =
+  (
+  let source = Contract.implicit_contract ba_pkh in
+    match counter with
+  | Some counter ->
+      return counter
+  | None ->
+      Context.Contract.counter ctxt source )
+  >>=? fun counter ->
+  Context.get_constants ctxt
+  >>=? fun c ->
+  let gas_limit =
+    let default = c.parametric.hard_gas_limit_per_operation in
+    Option.value ~default gas_limit
+  in
+  let storage_limit =
+    Option.value
+      ~default:c.parametric.hard_storage_limit_per_operation
+      storage_limit
+  in
+  let counter = Z.succ counter in
+  let op =
+    Manager_operation
+      {
+        source = ba_pkh;
+        fee;
+        counter;
+        operation;
+        gas_limit;
+        storage_limit;
+      }
+  in
+  return @@ Contents_list (Single op)
+
 let manager_operation ?counter ?(fee = Tez.zero) ?gas_limit ?storage_limit
     ?public_key ~source ctxt operation =
   ( match counter with
@@ -313,6 +355,26 @@ let miss_signed_endorsement ?level ctxt =
   >>=? fun (real_delegate_pkh, _slots) ->
   let delegate = Account.find_alternate real_delegate_pkh in
   endorsement ~delegate:delegate.pkh ~level ctxt ()
+
+let transaction_baking_account ?counter ?fee ?gas_limit ?storage_limit
+    ?(parameters = Script.unit_parameter) ?(entrypoint = "default") ?sk ctxt
+    (src : Account.Baking_account.t) (dst : Contract.t) (amount : Tez.t) =
+  let top = Transaction {amount; parameters; destination = dst; entrypoint} in
+    (manager_operation_baking_account
+      ?counter
+      ?fee
+      ?gas_limit
+      ?storage_limit
+      src
+      ctxt
+      top
+    >>=? fun sop ->
+    let sk' =
+    match sk with
+    | None -> Account.Baking_account.ba_sign src
+    | Some s -> s
+    in
+    return @@ sign sk' ctxt sop)
 
 let transaction ?counter ?fee ?gas_limit ?storage_limit
     ?(parameters = Script.unit_parameter) ?(entrypoint = "default") ctxt

@@ -99,3 +99,37 @@ let new_commitment ?seed () =
     ( (Environment.wrap_tzresult @@ Tez.(one *? 4_000L))
     >|? fun amount ->
     (unactivated_account, {blinded_public_key_hash = bpkh; amount}) )
+
+module Baking_account = struct
+  type key = Spending_key | Consensus_key
+
+  type t = {
+    ba_pkh : Signature.Public_key_hash.t;
+
+    c_pk : Signature.Public_key.t;
+    c_sk : Signature.Secret_key.t;
+
+    s_pk : Signature.Public_key.t;
+    s_sk : Signature.Secret_key.t;
+    sign_by : key;
+  }
+
+  type baking_account = t
+
+  let new_baking_account pkh s =
+    let ck = new_account () in
+    let sk = new_account () in
+    { ba_pkh = pkh;
+      c_pk = ck.pk;
+      c_sk = ck.sk;
+      s_pk = sk.pk;
+      s_sk = sk.sk;
+      sign_by = s;
+    }
+
+  let ba_sign t =
+    match t.sign_by with
+    | Spending_key -> t.c_sk
+    | Consensus_key -> t.s_sk
+end
+
