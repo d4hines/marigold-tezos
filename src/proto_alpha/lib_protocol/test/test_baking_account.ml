@@ -47,27 +47,39 @@ let is_some msg k =
 
 module Test_Baking_account = struct
   let test_sample_baking_account_op () =
-    return_unit
-    (*
-      Context.init 1
-      >>=? fun (blk, contracts) ->
-      let new_c = WithExceptions.Option.get ~loc:__LOC__ @@ List.hd contracts in
-      let ck = Account.new_account () in
-      let sk = Account.new_account () in
-      (* Create the contract *)
-      Op.baking_account (B blk) new_c (Some ck.pk) (Some sk.pk)
-      >>=? fun _operation ->
-      Incremental.begin_construction blk
-      >>=? fun incr ->
-      let ctxt = Incremental.alpha_ctxt incr in
-      (match Contract.is_implicit new_c with
-      | Some kh ->
-        (Keychain.exists ctxt kh
-        >>= function
-        | true -> return () | false -> Stdlib.failwith "key hash should be found.")
-      | None ->
-        Stdlib.failwith "not implicit account")
-       *)
+    Context.init 1
+    >>=? fun (blk, contracts) ->
+    let new_c = WithExceptions.Option.get ~loc:__LOC__ @@ List.hd contracts in
+    let ck = Account.new_account () in
+    let sk = Account.new_account () in
+    let kh' = (match Contract.is_implicit new_c with
+      | Some kh -> kh
+      | None -> Stdlib.failwith "not implicit account")
+    in
+    Incremental.begin_construction blk
+    >>=? fun incr ->
+    let ctxt = Incremental.alpha_ctxt incr in
+    Keychain.exists ctxt kh'
+    >>= fun (is_exist) ->
+    Assert.equal_bool ~loc:__LOC__ is_exist false
+    >>=? fun () ->
+    Op.baking_account (B blk) new_c (Some ck.pk) (Some sk.pk)
+    >>=? fun operation ->
+    Block.bake blk ~operation
+    >>=? fun blk ->
+    Incremental.begin_construction blk
+    >>=? fun incr ->
+    let ctxt = Incremental.alpha_ctxt incr in
+    Keychain.find ctxt kh'
+    >>= wrap >>=? function
+    | Some {consensus_key; spending_key; _} ->
+      (if Signature.Public_key.(consensus_key <> ck.pk) then
+         Stdlib.failwith "consensus_key wasn't set correctly."
+       else if Signature.Public_key.(spending_key <> sk.pk) then
+         Stdlib.failwith "spending_key wasn't set correctly."
+       else
+         return ())
+    | None -> Stdlib.failwith "key hash should be found."
 end
 
 module Test_Keychain = struct

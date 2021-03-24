@@ -679,6 +679,7 @@ module Encoding = struct
            make transaction_case;
            make origination_case;
            make delegation_case;
+           make baking_account_case;
            make failing_noop_case ]
 
   let contents_list_encoding =
