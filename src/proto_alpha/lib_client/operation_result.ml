@@ -131,7 +131,7 @@ let pp_manager_operation_content (type kind) source internal pp_result ppf
         delegate
         pp_result
         result
-  | Baking_account {master_key; spending_key } ->
+  | Update_keychain {master_key; spending_key } ->
       match (master_key, spending_key) with
       | Some c, Some s ->
         ( Format.fprintf
@@ -372,9 +372,9 @@ let pp_manager_operation_contents_and_result ppf
           "@[<v 0>This origination was BACKTRACKED, its expected effects (as \
            follow) were NOT applied.@]" ;
         pp_origination_result op
-    | Applied (Baking_account_result _) ->
-        Format.fprintf ppf "Baking_account op was successfully applied" ;
-    | Backtracked ((Baking_account_result _), _errs) ->
+    | Applied (Update_keychain_result _) ->
+        Format.fprintf ppf "Update_keychain op was successfully applied" ;
+    | Backtracked ((Update_keychain_result _), _errs) ->
         Format.fprintf
           ppf
           "@[<v 0>This baking_account was BACKTRACKED, its expected effects (as \

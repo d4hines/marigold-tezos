@@ -75,10 +75,10 @@ type _ successful_manager_operation_result =
       consumed_gas : Gas.Arith.fp;
     }
       -> Kind.delegation successful_manager_operation_result
-  | Baking_account_result : {
+  | Update_keychain_result : {
       consumed_gas : Gas.Arith.fp;
     }
-      -> Kind.baking_account successful_manager_operation_result
+      -> Kind.update_keychain successful_manager_operation_result
 
 type packed_successful_manager_operation_result =
   | Successful_manager_result :
@@ -198,31 +198,31 @@ module Manager_result = struct
         assert (Gas.Arith.(equal (ceil consumed_milligas) consumed_gas)) ;
         Reveal_result {consumed_gas = consumed_milligas})
 
-  let baking_account_case =
+  let update_keychain_case =
     make
-      ~op_case:Operation.Encoding.Manager_operations.baking_account_case
+      ~op_case:Operation.Encoding.Manager_operations.update_keychain_case
       ~encoding:
         Data_encoding.(
           obj2
             (dft "consumed_gas" Gas.Arith.n_integral_encoding Gas.Arith.zero)
             (dft "consumed_milligas" Gas.Arith.n_fp_encoding Gas.Arith.zero))
       ~iselect:(function
-        | Internal_operation_result (({operation = Baking_account _; _} as op), res) ->
+        | Internal_operation_result (({operation = Update_keychain _; _} as op), res) ->
             Some (op, res)
         | _ ->
             None)
       ~select:(function
-        | Successful_manager_result (Baking_account_result _ as op) ->
+        | Successful_manager_result (Update_keychain_result _ as op) ->
             Some op
         | _ ->
             None)
-      ~kind:Kind.Baking_account_manager_kind
+      ~kind:Kind.Update_keychain_manager_kind
       ~proj:(function
-        | Baking_account_result {consumed_gas} ->
+        | Update_keychain_result {consumed_gas} ->
             (Gas.Arith.ceil consumed_gas, consumed_gas))
       ~inj:(fun (consumed_gas, consumed_milligas) ->
         assert (Gas.Arith.(equal (ceil consumed_milligas) consumed_gas)) ;
-        Baking_account_result {consumed_gas = consumed_milligas})
+        Update_keychain_result {consumed_gas = consumed_milligas})
 
   let transaction_case =
     make
@@ -432,7 +432,7 @@ let internal_operation_result_encoding :
          make Manager_result.transaction_case;
          make Manager_result.origination_case;
          make Manager_result.delegation_case;
-         make Manager_result.baking_account_case;
+         make Manager_result.update_keychain_case;
        ]
 
 type 'kind contents_result =
@@ -496,9 +496,9 @@ let equal_manager_kind :
       Some Eq
   | (Kind.Delegation_manager_kind, _) ->
       None
-  | (Kind.Baking_account_manager_kind, Kind.Baking_account_manager_kind) ->
+  | (Kind.Update_keychain_manager_kind, Kind.Update_keychain_manager_kind) ->
       Some Eq
-  | (Kind.Baking_account_manager_kind, _) ->
+  | (Kind.Update_keychain_manager_kind, _) ->
       None
 
 module Encoding = struct
@@ -808,13 +808,13 @@ module Encoding = struct
         | _ ->
             None)
 
-  let baking_account_case =
+  let update_keychain_case =
     make_manager_case
-      Operation.Encoding.baking_account_case
-      Manager_result.baking_account_case
+      Operation.Encoding.update_keychain_case
+      Manager_result.update_keychain_case
       (function
         | Contents_and_result
-            ((Manager_operation {operation = Baking_account _; _} as op), res) ->
+            ((Manager_operation {operation = Update_keychain _; _} as op), res) ->
             Some (op, res)
         | _ ->
             None)
@@ -880,7 +880,7 @@ let contents_result_encoding =
          make proposals_case;
          make ballot_case;
          make reveal_case;
-         make baking_account_case;
+         make update_keychain_case;
          make transaction_case;
          make origination_case;
          make delegation_case ]
@@ -917,7 +917,7 @@ let contents_and_result_encoding =
          make proposals_case;
          make ballot_case;
          make reveal_case;
-         make baking_account_case;
+         make update_keychain_case;
          make transaction_case;
          make origination_case;
          make delegation_case ]
@@ -1151,12 +1151,12 @@ let kind_equal :
       Some Eq
   | (Manager_operation {operation = Delegation _; _}, _) ->
       None
-  | (Manager_operation {operation = Baking_account _},
+  | (Manager_operation {operation = Update_keychain _},
      Manager_operation_result
-        {operation_result = Applied (Baking_account_result _); _} ) ->
+        {operation_result = Applied (Update_keychain_result _); _} ) ->
 
       Some Eq
-  | (Manager_operation {operation = Baking_account _}, _) ->
+  | (Manager_operation {operation = Update_keychain _}, _) ->
       None
 
 let rec kind_equal_list :

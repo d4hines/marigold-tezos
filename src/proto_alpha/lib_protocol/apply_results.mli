@@ -126,10 +126,10 @@ and _ successful_manager_operation_result =
       consumed_gas : Gas.Arith.fp;
     }
       -> Kind.delegation successful_manager_operation_result
-  | Baking_account_result : {
+  | Update_keychain_result : {
       consumed_gas : Gas.Arith.fp;
     }
-      -> Kind.baking_account successful_manager_operation_result
+      -> Kind.update_keychain successful_manager_operation_result
 
 and packed_successful_manager_operation_result =
   | Successful_manager_result :
