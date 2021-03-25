@@ -26,7 +26,7 @@
 open Protocol
 open Alpha_context
 
-open Account.Baking_account
+open Account.Update_keychain
 
 let pkh_pp = Signature.Public_key_hash.pp
 
@@ -47,8 +47,8 @@ let is_some msg k =
   | Some x -> return x
   | None -> failwith "expect a None (%s)" msg
 
-module Test_Baking_account = struct
-  let test_sample_baking_account_op () =
+module Test_Update_keychain = struct
+  let test_sample_update_keychain_op () =
       Context.init 1
       >>=? fun (blk, contracts) ->
       let new_c = WithExceptions.Option.get ~loc:__LOC__ @@ List.hd contracts in
@@ -56,7 +56,7 @@ module Test_Baking_account = struct
       | Some kh -> kh
       | None -> Stdlib.failwith "not implicit account")
       in
-      let {c_pk; s_pk; _} = new_baking_account kh' Spending_key
+      let {c_pk; s_pk; _} = new_key_chain kh' Spending_key
       in
       Incremental.begin_construction blk
       >>=? fun incr ->
@@ -65,7 +65,7 @@ module Test_Baking_account = struct
       >>= fun (is_exist) ->
       Assert.equal_bool ~loc:__LOC__ is_exist false
       >>=? fun () ->
-      Op.baking_account (B blk) new_c (Some c_pk) (Some s_pk)
+      Op.update_keychain (B blk) new_c (Some c_pk) (Some s_pk)
       >>=? fun operation ->
       Block.bake blk ~operation
       >>=? fun blk ->
@@ -83,7 +83,7 @@ module Test_Baking_account = struct
               return ())
         | None -> Stdlib.failwith "key hash should be found."
 
-  let test_baking_account_transaction key () =
+  let test_update_keychain_transaction key () =
       Context.init 2
       >>=? fun (blk, accounts) ->
       let src_contract = WithExceptions.Option.get ~loc:__LOC__ @@ List.nth accounts 0 in
@@ -92,21 +92,21 @@ module Test_Baking_account = struct
       >>=? fun src ->
       let ({c_pk; s_pk; _ } as ba) =
       match key with
-      | None -> new_baking_account src.pkh Consensus_key
-      | Some k -> new_baking_account src.pkh k
+      | None -> new_key_chain src.pkh Consensus_key
+      | Some k -> new_key_chain src.pkh k
       in
       Context.Contract.balance (B blk) dst_contract
       >>=? fun bal_dst ->
-      Op.baking_account (B blk) src_contract (Some c_pk) (Some s_pk)
+      Op.update_keychain (B blk) src_contract (Some c_pk) (Some s_pk)
       >>=? fun op_ba ->
       Block.bake blk ~operation:op_ba
       >>=? fun blk ->
       let amount = Tez.one_mutez in
       (match key with
       | None ->
-         Op.transaction_baking_account (B blk) ba dst_contract amount ~sk:src.sk
+         Op.transaction_update_keychain (B blk) ba dst_contract amount ~sk:src.sk
       | Some _ ->
-         Op.transaction_baking_account (B blk) ba dst_contract amount)
+         Op.transaction_update_keychain (B blk) ba dst_contract amount)
       >>=? fun op_tx ->
       Block.bake blk ~operation:op_tx
       >>= fun res ->
@@ -119,14 +119,14 @@ module Test_Baking_account = struct
          Assert.balance_was_credited ~loc:__LOC__ (B blk) dst_contract bal_dst amount
       )
 
-   let test_baking_account_transaction_by_spending_key =
-     test_baking_account_transaction (Some Spending_key)
+   let test_update_keychain_transaction_by_spending_key =
+     test_update_keychain_transaction (Some Spending_key)
 
-   let test_baking_account_transaction_by_consensus_key =
-     test_baking_account_transaction (Some Consensus_key)
+   let test_update_keychain_transaction_by_consensus_key =
+     test_update_keychain_transaction (Some Consensus_key)
 
-   let test_baking_account_transaction_by_arbitrary_key =
-     test_baking_account_transaction None
+   let test_update_keychain_transaction_by_arbitrary_key =
+     test_update_keychain_transaction None
 end
 
 module Test_Keychain = struct
@@ -318,7 +318,7 @@ module Test_Keychain = struct
     checkMasterKey b_pre_init pkh None
     >>=? fun () ->
     (* init keychain with master = pkA *)
-    Op.baking_account (B b_pre_init) acc (Some pkA) (Some pkA)
+    Op.update_keychain (B b_pre_init) acc (Some pkA) (Some pkA)
     >>=? fun operation ->
     Block.bake b_pre_init ~operation
     >>=? fun b_init ->
@@ -355,17 +355,17 @@ let tests =
     Test_services.tztest
       "baking account test creating keys"
       `Quick
-      Test_Baking_account.test_sample_baking_account_op;
+      Test_Update_keychain.test_sample_update_keychain_op;
     Test_services.tztest
       "baking account test transaction by consensus key"
       `Quick
-      Test_Baking_account.test_baking_account_transaction_by_consensus_key;
+      Test_Update_keychain.test_update_keychain_transaction_by_consensus_key;
     Test_services.tztest
       "baking account test transaction by spending key"
       `Quick
-      Test_Baking_account.test_baking_account_transaction_by_spending_key;
+      Test_Update_keychain.test_update_keychain_transaction_by_spending_key;
     Test_services.tztest
       "baking account test transaction by arbitrary key"
       `Quick
-      Test_Baking_account.test_baking_account_transaction_by_arbitrary_key ;
+      Test_Update_keychain.test_update_keychain_transaction_by_arbitrary_key;
   ]

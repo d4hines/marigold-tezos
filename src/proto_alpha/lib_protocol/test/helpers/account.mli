@@ -60,7 +60,7 @@ val commitment_secret : Blinded_public_key_hash.activation_code
 val new_commitment :
   ?seed:Bytes.t -> unit -> (account * Commitment.t) tzresult Lwt.t
 
-module Baking_account : sig
+module Update_keychain : sig
   type key = Spending_key | Consensus_key
 
   type t = {
@@ -72,9 +72,9 @@ module Baking_account : sig
     sign_by : key;
   }
 
-  type baking_account = t
+  type update_keychain = t
 
-  val new_baking_account : Signature.Public_key_hash.t -> key -> t
+  val new_key_chain : Signature.Public_key_hash.t -> key -> t
 
-  val ba_sign : t -> Signature.Secret_key.t
+  val kc_sign : t -> Signature.Secret_key.t
 end

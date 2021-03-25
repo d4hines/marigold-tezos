@@ -60,7 +60,7 @@ val transaction :
   Tez.t ->
   Operation.packed tzresult Lwt.t
 
-val transaction_baking_account :
+val transaction_update_keychain :
   ?counter:Z.t ->
   ?fee:Tez.tez ->
   ?gas_limit:Gas.Arith.integral ->
@@ -69,7 +69,7 @@ val transaction_baking_account :
   ?entrypoint:string ->
   ?sk:Signature.Secret_key.t ->
   Context.t ->
-  Account.Baking_account.t ->
+  Account.Update_keychain.t ->
   Contract.t ->
   Tez.t ->
   Operation.packed tzresult Lwt.t
@@ -150,7 +150,7 @@ val ballot :
   Vote.ballot ->
   Operation.packed tzresult Lwt.t
 
-val baking_account :
+val update_keychain :
   ?fee:Tez.tez
   -> Context.t
   -> ?sk:Signature.Secret_key.t

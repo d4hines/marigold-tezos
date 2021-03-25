@@ -817,7 +817,7 @@ let apply_manager_operation_content :
         Delegation_result
           {consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt},
         [] )
-  | Baking_account {master_key; spending_key} ->
+  | Update_keychain {master_key; spending_key} ->
     (match Contract.is_implicit source with
     | Some kh ->
         Keychain.exists ctxt kh
@@ -831,7 +831,7 @@ let apply_manager_operation_content :
         )
          >>=? fun (ctxt) ->
          return ((ctxt,
-            Baking_account_result
+            Update_keychain_result
               {consumed_gas = Gas.consumed ~since:before_operation ~until:ctxt},
             []))
     | None -> fail Not_Implicit_Account)

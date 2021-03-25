@@ -50,7 +50,7 @@ module Kind : sig
 
   type delegation = Delegation_kind
 
-  type baking_account = Baking_account_kind
+  type update_keychain = Update_keychain_kind
 
   type failing_noop = Failing_noop_kind
 
@@ -59,7 +59,7 @@ module Kind : sig
     | Transaction_manager_kind : transaction manager
     | Origination_manager_kind : origination manager
     | Delegation_manager_kind : delegation manager
-    | Baking_account_manager_kind : baking_account manager
+    | Update_keychain_manager_kind : update_keychain manager
 end
 
 type raw = Operation.t = {shell : Operation.shell_header; proto : bytes}
@@ -153,11 +153,11 @@ and _ manager_operation =
   | Delegation :
       Signature.Public_key_hash.t option
       -> Kind.delegation manager_operation
-  | Baking_account : {
+  | Update_keychain : {
       master_key : Signature.Public_key.t option;
       spending_key: Signature.Public_key.t option;
       }
-      -> Kind.baking_account manager_operation
+      -> Kind.update_keychain manager_operation
 
 and counter = Z.t
 
@@ -266,7 +266,7 @@ module Encoding : sig
 
   val delegation_case : Kind.delegation Kind.manager case
 
-  val baking_account_case : Kind.baking_account Kind.manager case
+  val update_keychain_case : Kind.update_keychain Kind.manager case
 
   module Manager_operations : sig
     type 'b case =
@@ -288,6 +288,6 @@ module Encoding : sig
 
     val delegation_case : Kind.delegation case
 
-    val baking_account_case : Kind.baking_account case
+    val update_keychain_case : Kind.update_keychain case
   end
 end

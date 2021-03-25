@@ -100,7 +100,7 @@ let new_commitment ?seed () =
     >|? fun amount ->
     (unactivated_account, {blinded_public_key_hash = bpkh; amount}) )
 
-module Baking_account = struct
+module Update_keychain = struct
   type key = Spending_key | Consensus_key
 
   type t = {
@@ -114,9 +114,9 @@ module Baking_account = struct
     sign_by : key;
   }
 
-  type baking_account = t
+  type update_keychain = t
 
-  let new_baking_account pkh s =
+  let new_key_chain pkh s =
     let ck = new_account () in
     let sk = new_account () in
     { ba_pkh = pkh;
@@ -127,7 +127,7 @@ module Baking_account = struct
       sign_by = s;
     }
 
-  let ba_sign t =
+  let kc_sign t =
     match t.sign_by with
     | Spending_key -> t.c_sk
     | Consensus_key -> t.s_sk

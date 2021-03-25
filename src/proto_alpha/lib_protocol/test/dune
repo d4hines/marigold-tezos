@@ -65,4 +65,4 @@
  (alias runtest_ba)
  (deps (glob_files contracts/*))
  (package tezos-protocol-alpha-tests)
- (action (run %{exe:main.exe} test baking_account -v -q)))
+ (action (run %{exe:main.exe} test update_keychain -v -q)))
