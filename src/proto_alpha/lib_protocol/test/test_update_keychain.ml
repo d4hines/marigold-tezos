@@ -273,16 +273,6 @@ module Test_Keychain = struct
     >>=? fun () ->
     return_unit
 
-  (* pretty print a block info *)
-  let pp_intel block idx =
-    let open Block in
-    let cl = block.header.shell.level |> Int32.to_int in
-    current_cycle block
-    >>=? fun cc ->
-    let () = Format.fprintf
-        Format.std_formatter "Block%d: %d\t (%a)\n" idx cl Cycle.pp cc
-    in return_unit
-
   (* check if the master key of given key hash in given block
      equals to the given key *)
   let checkMasterKey block pkh pk_opt =
@@ -301,7 +291,7 @@ module Test_Keychain = struct
 
   let test_delayed_update () =
     let open Block in
-    let _policy = By_priority 0 in
+    let policy = By_priority 0 in
     Context.init 1
     >>=? fun (b_pre_init, cs) ->
     Incremental.begin_construction b_pre_init
@@ -310,9 +300,9 @@ module Test_Keychain = struct
     let acc = WithExceptions.Option.get ~loc:__LOC__ @@ List.nth cs 0 in
     Context.Contract.pkh acc
     >>=? fun pkh ->
-    let (_pkhA, pkA, _skA) = Signature.generate_key () in
-    let (_pkhB, _pkB, _skB) = Signature.generate_key () in
-    let _master_key_delay_cycles =
+    let (_pkhA, pkA, skA) = Signature.generate_key () in
+    let (_pkhB, pkB, _skB) = Signature.generate_key () in
+    let master_key_delay_cycles =
       (Constants.parametric ctx).master_key_delay_cycles in
     (* check: there is no master key for pkh *)
     checkMasterKey b_pre_init pkh None
@@ -320,21 +310,38 @@ module Test_Keychain = struct
     (* init keychain with master = pkA *)
     Op.update_keychain (B b_pre_init) acc (Some pkA) (Some pkA)
     >>=? fun operation ->
-    Block.bake b_pre_init ~operation
+    bake b_pre_init ~operation
     >>=? fun b_init ->
     (* check: the master of pkh == pkA *)
     checkMasterKey b_init pkh (Some pkA)
     >>=? fun () ->
-    (* [TODO] waiting for counter-pkh-pk problem to be fix *)
-    (*
-    Op.baking_account (B b_init) ~sk:skA acc (Some pkB) None
-    >>=? fun _operation ->
-    Block.bake b_init ~operation
-    >>=? fun b_updated ->
-    checkMasterKey b_updated pkh (Some pkA)
+    (* ask for update master key *)
+    Op.update_keychain (B b_init) ~sk:skA acc (Some pkB) None
+    >>=? fun operation ->
+    bake b_init ~operation
+    >>=? fun b ->
+    (* check: the master of pkh == pkA (<> pkB) *)
+    checkMasterKey b pkh (Some pkA)
     >>=? fun () ->
-    bake_until_n_cycle_end ~policy n b1
-    *)
+    (* move cycle to 1 *)
+    bake_until_cycle_end ~policy b
+    >>=? fun b ->
+    (* check: the master of pkh == pkA (<> pkB) *)
+    checkMasterKey b pkh (Some pkA)
+    >>=? fun () ->
+    (* move cycle to n-1 *)
+    let delta = master_key_delay_cycles - 2 in
+    bake_until_n_cycle_end ~policy delta b
+    >>=? fun b ->
+    (* check: the master of pkh == pkA (<> pkB) *)
+    checkMasterKey b pkh (Some pkA)
+    >>=? fun () ->
+    (* move cycle to n *)
+    bake_until_cycle_end ~policy b
+    >>=? fun b ->
+    (* check: the master of pkh == pkB *)
+    checkMasterKey b pkh (Some pkB)
+    >>=? fun () ->
     return_unit
 
 end
