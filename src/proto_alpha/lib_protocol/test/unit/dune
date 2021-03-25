@@ -8,8 +8,7 @@
             tezos-stdlib-unix
             tezos-client-base
             tezos-protocol-alpha-parameters
-            tezos-test-services
-            sapling)
+            tezos-test-services)
  (flags (:standard -open Tezos_base__TzPervasives
                    -open Tezos_micheline
                    -open Tezos_client_alpha

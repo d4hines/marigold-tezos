@@ -19,13 +19,13 @@ let create () =
 module Test_Script = struct
   (** Force serialise of lazy [Big_map.t] in a give [alpha_context] *)
   let force_bytes_in_context () =
-    create () >|= Environment.wrap_error
+    create ()
     >>=? fun alpha_context ->
     let mbytes_pp ppf t =
       Format.pp_print_string ppf (Environment.Bytes.to_string t)
     in
     let open Alpha_context.Script in
-    Environment.wrap_error
+    Environment.wrap_tzresult
     @@ force_bytes_in_context alpha_context
     @@ lazy_expr @@ Micheline.strip_locations
     @@ Prim (0, D_Unit, [], [])
@@ -45,12 +45,13 @@ module Test_Big_map = struct
     create ()
     >>=? (fun alpha_context ->
            Big_map.fresh ~temporary:true alpha_context
+           >|= Environment.wrap_tzresult
            >>=? fun (alpha_context, big_map_id) ->
            Big_map.mem
              alpha_context
              big_map_id
-             (Script_expr_hash.hash_string ["0"; "0"]))
-    >|= Environment.wrap_error
+             (Script_expr_hash.hash_string ["0"; "0"])
+           >|= Environment.wrap_tzresult)
     >>=? fun (_alpha_context, is_member) ->
     Assert.equal_bool ~loc:__LOC__ is_member false
 
@@ -59,12 +60,13 @@ module Test_Big_map = struct
     create ()
     >>=? (fun alpha_context ->
            Big_map.fresh ~temporary:true alpha_context
+           >|= Environment.wrap_tzresult
            >>=? fun (alpha_context, big_map_id) ->
            Big_map.get_opt
              alpha_context
              big_map_id
-             (Script_expr_hash.hash_string ["0"; "0"]))
-    >|= Environment.wrap_error
+             (Script_expr_hash.hash_string ["0"; "0"])
+           >|= Environment.wrap_tzresult)
     >>=? fun (_alpha_context, value) ->
     match value with
     | Some _ ->
@@ -77,9 +79,10 @@ module Test_Big_map = struct
     create ()
     >>=? (fun alpha_context ->
            Big_map.fresh ~temporary:true alpha_context
+           >|= Environment.wrap_tzresult
            >>=? fun (alpha_context, big_map_id) ->
-           Big_map.exists alpha_context big_map_id)
-    >|= Environment.wrap_error
+           Big_map.exists alpha_context big_map_id
+           >|= Environment.wrap_tzresult)
     >>=? fun (_alpha_context, value) ->
     match value with
     | Some _ ->

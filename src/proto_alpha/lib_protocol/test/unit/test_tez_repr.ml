@@ -29,48 +29,48 @@ module Test_tez_repr = struct
 
   let subtract () =
     (Lwt.return @@ Tez_repr.(one -? zero))
-    >|= Environment.wrap_error
+    >|= Environment.wrap_tzresult
     >>=? fun res ->
     Assert.equal_int64 ~loc:__LOC__ (Tez_repr.to_int64 res) 1000000L
 
   let substract_underflow () =
     (Lwt.return @@ Tez_repr.(zero -? one))
-    >|= Environment.wrap_error
+    >|= Environment.wrap_tzresult
     >>= function
     | Ok _ -> failwith "Expected to underflow" | Error _ -> return_unit
 
   let addition () =
     (Lwt.return @@ Tez_repr.(one +? zero))
-    >|= Environment.wrap_error
+    >|= Environment.wrap_tzresult
     >>=? fun res ->
     Assert.equal_int64 ~loc:__LOC__ (Tez_repr.to_int64 res) 1000000L
 
   let addition_overflow () =
     (Lwt.return @@ Tez_repr.(of_mutez_exn 0x7fffffffffffffffL +? one))
-    >|= Environment.wrap_error
+    >|= Environment.wrap_tzresult
     >>= function
     | Ok _ -> failwith "Expected to overflow" | Error _ -> return_unit
 
   let mul () =
     (Lwt.return @@ Tez_repr.(zero *? 1L))
-    >|= Environment.wrap_error
+    >|= Environment.wrap_tzresult
     >>=? fun res -> Assert.equal_int64 ~loc:__LOC__ (Tez_repr.to_int64 res) 0L
 
   let mul_overflow () =
     (Lwt.return @@ Tez_repr.(of_mutez_exn 0x7fffffffffffffffL *? 2L))
-    >|= Environment.wrap_error
+    >|= Environment.wrap_tzresult
     >>= function
     | Ok _ -> failwith "Expected to overflow" | Error _ -> return_unit
 
   let div () =
     (Lwt.return @@ Tez_repr.(one *? 1L))
-    >|= Environment.wrap_error
+    >|= Environment.wrap_tzresult
     >>=? fun res ->
     Assert.equal_int64 ~loc:__LOC__ (Tez_repr.to_int64 res) 1000000L
 
   let div_by_zero () =
     (Lwt.return @@ Tez_repr.(one /? 0L))
-    >|= Environment.wrap_error
+    >|= Environment.wrap_tzresult
     >>= function
     | Ok _ -> failwith "Expected to overflow" | Error _ -> return_unit
 
