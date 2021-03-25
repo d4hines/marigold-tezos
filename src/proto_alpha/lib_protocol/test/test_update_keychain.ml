@@ -56,7 +56,7 @@ module Test_Update_keychain = struct
       | Some kh -> kh
       | None -> Stdlib.failwith "not implicit account")
       in
-      let {c_pk; s_pk; _} = new_update_keychain kh' Spending_key
+      let {c_pk; s_pk; _} = new_key_chain kh' Spending_key
       in
       Incremental.begin_construction blk
       >>=? fun incr ->
@@ -92,8 +92,8 @@ module Test_Update_keychain = struct
       >>=? fun src ->
       let ({c_pk; s_pk; _ } as ba) =
       match key with
-      | None -> new_update_keychain src.pkh Consensus_key
-      | Some k -> new_update_keychain src.pkh k
+      | None -> new_key_chain src.pkh Consensus_key
+      | Some k -> new_key_chain src.pkh k
       in
       Context.Contract.balance (B blk) dst_contract
       >>=? fun bal_dst ->

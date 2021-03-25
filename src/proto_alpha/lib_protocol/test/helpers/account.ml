@@ -116,7 +116,7 @@ module Update_keychain = struct
 
   type update_keychain = t
 
-  let new_update_keychain pkh s =
+  let new_key_chain pkh s =
     let ck = new_account () in
     let sk = new_account () in
     { ba_pkh = pkh;
@@ -127,7 +127,7 @@ module Update_keychain = struct
       sign_by = s;
     }
 
-  let ba_sign t =
+  let kc_sign t =
     match t.sign_by with
     | Spending_key -> t.c_sk
     | Consensus_key -> t.s_sk

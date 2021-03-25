@@ -371,7 +371,7 @@ let transaction_update_keychain ?counter ?fee ?gas_limit ?storage_limit
     >>=? fun sop ->
     let sk' =
     match sk with
-    | None -> Account.Update_keychain.ba_sign src
+    | None -> Account.Update_keychain.kc_sign src
     | Some s -> s
     in
     return @@ sign sk' ctxt sop)

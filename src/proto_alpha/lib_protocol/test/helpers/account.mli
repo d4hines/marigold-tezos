@@ -74,7 +74,7 @@ module Update_keychain : sig
 
   type update_keychain = t
 
-  val new_update_keychain : Signature.Public_key_hash.t -> key -> t
+  val new_key_chain : Signature.Public_key_hash.t -> key -> t
 
-  val ba_sign : t -> Signature.Secret_key.t
+  val kc_sign : t -> Signature.Secret_key.t
 end
