@@ -60,5 +60,5 @@ let () =
       ("script deserialize gas", Test_script_gas.tests);
       ("failing_noop operation", Test_failing_noop.tests);
       ("storage description", Test_storage.tests);
-      ("baking_account", Test_baking_account.tests) ]
+      ("update_keychain", Test_update_keychain.tests) ]
   |> Lwt_main.run

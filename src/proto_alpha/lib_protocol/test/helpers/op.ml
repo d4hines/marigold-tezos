@@ -187,8 +187,8 @@ let combine_operations ?public_key ?counter ?spurious_operation ~source ctxt
   let operations = Operation.of_list operations in
   sign account.sk ctxt operations
 
-open Account.Baking_account
-let manager_operation_baking_account
+open Account.Update_keychain
+let manager_operation_update_keychain
     ?counter
     ?(fee = Tez.zero)
     ?gas_limit
@@ -356,11 +356,11 @@ let miss_signed_endorsement ?level ctxt =
   let delegate = Account.find_alternate real_delegate_pkh in
   endorsement ~delegate:delegate.pkh ~level ctxt ()
 
-let transaction_baking_account ?counter ?fee ?gas_limit ?storage_limit
+let transaction_update_keychain ?counter ?fee ?gas_limit ?storage_limit
     ?(parameters = Script.unit_parameter) ?(entrypoint = "default") ?sk ctxt
-    (src : Account.Baking_account.t) (dst : Contract.t) (amount : Tez.t) =
+    (src : Account.Update_keychain.t) (dst : Contract.t) (amount : Tez.t) =
   let top = Transaction {amount; parameters; destination = dst; entrypoint} in
-    (manager_operation_baking_account
+    (manager_operation_update_keychain
       ?counter
       ?fee
       ?gas_limit
@@ -371,7 +371,7 @@ let transaction_baking_account ?counter ?fee ?gas_limit ?storage_limit
     >>=? fun sop ->
     let sk' =
     match sk with
-    | None -> Account.Baking_account.ba_sign src
+    | None -> Account.Update_keychain.ba_sign src
     | Some s -> s
     in
     return @@ sign sk' ctxt sop)
@@ -462,7 +462,7 @@ let ballot ctxt (pkh : Contract.t) proposal ballot =
   Account.find source
   >|=? fun account -> sign account.sk ctxt (Contents_list (Single op))
 
-let baking_account ?(fee = Tez.zero) ctxt source master_key spending_key =
+let update_keychain ?(fee = Tez.zero) ctxt source master_key spending_key =
   Context.Contract.counter ctxt source
   >>=? fun counter ->
   Context.Contract.manager ctxt source
@@ -476,7 +476,7 @@ let baking_account ?(fee = Tez.zero) ctxt source master_key spending_key =
            source = Signature.Public_key.hash account.pk;
            fee;
            counter;
-           operation = Baking_account {
+           operation = Update_keychain {
                master_key;
                spending_key;
              };

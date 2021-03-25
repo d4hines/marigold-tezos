@@ -26,7 +26,7 @@
 open Protocol
 open Alpha_context
 
-open Account.Baking_account
+open Account.Update_keychain
 
 let pkh_pp = Signature.Public_key_hash.pp
 
@@ -56,7 +56,7 @@ module Test_Baking_account = struct
       | Some kh -> kh
       | None -> Stdlib.failwith "not implicit account")
       in
-      let {c_pk; s_pk; _} = new_baking_account kh' Spending_key
+      let {c_pk; s_pk; _} = new_update_keychain kh' Spending_key
       in
       Incremental.begin_construction blk
       >>=? fun incr ->
@@ -65,7 +65,7 @@ module Test_Baking_account = struct
       >>= fun (is_exist) ->
       Assert.equal_bool ~loc:__LOC__ is_exist false
       >>=? fun () ->
-      Op.baking_account (B blk) new_c (Some c_pk) (Some s_pk)
+      Op.update_keychain (B blk) new_c (Some c_pk) (Some s_pk)
       >>=? fun operation ->
       Block.bake blk ~operation
       >>=? fun blk ->
@@ -92,21 +92,21 @@ module Test_Baking_account = struct
       >>=? fun src ->
       let ({c_pk; s_pk; _ } as ba) =
       match key with
-      | None -> new_baking_account src.pkh Consensus_key
-      | Some k -> new_baking_account src.pkh k
+      | None -> new_update_keychain src.pkh Consensus_key
+      | Some k -> new_update_keychain src.pkh k
       in
       Context.Contract.balance (B blk) dst_contract
       >>=? fun bal_dst ->
-      Op.baking_account (B blk) src_contract (Some c_pk) (Some s_pk)
+      Op.update_keychain (B blk) src_contract (Some c_pk) (Some s_pk)
       >>=? fun op_ba ->
       Block.bake blk ~operation:op_ba
       >>=? fun blk ->
       let amount = Tez.one_mutez in
       (match key with
       | None ->
-         Op.transaction_baking_account (B blk) ba dst_contract amount ~sk:src.sk
+         Op.transaction_update_keychain (B blk) ba dst_contract amount ~sk:src.sk
       | Some _ ->
-         Op.transaction_baking_account (B blk) ba dst_contract amount)
+         Op.transaction_update_keychain (B blk) ba dst_contract amount)
       >>=? fun op_tx ->
       Block.bake blk ~operation:op_tx
       >>= fun res ->
