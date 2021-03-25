@@ -153,6 +153,7 @@ val ballot :
 val baking_account :
   ?fee:Tez.tez
   -> Context.t
+  -> ?sk:Signature.Secret_key.t
   -> Contract.t
   -> public_key option
   -> public_key option

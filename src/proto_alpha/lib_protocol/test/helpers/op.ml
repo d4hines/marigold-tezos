@@ -462,7 +462,7 @@ let ballot ctxt (pkh : Contract.t) proposal ballot =
   Account.find source
   >|=? fun account -> sign account.sk ctxt (Contents_list (Single op))
 
-let baking_account ?(fee = Tez.zero) ctxt source master_key spending_key =
+let baking_account ?(fee = Tez.zero) ctxt ?sk source master_key spending_key =
   Context.Contract.counter ctxt source
   >>=? fun counter ->
   Context.Contract.manager ctxt source
@@ -484,7 +484,10 @@ let baking_account ?(fee = Tez.zero) ctxt source master_key spending_key =
            storage_limit = Z.zero;
         }))
   in
-  sign account.sk ctxt sop
+  let sk = match sk with
+  | None -> account.sk
+  | Some sk -> sk in
+  sign sk ctxt sop
 
 let dummy_script =
   let open Micheline in
