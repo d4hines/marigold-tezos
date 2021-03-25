@@ -47,8 +47,8 @@ let is_some msg k =
   | Some x -> return x
   | None -> failwith "expect a None (%s)" msg
 
-module Test_Baking_account = struct
-  let test_sample_baking_account_op () =
+module Test_Update_keychain = struct
+  let test_sample_update_keychain_op () =
       Context.init 1
       >>=? fun (blk, contracts) ->
       let new_c = WithExceptions.Option.get ~loc:__LOC__ @@ List.hd contracts in
@@ -83,7 +83,7 @@ module Test_Baking_account = struct
               return ())
         | None -> Stdlib.failwith "key hash should be found."
 
-  let test_baking_account_transaction key () =
+  let test_update_keychain_transaction key () =
       Context.init 2
       >>=? fun (blk, accounts) ->
       let src_contract = WithExceptions.Option.get ~loc:__LOC__ @@ List.nth accounts 0 in
@@ -119,14 +119,14 @@ module Test_Baking_account = struct
          Assert.balance_was_credited ~loc:__LOC__ (B blk) dst_contract bal_dst amount
       )
 
-   let test_baking_account_transaction_by_spending_key =
-     test_baking_account_transaction (Some Spending_key)
+   let test_update_keychain_transaction_by_spending_key =
+     test_update_keychain_transaction (Some Spending_key)
 
-   let test_baking_account_transaction_by_consensus_key =
-     test_baking_account_transaction (Some Consensus_key)
+   let test_update_keychain_transaction_by_consensus_key =
+     test_update_keychain_transaction (Some Consensus_key)
 
-   let test_baking_account_transaction_by_arbitrary_key =
-     test_baking_account_transaction None
+   let test_update_keychain_transaction_by_arbitrary_key =
+     test_update_keychain_transaction None
 end
 
 module Test_Keychain = struct
@@ -292,8 +292,8 @@ let tests =
       "keychain: delayed updating"
       `Quick
       Test_Keychain.test_delayed_update;
-    Test_services.tztest "baking account test creating keys" `Quick Test_Baking_account.test_sample_baking_account_op;
-    Test_services.tztest "baking account test transaction by consensus key" `Quick Test_Baking_account.test_baking_account_transaction_by_consensus_key;
-    Test_services.tztest "baking account test transaction by spending key" `Quick Test_Baking_account.test_baking_account_transaction_by_spending_key;
-    Test_services.tztest "baking account test transaction by arbitrary key" `Quick Test_Baking_account.test_baking_account_transaction_by_arbitrary_key ;
+    Test_services.tztest "baking account test creating keys" `Quick Test_Update_keychain.test_sample_update_keychain_op;
+    Test_services.tztest "baking account test transaction by consensus key" `Quick Test_Update_keychain.test_update_keychain_transaction_by_consensus_key;
+    Test_services.tztest "baking account test transaction by spending key" `Quick Test_Update_keychain.test_update_keychain_transaction_by_spending_key;
+    Test_services.tztest "baking account test transaction by arbitrary key" `Quick Test_Update_keychain.test_update_keychain_transaction_by_arbitrary_key ;
   ]
