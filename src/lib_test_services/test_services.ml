@@ -367,3 +367,5 @@ let with_empty_mock_sink (f : unit -> unit Lwt.t) : unit Lwt.t =
           Lwt.return_unit )
     else (Mock_sink.clear_events () ; Lwt.return_unit) ) ;
   f ()
+
+module Assert = Assert
