@@ -83,7 +83,8 @@ module Counter_rollup = struct
      Dumb rollup.
      Used for testing purposes, and trying out new abstractions.
   *)
-
+    module P = M
+    
     let z_encode = fun z -> Bytes.of_string (Z.to_string z)
     let z_decode = fun bytes -> Z.of_string (Bytes.to_string bytes)
 
@@ -93,6 +94,9 @@ module Counter_rollup = struct
       M.set_full M.empty ;
       M.set single_key (z_encode Z.zero)
 
+    let get () = z_decode @@ M.get single_key
+    let set n = M.set single_key @@ z_encode n
+    
     let with_save f =
       let save = M.get_full () in
       try f () with
@@ -105,8 +109,8 @@ module Counter_rollup = struct
       with_save @@ fun () ->
       match operation.content with
       | Add z -> (
-          let counter = z_decode @@ M.get single_key in
-          M.set single_key (z_encode (Z.add counter z))
+          let counter = get () in
+          set (Z.add counter z)
         )
 
 
@@ -122,11 +126,14 @@ open NS
 let max_stream_node_size = 1000000
 let max_leaf_size = max_stream_node_size - 100
 
-module Make_basic_rollup(R : ROLLUP) = struct
+module Stateful_patricia() = struct
   let t = ref Patricia.empty
-  module P = struct
-    include NS.Patricia
+  include struct
+    module Pure = NS.Patricia
+    open Pure
 
+    type nonrec t = t
+    let empty = empty
     let get_full () = !t
     let set_full x = t := x
     let get k = get !t k
@@ -134,10 +141,7 @@ module Make_basic_rollup(R : ROLLUP) = struct
       if Compare.Int.(Bytes.length v > max_leaf_size)
       then raise (Failure ("max_leaf_size exceeded")) (* TODO: add exception *)
       else t := set !t k v
-
   end
-  include R.Make(P : ROLLUP_STORAGE)
-
   let get_hash () = Patricia.get_hash !t
 
 end
@@ -147,6 +151,7 @@ module Make_create_reject_rollup(R : ROLLUP) = struct
   let s = ref []
   module P = struct
     include NS.Patricia_produce_stream
+    let get_hash () = get_hash !t
     let get_full () = !t
     let set_full x = t := x ; s := []
     let get k =
@@ -187,6 +192,7 @@ end = struct
   let s = ref []
   module P = struct
     include NS.Patricia_consume_stream
+    let get_hash () = get_hash !t
     let get_full () = !t
     let set_full x = t := x ; s := []
     let get k =
@@ -224,6 +230,17 @@ end
 
 module Counter_reject_replay = Make_reject_replay_rollup(Counter_rollup)
 
+let check_micro_block_signature : Block_onchain_content.micro -> bool = fun micro_block ->
+  let open Rollup.Signature in
+  let Block_onchain_content.{ transactions ; aggregated_signature ; _ } = micro_block in
+  let identified_hashes =
+    let aux : transaction -> (public_key * hash) =
+      fun { content ; signer } -> (signer , do_hash (Message content))
+    in
+    List.map aux transactions
+  in
+  Rollup.Signature.check_signed_hashes { identified_hashes ; aggregated_signature }
+
 let main (ctxt : Alpha_context.t) ~(source : Contract.t) (content : Rollup.operation_content) =
   let dummy_result : Rollup.dummy_result =
     {
@@ -237,7 +254,7 @@ let main (ctxt : Alpha_context.t) ~(source : Contract.t) (content : Rollup.opera
     let* ({ id } , ctxt) = Rollup.create_rollup ~operator ~kind ctxt in
     let result : Rollup.rollup_creation_result =
       {
-        rollup_number = id;
+        rollup_id = id;
         consumed_gas = Gas.Arith.zero; (* TODO *)
         allocated_storage = Z.zero; (* TODO *)
         originated_contracts = [];
@@ -247,8 +264,16 @@ let main (ctxt : Alpha_context.t) ~(source : Contract.t) (content : Rollup.opera
   )
   | Commit_block block_commitment -> (
       let* (() , ctxt) = Rollup.commit_block ~operator:source block_commitment ctxt in
+    let result : Rollup.block_commitment_result =
+      {
+        commitment = block_commitment;
+        consumed_gas = Gas.Arith.zero; (* TODO *)
+        allocated_storage = Z.zero; (* TODO *)
+        originated_contracts = [];
+      }
+    in
       return
-        (ctxt, Rollup_result (Block_commitment_result dummy_result), [])
+        (ctxt, Rollup_result (Block_commitment_result result), [])
     )
   | Reject_block block_rejection -> (
       let Block_rejection.{ rollup_id ; level ; rejection_content } = block_rejection in
@@ -269,17 +294,7 @@ let main (ctxt : Alpha_context.t) ~(source : Contract.t) (content : Rollup.opera
           let* () =
             match rejection_content with
             | Invalid_signature () -> (
-                let open Rollup.Signature in
-                let Block_onchain_content.{ transactions ; aggregated_signature ; _ } = micro_block in
-                let identified_hashes =
-                  let aux : transaction -> (public_key * hash) =
-                    fun { content ; signer } -> (signer , do_hash (Message content))
-                  in
-                  List.map aux transactions
-                in
-                let check =
-                  Rollup.Signature.check_signed_hashes { identified_hashes ; aggregated_signature }
-                in
+                let check = check_micro_block_signature micro_block in
                 if check
                 then failwith "signatures are ok" (* TODO: add error *)
                 else return ()

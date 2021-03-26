@@ -55,6 +55,12 @@ let assert_rollup : Protocol.operation_receipt -> (_ -> _ tzresult Lwt.t) -> _ =
 let check condition msg =
   if condition then return () else failwith msg
 
+let bake i =
+  let* b = Incremental.finalize_block i in
+  let* b = Block.bake b in
+  let* i = Incremental.begin_construction b in
+  return i
+
 let counter_good = test "counter-good" @@ fun () ->
   let* (b , bootstrap_contracts) = Context.init 10 in
   let rollup_operator =
@@ -65,7 +71,7 @@ let counter_good = test "counter-good" @@ fun () ->
   let open Counter in
   
   (* Create Rollup Offchain *)
-  let module R = Make() in
+  let module Operator = MakeOperator() in
   let (bls_a , bls_b) = S.Dev.(
       create_account () , create_account ()
     ) in
@@ -81,62 +87,73 @@ let counter_good = test "counter-good" @@ fun () ->
   let* rollup_id =
     let* result = Incremental.get_last_operation_result i in
     assert_rollup result @@ function
-    | Rollup_creation_result { rollup_number ; _ } -> return rollup_number
+    | Rollup_creation_result { rollup_id ; _ } -> return rollup_id
     | _ -> failwith "expected a rollup creation result"
   in
 
-  (* Need to bake, rollups can start only in next block *)
-  let* i =
-    let* b = Incremental.finalize_block i in
-    let* b = Block.bake b in
-    let* i = Incremental.begin_construction b in
-    return i
-  in
-
-  (* Validate some operations Offchain *)
-  let () =
-    let op_a =
-      let operation =
-        let content = Add (Z.of_int 42) in
-        Client.make_operation ~content ~block_level
-      in
-      Client.sign_operation ~account:bls_a ~operation
-    in
-    let op_b =
-      let operation = Add (Z.of_int (-23)) in
-      Client.sign_operation ~account:bls_b ~operation
-    in
-    R.process_signed_operation op_a ;
-    R.process_signed_operation op_b ;
-    ()
-  in
   
-  (* Commit the result Onchain *)
-  let* _i =
-    let { rev_transactions ; after_root ; before_root = _ ; aggregated_signature_opt } = R.finish_micro_block () in
-    let transactions =
-      let aux { signer ; content ; signature = _ } = Rollup.{ signer ; content } in
-      List.map aux @@
-      List.rev rev_transactions
+  (* Need to bake, rollups can start only in next block *)
+  let* i = bake i in
+
+  let basic_commit i =
+    (* Operate some operations Offchain *)
+    let () =
+      let block_level = Operator.get_block_level () in
+      let op_a =
+        let operation =
+          let content = Add (Z.of_int 42) in
+          Client.make_operation ~block_level content
+        in
+        Client.sign_operation ~account:bls_a ~operation
+      in
+      let op_b =
+        let operation =
+          let content = Add (Z.of_int (-23)) in
+          Client.make_operation ~block_level content
+        in
+        Client.sign_operation ~account:bls_b ~operation
+      in
+      Operator.process_signed_operation op_a ;
+      Operator.process_signed_operation op_b ;
+      ()
     in
-    let aggregated_signature = match aggregated_signature_opt with
-      | Some x -> x
-      | None -> raise (Failure "no aggregated signature")
+
+    (* Commit the result Onchain *)
+    let* i =
+      let block = Operator.finish_block () in
+      let bc = Commitment.make ~rollup_id block in
+      let* op = Op.rollup_block_commitment (I i) ~source:rollup_operator bc in
+      Incremental.add_operation i op
     in
-        
-    let bc = Rollup.Block_commitment.{
-      transactions ;
-      aggregated_signature ;
-      after_root ;
-      rollup_id ;
-    } in
-    let* op = Op.rollup_block_commitment (I i) ~source:rollup_operator bc in
-    Incremental.add_operation i op
+
+    (* Need to bake, rollups can not post multiple commitments in the same block *)
+    let* block_commitment =
+      let* result = Incremental.get_last_operation_result i in
+      assert_rollup result @@ function
+      | Block_commitment_result { commitment ;  _ } -> return commitment
+      | _ -> failwith "expected a rollup block commitment result"
+    in
+    let* i = bake i in
+    return (i , block_commitment)
   in
+    
+  (* Do multiple commitments *)
+  let* (i , bc_a) = basic_commit i in
+  let* (i , bc_b) = basic_commit i in
+  let* (i , bc_c) = basic_commit i in
 
-  (* Do the same thing multiple times *)
+  ignore i ;
+  
+  (* Have a validator check them *)
+  let module Validator = MakeValidator() in
+  Validator.process_block_commitment bc_a ;
+  Validator.process_block_commitment bc_b ;
+  Validator.process_block_commitment bc_c ;
 
-  (* Withdraw money *)
+  (* Manually check final state *)
+  let state = Validator.Operator.Context.get () in
+  (* 3 * (42 - 23) *)
+  assert (Z.(state = (of_int 57))) ;
   
   return ()
 

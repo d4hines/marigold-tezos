@@ -420,6 +420,7 @@ module type ROLLUP_STORAGE = sig
   val set_full : t -> unit
   val get : key -> value
   val set : key -> value -> unit
+  val get_hash : unit -> hash
 end
 
 module type ROLLUP = sig

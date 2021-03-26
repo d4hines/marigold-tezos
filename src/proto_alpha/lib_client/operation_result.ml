@@ -355,14 +355,14 @@ let pp_manager_operation_contents_and_result ppf
               { consumed_gas;
                 originated_contracts;
                 allocated_storage;
-                rollup_number } ->
+                rollup_id } ->
               Format.fprintf
                 ppf
                 "@, Created rollup #%s"
-                (Z.to_string rollup_number) ;
+                (Z.to_string rollup_id) ;
               (consumed_gas, originated_contracts, allocated_storage)
           | Block_commitment_result
-              {consumed_gas; originated_contracts; allocated_storage} ->
+              {consumed_gas; originated_contracts; allocated_storage; commitment = _} -> (* TODO *)
               Format.fprintf ppf "@, Committed rollup block" ;
               (consumed_gas, originated_contracts, allocated_storage)
           | Micro_block_rejection_result

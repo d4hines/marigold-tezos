@@ -1179,9 +1179,16 @@ module Rollup : sig
     consumed_gas : Gas.Arith.fp;
     allocated_storage : Z.t;
     originated_contracts : Contract.t list;
-    rollup_number : Z.t;
+    rollup_id : Z.t;
   }
 
+  type block_commitment_result = {
+    consumed_gas : Gas.Arith.fp;
+    allocated_storage : Z.t;
+    originated_contracts : Contract.t list;
+    commitment : Block_commitment.t;
+  }
+  
   type dummy_result = {
     consumed_gas : Gas.Arith.fp;
     allocated_storage : Z.t;
@@ -1190,7 +1197,7 @@ module Rollup : sig
 
   type result =
     | Rollup_creation_result of rollup_creation_result
-    | Block_commitment_result of dummy_result
+    | Block_commitment_result of block_commitment_result
     | Micro_block_rejection_result of dummy_result
     | Deposit_result of dummy_result
     | Withdrawal_result of dummy_result
@@ -1199,8 +1206,8 @@ module Rollup : sig
     id : Storage.Rollups.Global_counter.value;
   }
 
-  type block_commitment_result = unit
-
+  type block_commitment_internal_result = unit
+  
   val init : t -> t tzresult Lwt.t
 
   val create_rollup :
@@ -1213,7 +1220,7 @@ module Rollup : sig
     Block_commitment.t ->
     t ->
     operator:Contract.t ->
-    (block_commitment_result * t) tzresult Lwt.t
+    (block_commitment_internal_result * t) tzresult Lwt.t
 
   val get_block : t -> Z.t -> Z.t -> Block_onchain_content.t tzresult Lwt.t
 

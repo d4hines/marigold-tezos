@@ -55,19 +55,44 @@ type block = {
   block_level : Z.t ;
 }
 
+module Commitment = struct
+  let make_micro : micro_block -> R.Block_commitment.micro = fun mb ->
+      let { rev_transactions ; before_root = _ ; after_root ; aggregated_signature_opt } = mb in
+      let transactions =
+        let aux { signer ; content ; signature = _ } = R.{ signer ; content } in
+        List.map aux @@
+        List.rev rev_transactions
+      in
+      let aggregated_signature = match aggregated_signature_opt with
+        | Some x -> x
+        | None -> raise (Failure "no aggregated signature")
+      in
+      { transactions ; aggregated_signature ; after_root }
+    
+  let make ~rollup_id : block -> R.Block_commitment.t = fun block ->
+    let { rev_micro_blocks ; block_level = _ } = block in
+    let micro_block_commitments =
+      List.map make_micro @@
+      List.rev rev_micro_blocks
+    in
+    let bc = R.Block_commitment.{
+        micro_block_commitments ;
+        rollup_id ;
+      } in
+    bc
+end
+
 include RA.Counter_rollup
 
-module Make() = struct
+module MakeOperator() = struct
 
-  module Context = struct
-    include RA.Make_basic_rollup(RA.Counter_rollup)
-  end
+  module Context = RA.Counter_rollup.Make(RA.Stateful_patricia())
 
-  let get_root () = R.Root (Context.get_hash ())
+  let get_root () = R.Root (Context.P.get_hash ())
   
   let () =
     Context.init () ;
-     ()
+    ()
 
   let empty_micro_block = {
     rev_transactions = [] ;
@@ -94,10 +119,12 @@ module Make() = struct
     previous_micro_block
 
   let finish_block () =
+    let _ = finish_micro_block () in
     let previous_block = !current_block in
     current_block := empty_block (Z.succ previous_block.block_level) ;
     previous_block
     
+  let get_block_level () = (!current_block).block_level
   
   let aggregate_signature opt t =
     match opt with
@@ -127,9 +154,61 @@ module Make() = struct
       
 end
 
+module MakeValidator() = struct
+
+  module Operator = MakeOperator()
+
+  let preserve_state f =
+    let save = Operator.Context.P.get_full () in
+    try f () with
+    | exn -> (
+        Operator.Context.P.set_full save ;
+        raise exn
+      )
+  
+  let process_block_commitment : R.Block_commitment.t -> unit = fun bc ->
+    let process_micro_block_commitment : R.Block_commitment.micro -> unit = fun mbc ->
+      let process_transaction : R.transaction -> unit = fun tx ->
+        let R.{ content ; signer } = tx in
+        let operation =
+          match Data_encoding.Binary.of_bytes_opt operation_encoding content with
+          | Some x -> x
+          | None -> raise (Failure "bad operation bytes")
+        in
+        Operator.Context.transition ~source:signer ~operation ;
+        ()
+      in
+      let R.Block_commitment.{ transactions ; aggregated_signature ; after_root } = mbc in
+      (* Check signatures *)
+      let () =
+        let identified_hashes =
+          let aux : R.transaction -> _ =
+            fun { content ; signer } -> (signer , R.Signature.do_hash (Message content))
+          in
+          List.map aux transactions
+        in
+        let check =
+          R.Signature.check_signed_hashes { identified_hashes ; aggregated_signature }
+        in
+        if not check then raise (Failure "bad sig") ;
+        ()
+      in
+      List.iter process_transaction transactions ;
+      let root = Operator.get_root () in
+      if root <> after_root then raise (Failure "bad root") ;
+      ()
+      
+    in
+    preserve_state @@ fun () ->
+    let R.Block_commitment.{ micro_block_commitments ; rollup_id = _ } = bc in
+    List.iter process_micro_block_commitment micro_block_commitments ;
+    ()
+    
+end
+
 module Client = struct
 
-  let make_operation ?nonce ~content ~block_level =
+  let make_operation ?nonce ~block_level content =
     RA.Operation_replay.{ content ; block_level ; nonce }
   
   let sign_operation ~account ~operation =

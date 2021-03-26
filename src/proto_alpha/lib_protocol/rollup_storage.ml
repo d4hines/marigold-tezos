@@ -48,6 +48,8 @@ type rollup_creation_internal_result = {
   id : Storage.Rollups.Global_counter.value ;
 }
 
+type block_commitment_internal_result = unit
+
 let genesis_micro_block : Block_onchain_content.micro = {
   transactions = [] ;
   aggregated_signature = Signature Bls12_381.G2.zero ;
@@ -71,8 +73,6 @@ let create_rollup ~operator ~kind ctxt =
     } in
   let* ctxt = Storage.Rollups.Block_content.init ctxt (id , level) genesis_block in
   return ({ id } , ctxt)
-
-type block_commitment_result = unit
 
 let commit_block block_commitment ctxt ~operator =
   let Block_commitment.{ micro_block_commitments ; rollup_id } = block_commitment in
@@ -99,7 +99,7 @@ let commit_block block_commitment ctxt ~operator =
   in
   let last_root =
     let last_micro_block =
-      match List.(nth_opt last_block.micro_blocks (length last_block.micro_blocks)) with
+      match List.(nth_opt last_block.micro_blocks ((length last_block.micro_blocks) - 1)) with
       | Some x -> x
       | _ -> assert false       (* There should not be empty blocks *)
     in
