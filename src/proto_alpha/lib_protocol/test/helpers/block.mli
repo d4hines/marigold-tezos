@@ -105,7 +105,6 @@ val genesis_with_parameters : Parameters.t -> block tzresult Lwt.t
     given constants [<opts>] and initializes [accounts] with their
     associated amounts.
 *)
-
 val alpha_context :
   ?with_commitments:bool ->
   ?endorsers_per_block:int ->
