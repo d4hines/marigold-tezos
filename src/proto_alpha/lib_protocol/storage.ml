@@ -1279,7 +1279,8 @@ module Rollups = struct
     Rollup_context.Make_map(struct
       let name = [ "rollup_content" ]
     end)(Rollup_repr.Rollup_onchain_content)
-  
+
+  (* TODO: Rewrite this to get cache locality for blocks within the same rollup *)
   (* module Block_context = Nest_indexed_raw_context(Rollup_context)(Make_index(Z_id)) *)
   module Block_context =
     Make_indexed_subcontext
@@ -1288,8 +1289,6 @@ module Rollups = struct
            let name = ["block_index"]
          end))
       (Pair(Make_index(Z_id))(Make_index(Z_id)))
-
-
   
   module Block_content = Block_context.Make_map(struct
       let name = [ "block_content" ]

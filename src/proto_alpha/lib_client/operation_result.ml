@@ -362,14 +362,21 @@ let pp_manager_operation_contents_and_result ppf
                 (Z.to_string rollup_id) ;
               (consumed_gas, originated_contracts, allocated_storage)
           | Block_commitment_result
-              {consumed_gas; originated_contracts; allocated_storage; commitment = _} -> (* TODO *)
+              {consumed_gas; originated_contracts; allocated_storage; _} -> (* TODO *)
               Format.fprintf ppf "@, Committed rollup block" ;
               (consumed_gas, originated_contracts, allocated_storage)
           | Micro_block_rejection_result
-              {consumed_gas; originated_contracts; allocated_storage} ->
+              {consumed_gas; originated_contracts; allocated_storage; _} -> (* TODO *)
               Format.fprintf ppf "@, Rejected rollup tx" ;
               (consumed_gas, originated_contracts, allocated_storage)
-          | _ -> raise (Failure __LOC__) (* TODO *)
+          | Withdrawal_result
+              {consumed_gas; originated_contracts; allocated_storage; _} -> (* TODO *)
+              Format.fprintf ppf "@, Rollup withdrawal" ;
+              (consumed_gas, originated_contracts, allocated_storage)
+          | Deposit_result
+              {consumed_gas; originated_contracts; allocated_storage; _} -> (* TODO *)
+              Format.fprintf ppf "@, Rollup deposit" ;
+              (consumed_gas, originated_contracts, allocated_storage)
         in
         Format.fprintf ppf "@,Consumed gas: %a" Gas.Arith.pp consumed_gas ;
         ( match originated_contracts with

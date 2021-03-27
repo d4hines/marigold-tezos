@@ -347,7 +347,7 @@ val ( @ ) : 'a list -> 'a list -> 'a list
 
 (** {1 References} *)
 
-type 'a ref = { mutable contents : 'a }
+type nonrec 'a ref = 'a Stdlib.ref
 (** The type of references (mutable indirection cells) containing
    a value of type ['a]. *)
 

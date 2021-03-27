@@ -339,23 +339,24 @@ let delegation ?fee ctxt source dst =
   Context.Contract.manager ctxt source
   >|=? fun account -> sign account.sk ctxt sop
 
-let rollup_block_commitment ctxt ~source bc =
-  let rollup = Rollup (Commit_block bc) in
-  let* sop = manager_operation ~source ctxt rollup in
-  let* account = Context.Contract.manager ctxt source in
-  return (sign account.sk ctxt sop)
+module Rollup = struct
 
-let rollup_micro_block_rejection ctxt source =
-  let rollup = Rollup (Reject_block (assert false)) in (* TODO *)
-  let* sop = manager_operation ~source ctxt rollup in
-  let* account = Context.Contract.manager ctxt source in
-  return (sign account.sk ctxt sop)
+  let make ctxt ~source content =
+    let rollup = Rollup content in
+    let* sop = manager_operation ~source ctxt rollup in
+    let* account = Context.Contract.manager ctxt source in
+    return (sign account.sk ctxt sop)
+  
+  let block_commitment ctxt ~source bc =
+    make ctxt ~source (Commit_block bc)
 
-let rollup_creation ~source ?(operator = source) ~kind ctxt =
-  let rollup = Rollup (Create_rollup { operator ; kind }) in (* TODO *)
-  let* sop = manager_operation ~source ctxt rollup in
-  let* account = Context.Contract.manager ctxt source in
-  return (sign account.sk ctxt sop)
+  let reject_block ctxt ~source is =
+    make ctxt ~source (Reject_block is)
+
+  let creation ~source ?(operator = source) ~kind ctxt =
+    make ctxt ~source (Create_rollup { operator ; kind })
+  
+end
 
 let activation ctxt (pkh : Signature.Public_key_hash.t) activation_code =
   ( match pkh with

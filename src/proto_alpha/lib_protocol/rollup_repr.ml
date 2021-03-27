@@ -233,14 +233,14 @@ type transaction_index = int
 let transaction_index_encoding : transaction_index Data_encoding.t = Data_encoding.int31
 
 
+type state_trace = New_storage.stream
+let state_trace_encoding : state_trace Data_encoding.t = Data_encoding.(list bytes)
+
 module Micro_block_rejection = struct
   
   type invalid_signature = unit
   let invalid_signature_encoding : invalid_signature Data_encoding.t =
     Data_encoding.unit
-
-  type state_trace = New_storage.stream
-  let state_trace_encoding : state_trace Data_encoding.t = Data_encoding.(list bytes)
 
   type gas_overflow = state_trace
   let gas_overflow_encoding : gas_overflow Data_encoding.t = state_trace_encoding

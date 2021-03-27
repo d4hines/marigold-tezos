@@ -262,8 +262,17 @@ module Rollup = struct
     allocated_storage : Z.t;
     originated_contracts : Contract.t list;
     commitment : Block_commitment.t;
+    level : Z.t ;
   }
-  
+
+  type micro_block_rejection_result = {
+    consumed_gas : Gas.Arith.fp;
+    allocated_storage : Z.t;
+    originated_contracts : Contract.t list;
+    removed_rollup_block_indices : Z.t list;
+    micro_block_rejection : Micro_block_rejection.t;
+  }
+
   type dummy_result = {
     consumed_gas : Gas.Arith.fp;
     allocated_storage : Z.t;
@@ -273,7 +282,7 @@ module Rollup = struct
   type result =
     | Rollup_creation_result of rollup_creation_result
     | Block_commitment_result of block_commitment_result
-    | Micro_block_rejection_result of dummy_result
+    | Micro_block_rejection_result of micro_block_rejection_result
     | Deposit_result of dummy_result
     | Withdrawal_result of dummy_result
 

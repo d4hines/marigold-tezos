@@ -80,7 +80,7 @@ let counter_good = test "counter-good" @@ fun () ->
   let* i =
     let source = rollup_operator in
     let kind = Rollup.Counter in
-    let* op = Op.rollup_creation ~source ~kind (I i) in
+    let* op = Op.Rollup.creation ~source ~kind (I i) in
     let* i = Incremental.add_operation i op in
     return i
   in
@@ -90,6 +90,7 @@ let counter_good = test "counter-good" @@ fun () ->
     | Rollup_creation_result { rollup_id ; _ } -> return rollup_id
     | _ -> failwith "expected a rollup creation result"
   in
+  Operator.set_id rollup_id ;
 
   
   (* Need to bake, rollups can start only in next block *)
@@ -121,8 +122,8 @@ let counter_good = test "counter-good" @@ fun () ->
     (* Commit the result Onchain *)
     let* i =
       let block = Operator.finish_block () in
-      let bc = Commitment.make ~rollup_id block in
-      let* op = Op.rollup_block_commitment (I i) ~source:rollup_operator bc in
+      let bc = Operator.commit_block block in
+      let* op = Op.Rollup.block_commitment (I i) ~source:rollup_operator bc in
       Incremental.add_operation i op
     in
 
@@ -145,7 +146,7 @@ let counter_good = test "counter-good" @@ fun () ->
   ignore i ;
   
   (* Have a validator check them *)
-  let module Validator = MakeValidator() in
+  let module Validator = MakeValidator(struct let rollup_id = rollup_id end) in
   Validator.process_block_commitment bc_a ;
   Validator.process_block_commitment bc_b ;
   Validator.process_block_commitment bc_c ;
@@ -157,9 +158,178 @@ let counter_good = test "counter-good" @@ fun () ->
   
   return ()
 
+let counter_bad = test "counter-bad" @@ fun () ->
+  let* (b , bootstrap_contracts) = Context.init 10 in
+  let rollup_operator =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth bootstrap_contracts 0
+  in
+  let rollup_watcher =
+    WithExceptions.Option.get ~loc:__LOC__ @@ List.nth bootstrap_contracts 1
+  in
+  let* i = Incremental.begin_construction b in
+  let module Counter = Tezos_rollup_alpha.Counter in
+  let open Counter in
+  
+  (* Create Rollup Offchain *)
+  let module Operator = MakeOperator() in
+  let (bls_a , bls_b) = S.Dev.(
+      create_account () , create_account ()
+    ) in
+
+  (* Create Rollup Onchain *)
+  let* i =
+    let source = rollup_operator in
+    let kind = Rollup.Counter in
+    let* op = Op.Rollup.creation ~source ~kind (I i) in
+    let* i = Incremental.add_operation i op in
+    return i
+  in
+  let* rollup_id =
+    let* result = Incremental.get_last_operation_result i in
+    assert_rollup result @@ function
+    | Rollup_creation_result { rollup_id ; _ } -> return rollup_id
+    | _ -> failwith "expected a rollup creation result"
+  in
+  Operator.set_id rollup_id ;
+
+  
+  (* Need to bake, rollups can start only in next block *)
+  let* i = bake i in
+
+  let alter_block_commitment alter : R.Block_commitment.t -> R.Block_commitment.t = fun bc ->
+    let alter_micro_block_commitment alter : R.Block_commitment.micro -> R.Block_commitment.micro = fun mbc ->
+      match alter with
+      | `Root -> (
+          let Root hash = mbc.after_root in
+          let after_root = R.Root (Bytes.(cat hash @@ of_string "toto")) in
+          { mbc with after_root }
+        )
+      | `Signature -> (
+          let Signature s = mbc.aggregated_signature in
+          let aggregated_signature = R.Signature.(Signature (Environment.Bls12_381.G2.(add one s))) in
+          { mbc with aggregated_signature }
+        )
+    in
+    match bc.micro_block_commitments with
+    | [ mbc ] -> { bc with micro_block_commitments = [ alter_micro_block_commitment alter mbc ] }
+    | _ -> raise (Failure "expected only one micro block")
+  in
+  
+  let basic_commit alter i =
+    (* Operate some operations Offchain *)
+    let () =
+      let block_level = Operator.get_block_level () in
+      let op_a =
+        let operation =
+          let content = Add (Z.of_int 42) in
+          Client.make_operation ~block_level content
+        in
+        Client.sign_operation ~account:bls_a ~operation
+      in
+      let op_b =
+        let operation =
+          let content = Add (Z.of_int (-23)) in
+          Client.make_operation ~block_level content
+        in
+        Client.sign_operation ~account:bls_b ~operation
+      in
+      Operator.process_signed_operation op_a ;
+      Operator.process_signed_operation op_b ;
+      ()
+    in
+
+    (* Commit the result Onchain *)
+    let* i =
+      let block = Operator.finish_block () in
+      let bc = Operator.commit_block block in
+      let bc = alter_block_commitment alter bc in
+      let* op = Op.Rollup.block_commitment (I i) ~source:rollup_operator bc in
+      Incremental.add_operation i op
+    in
+
+    (* Need to bake, rollups can not post multiple commitments in the same block *)
+    let* block_commitment =
+      let* result = Incremental.get_last_operation_result i in
+      assert_rollup result @@ function
+      | Block_commitment_result { commitment ; level ; _ } -> return (commitment , level)
+      | _ -> failwith "expected a rollup block commitment result"
+    in
+    let* i = bake i in
+    return (i , block_commitment)
+  in
+  (* Try to commit bad content *)
+  let* () =
+    let* (i , (bc , level)) = basic_commit `Root i in
+    (* Have a validator check them *)
+    let module Validator = MakeValidator(struct let rollup_id = rollup_id end) in
+    let { micro_block_index ; state_trace } : bad_root =
+      try (
+        Validator.process_block_commitment bc ;
+        raise @@ Failure("unexpected success")
+      ) with
+      | Bad_root x -> x
+      | _exn -> raise @@ Failure("unexpected error")
+    in
+    (* Have the validator do the rejection proof *)
+    let* () =
+      let br = Validator.invalid_state_hash ~micro_block_index ~level state_trace in
+      let* op = Op.Rollup.reject_block (I i) ~source:rollup_watcher br in
+      let* i = Incremental.add_operation i op in
+      let* result = Incremental.get_last_operation_result i in
+      assert_rollup result @@ function
+      | Micro_block_rejection_result { removed_rollup_block_indices ; _ } -> (
+          assert (removed_rollup_block_indices = [ level ]) ;
+          return ()
+        )
+      | _ -> failwith "expected a rollup micro block rejection result"
+    in
+    return ()
+  in
+  (* Try to commit bad signatures *)
+  let* () =
+    let* (i , (bc , level)) = basic_commit `Signature i in
+    (* Have a validator check them *)
+    let module Validator = MakeValidator(struct let rollup_id = rollup_id end) in
+    let { micro_block_index } : bad_signature =
+      try (
+        Validator.process_block_commitment bc ;
+        raise @@ Failure("unexpected success")
+      ) with
+      | Bad_signature x -> x
+      | _ -> raise @@ Failure("unexpected error")
+    in
+    (* Have the validator do the rejection proof *)
+    let* () =
+      let is = Validator.invalid_signature ~micro_block_index ~level in
+      let* op = Op.Rollup.reject_block (I i) ~source:rollup_watcher is in
+      let* i = Incremental.add_operation i op in
+      let* result = Incremental.get_last_operation_result i in
+      assert_rollup result @@ function
+      | Micro_block_rejection_result { removed_rollup_block_indices ; _ } -> (
+          assert (removed_rollup_block_indices = [ level ]) ;
+          return ()
+        )
+      | _ -> failwith "expected a rollup micro block rejection result"
+    in
+    return ()
+  in
+
+  return ()
+
+
+(*
+  TODO:
+  - Test too old rejection
+  - Test rejection of block in the past
+  - Test invalid rejections
+  - Test double tx inclusion
+  - Test committing after rejection
+*)
+
 
 let tests = [
   counter_good ;
+  counter_bad ;
 ]
 
 
@@ -171,7 +341,7 @@ let tests = [
  *   in
  *   let* i = Incremental.begin_construction b in
  * 
- *   let* rollup_block_commitment = Op.rollup_block_commitment (I i) bootstrap0 in
+ *   let* rollup_block_commitment = Op.Rollup.block_commitment (I i) bootstrap0 in
  *   let* i = Incremental.add_operation i rollup_block_commitment in
  *   let* result1 = Incremental.get_last_operation_result i in
  *   let* () =
@@ -180,7 +350,7 @@ let tests = [
  *     | _ -> failwith "expected a block commitment result"
  *   in
  *   
- *   let* rollup_micro_block_rejection = Op.rollup_micro_block_rejection (I i) bootstrap0 in
+ *   let* rollup_micro_block_rejection = Op.Rollup.micro_block_rejection (I i) bootstrap0 in
  *   let* i = Incremental.add_operation i rollup_micro_block_rejection in
  *   let* result2 = Incremental.get_last_operation_result i in
  *   let* () =
@@ -191,7 +361,7 @@ let tests = [
  * 
  *   let** counter = Protocol.Alpha_context.Rollup.Dev.get_counter !*i in
  *   let* () = check Z.(counter = zero) "rollup counter didn't start at 0" in
- *   let* rollup_creation = Op.rollup_creation (I i) bootstrap0 in
+ *   let* rollup_creation = Op.Rollup.creation (I i) bootstrap0 in
  *   let* i = Incremental.add_operation i rollup_creation in
  *   let* result3 = Incremental.get_last_operation_result i in
  *   let* () =

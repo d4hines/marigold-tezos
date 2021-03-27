@@ -146,10 +146,10 @@ module Stateful_patricia() = struct
 
 end
 
-module Make_create_reject_rollup(R : ROLLUP) = struct
+module Stateful_produce_patricia() = struct
   let t = ref NS.Patricia_produce_stream.empty
   let s = ref []
-  module P = struct
+  include struct
     include NS.Patricia_produce_stream
     let get_hash () = get_hash !t
     let get_full () = !t
@@ -165,7 +165,32 @@ module Make_create_reject_rollup(R : ROLLUP) = struct
       s := s' ;
       ()
   end
-  include R.Make(P : ROLLUP_STORAGE)
+end
+
+module Stateful_consume_patricia() = struct
+  let t = ref NS.Patricia_consume_stream.empty
+  let s = ref []
+  include struct
+    include NS.Patricia_consume_stream
+    let get_hash () = get_hash !t
+    let get_full () = !t
+    let set_full x = t := x ; s := []
+    let get k =
+      let (v , (t' , s')) = get (!t , !s) k in
+      t := t' ;
+      s := s' ;
+      v
+    let set k v =
+      let (t' , s') = set (!t , !s) k v in
+      t := t' ;
+      s := s' ;
+      ()
+  end
+
+end
+
+module Make_create_reject_rollup(R : ROLLUP) = struct
+  include R.Make(Stateful_produce_patricia() : ROLLUP_STORAGE)
 
   let raw_transition ~source ~message =
     let operation_opt = Data_encoding.Binary.of_bytes R.operation_encoding message in
@@ -188,27 +213,10 @@ module Make_reject_replay_rollup(R : ROLLUP) : sig
   val transitions : hash:hash -> stream:stream -> transaction list -> unit
   val get_full_hash : unit -> hash
 end = struct
-  let t = ref NS.Patricia_consume_stream.empty
-  let s = ref []
-  module P = struct
-    include NS.Patricia_consume_stream
-    let get_hash () = get_hash !t
-    let get_full () = !t
-    let set_full x = t := x ; s := []
-    let get k =
-      let (v , (t' , s')) = get (!t , !s) k in
-      t := t' ;
-      s := s' ;
-      v
-    let set k v =
-      let (t' , s') = set (!t , !s) k v in
-      t := t' ;
-      s := s' ;
-      ()
-  end
+  module P = Stateful_consume_patricia()
   include R.Make(P : ROLLUP_STORAGE)
 
-  let get_full_hash () = Patricia_consume_stream.get_hash !t
+  let get_full_hash () = Patricia_consume_stream.get_hash !P.t
 
   let raw_transition ~source ~message =
     let operation_opt = Data_encoding.Binary.of_bytes R.operation_encoding message in
@@ -222,8 +230,8 @@ end = struct
     let aux : transaction -> unit = fun { content ; signer } ->
       raw_transition ~source:signer ~message:content
     in
-    s := stream ;
-    t := NS.Patricia_consume_stream.empty_hash hash ;
+    P.s := stream ;
+    P.t := NS.Patricia_consume_stream.empty_hash hash ;
     List.iter aux
   
 end
@@ -263,13 +271,14 @@ let main (ctxt : Alpha_context.t) ~(source : Contract.t) (content : Rollup.opera
     return (ctxt, Rollup_result (Rollup_creation_result result), [])
   )
   | Commit_block block_commitment -> (
-      let* (() , ctxt) = Rollup.commit_block ~operator:source block_commitment ctxt in
+      let* ({ level } , ctxt) = Rollup.commit_block ~operator:source block_commitment ctxt in
     let result : Rollup.block_commitment_result =
       {
         commitment = block_commitment;
         consumed_gas = Gas.Arith.zero; (* TODO *)
         allocated_storage = Z.zero; (* TODO *)
         originated_contracts = [];
+        level ;
       }
     in
       return
@@ -277,6 +286,7 @@ let main (ctxt : Alpha_context.t) ~(source : Contract.t) (content : Rollup.opera
     )
   | Reject_block block_rejection -> (
       let Block_rejection.{ rollup_id ; level ; rejection_content } = block_rejection in
+      (* TODO: error if block being rejected is too old *)
       let* block = get_block ctxt rollup_id level in
       match rejection_content with
       | Reject_micro_block micro_block_rejection -> (
@@ -289,8 +299,6 @@ let main (ctxt : Alpha_context.t) ~(source : Contract.t) (content : Rollup.opera
             | Some x -> return x
             | None -> failwith "bad micro block index"
           in
-          (* let* _rollup = get_rollup ctxt rollup_id in *)
-          (* let module Run = Counter_reject_replay in *)
           let* () =
             match rejection_content with
             | Invalid_signature () -> (
@@ -354,9 +362,16 @@ let main (ctxt : Alpha_context.t) ~(source : Contract.t) (content : Rollup.opera
                 else return ()
               )
           in
-          (* REJECT ALL BLOCKS FROM *level* *)
-          failwith "TODO"
-          (* return (ctxt, Rollup_result (Micro_block_rejection_result dummy_result), []) *)
+          let* (indices , ctxt) = reorg_rollup ctxt ~id:rollup_id ~level in
+
+          let result = {
+            consumed_gas = Gas.Arith.zero;
+            allocated_storage = Z.zero;
+            originated_contracts = [];
+            removed_rollup_block_indices = indices ;
+            micro_block_rejection = micro_block_rejection ; 
+          } in
+          return (ctxt, Rollup_result (Micro_block_rejection_result result), [])
         )
       | Double_injection ((mb_i_a , tx_i_a) , (mb_i_b , tx_i_b)) -> (
           let Block_onchain_content.{ micro_blocks ; tezos_level = _ } = block in

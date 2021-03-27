@@ -48,7 +48,9 @@ type rollup_creation_internal_result = {
   id : Storage.Rollups.Global_counter.value ;
 }
 
-type block_commitment_internal_result = unit
+type block_commitment_internal_result = {
+  level : Z.t ;
+}
 
 let genesis_micro_block : Block_onchain_content.micro = {
   transactions = [] ;
@@ -130,7 +132,7 @@ let commit_block block_commitment ctxt ~operator =
       tezos_level = Raw_context.current_level ctxt ;
     } in
   let*= ctxt = Storage.Rollups.Block_content.add ctxt (rollup_id , level) block in
-  return (() , ctxt)
+  return ({ level } , ctxt)
 
 let get_block ctxt rollup_id level =
   let* opt = Storage.Rollups.Block_content.find ctxt (rollup_id , level) in
@@ -143,6 +145,18 @@ let get_rollup ctxt rollup_id =
   match opt with
   | Some r -> return r
   | None -> failwith "invalid rollup id" (* TODO: Add error *)
+
+let reorg_rollup ctxt ~id ~level =
+  let* rollup = get_rollup ctxt id in
+  let rec aux_indices n =
+    if Compare.Z.(n <= rollup.level)
+    then n :: (aux_indices Z.(add n one))
+    else []
+  in
+  let indices = aux_indices level in
+  let aux ctxt i = Storage.Rollups.Block_content.remove ctxt (id , i) >>= return in
+  let* ctxt = Error_monad.fold_left_s aux ctxt indices in
+  return (indices , ctxt)
 
 (* Used for tests, debugging, etc. *)
 module Dev = struct

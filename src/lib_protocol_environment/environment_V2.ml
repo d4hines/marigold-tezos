@@ -36,6 +36,7 @@ module type V2 = sig
        and type 'a Data_encoding.lazy_t = 'a Data_encoding.lazy_t
        and type 'a Lwt.t = 'a Lwt.t
        and type ('a, 'b) Pervasives.result = ('a, 'b) result
+       and type 'a Pervasives.ref = 'a ref
        and type Chain_id.t = Chain_id.t
        and type Block_hash.t = Block_hash.t
        and type Operation_hash.t = Operation_hash.t
