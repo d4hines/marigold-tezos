@@ -98,24 +98,22 @@ end
 
 include RA.Counter_rollup
 
-module DelayedInit(P : sig type t end) = struct
-  let value : P.t option ref = ref None
-  let set : P.t -> unit = fun x -> value := (Some x)
-  let get : unit -> P.t = fun () -> match !value with
-    | Some x -> x
-    | None -> raise (Failure "DelayedInit: get before first set")
-end
+(* module DelayedInit(P : sig type t end) = struct
+ *   let value : P.t option ref = ref None
+ *   let set : P.t -> unit = fun x -> value := (Some x)
+ *   let get : unit -> P.t = fun () -> match !value with
+ *     | Some x -> x
+ *     | None -> raise (Failure "DelayedInit: get before first set")
+ * end *)
 
-module MakeOperator() = struct
+module type ROLLUP_ID = sig val rollup_id : Z.t end
 
-  module Context = RA.Counter_rollup.Make(RA.Stateful_patricia())
+module MakeOperator(P : ROLLUP_ID) = struct
 
-  let get_root () = R.Root (Context.P.get_hash ())
+  module StatefulContext = RA.Counter_rollup.Make(RA.Stateful_patricia())
+
+  let get_root () = R.Root (StatefulContext.P.get_hash ())
   
-  let () =
-    Context.init () ;
-    ()
-
   let empty_micro_block = {
     rev_transactions = [] ;
     before_root = get_root () ;
@@ -127,9 +125,7 @@ module MakeOperator() = struct
   
   let current_micro_block = ref empty_micro_block
   let current_block = ref (empty_block Z.zero)
-  module Id = DelayedInit(Z)
-
-  let set_id = Id.set
+  let rollup_id = P.rollup_id
   
   let finish_micro_block () =
     let previous_micro_block = !current_micro_block in
@@ -165,7 +161,7 @@ module MakeOperator() = struct
       | Some x -> x
       | None -> raise (Failure "bad operation bytes")
     in
-    Context.transition ~source:signer ~operation ;
+    StatefulContext.transition ~source:signer ~operation ;
     let { before_root ; after_root = _ ; aggregated_signature_opt ; rev_transactions } =
       !current_micro_block
     in
@@ -177,7 +173,7 @@ module MakeOperator() = struct
         rev_transactions = signed_operation :: rev_transactions ;
       }
 
-  let commit_block block = Commitment.make ~rollup_id:(Id.get ()) block
+  let commit_block block = Commitment.make ~rollup_id block
   
 end
 
@@ -195,18 +191,16 @@ module MakeValidator(P : sig val rollup_id : Z.t end) = struct
 
   let rollup_id = P.rollup_id
   
-  module Operator = MakeOperator()
-  let () =
-    Operator.set_id rollup_id
+  module Operator = MakeOperator(P)
 
   module ReplayerContext = RA.Stateful_produce_patricia()
   module Replayer = RA.Counter_rollup.Make(ReplayerContext)
 
   let preserve_state f =
-    let save = Operator.Context.P.get_full () in
+    let save = Operator.StatefulContext.P.get_full () in
     try f () with
     | exn -> (
-        Operator.Context.P.set_full save ;
+        Operator.StatefulContext.P.set_full save ;
         raise exn
       )
 
@@ -216,7 +210,7 @@ module MakeValidator(P : sig val rollup_id : Z.t end) = struct
   end
 
   module Regular = struct
-    let transition = Operator.Context.transition
+    let transition = Operator.StatefulContext.transition
     let get_root = Operator.get_root
   end
 
@@ -263,7 +257,7 @@ module MakeValidator(P : sig val rollup_id : Z.t end) = struct
       preserve_state @@ fun () -> aux_process_micro_block_commitment (module Regular) mb_i mbc
     ) with
     | Bad_root_aux { micro_block_index } -> (
-        let replay_state = ReplayerContext.of_patricia @@ Operator.Context.P.get_full() in
+        let replay_state = ReplayerContext.of_patricia @@ Operator.StatefulContext.P.get_full() in
         ReplayerContext.set_full replay_state ;
         (try (
           ignore @@ aux_process_micro_block_commitment (module Replay) mb_i mbc
@@ -288,6 +282,9 @@ module Client = struct
 
   let make_operation ?nonce ~block_level content =
     RA.Operation_replay.{ content ; block_level ; nonce }
+
+  let make_add ?nonce ~block_level z =
+    make_operation ?nonce ~block_level (Add z)
   
   let sign_operation ~account ~operation =
     let content =
@@ -297,5 +294,11 @@ module Client = struct
     let signer = account.public_key in
     { content ; signature ; signer }
 
-  
+  let sign_add ~block_level ~account z =
+    let operation = make_add ~block_level z in
+    sign_operation ~account ~operation
+
+  let sign_add_int ~block_level ~account n =
+    sign_add ~block_level ~account (Z.of_int n)
+
 end

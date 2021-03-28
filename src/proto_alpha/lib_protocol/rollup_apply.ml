@@ -90,7 +90,7 @@ module Counter_rollup = struct
 
     let single_key = NS.key_of_bytes Bytes.empty
     
-    let init () : unit =
+    let () : unit =
       M.set_full M.empty ;
       M.set single_key (z_encode Z.zero)
 

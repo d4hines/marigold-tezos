@@ -430,7 +430,6 @@ module type ROLLUP = sig
   
   module Make : functor (M : ROLLUP_STORAGE) -> sig
 
-    val init : unit -> unit
     val transition : source:Signature.public_key -> operation:operation -> unit
     (* val raw_transition : source:Signature.public_key -> message:bytes -> unit *)
 
