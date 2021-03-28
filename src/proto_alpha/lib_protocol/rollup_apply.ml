@@ -42,92 +42,11 @@ type on_chain_operation =
 module NS = New_storage
 module M = NS.Patricia
 
-(* Generic way to deal with operation replays, but a rollup is not
-   required to use it (eg, UTXOs) *)
-(* TODO: add possibility to not use it *)
-module Operation_replay = struct
-
-  type 'a t = {
-    block_level : Z.t ;     (* TODO: abstract rollup block level *)
-    nonce : Z.t option ;
-    content : 'a ;
-  }
-
-  let encoding (type a) e : a t Data_encoding.t = Data_encoding.(
-      conv
-        (fun { block_level ; nonce ; content } -> (block_level , nonce , content))
-        (fun (block_level , nonce , content) -> { block_level ; nonce ; content })
-      @@ tup3 z (option z) e
-    )
-
-end
-
-module Counter_rollup = struct
-  type internal =
-    | Add of Z.t
-
-  let internal_encoding : internal Data_encoding.t =
-    Data_encoding.(
-      conv
-        (function Add x -> x) (fun x -> Add x)
-      @@ z
-    )
-
-  type operation = internal Operation_replay.t
-
-  let operation_encoding : operation Data_encoding.t =
-    Operation_replay.encoding internal_encoding
-  
-  module Make = functor(M : ROLLUP_STORAGE) -> struct
-  (*
-     Dumb rollup.
-     Used for testing purposes, and trying out new abstractions.
-  *)
-    module P = M
-    
-    let z_encode = fun z -> Bytes.of_string (Z.to_string z)
-    let z_decode = fun bytes -> Z.of_string (Bytes.to_string bytes)
-
-    let single_key = NS.key_of_bytes Bytes.empty
-    
-    let () : unit =
-      M.set_full M.empty ;
-      M.set single_key (z_encode Z.zero)
-
-    let get () = z_decode @@ M.get single_key
-    let set n = M.set single_key @@ z_encode n
-    
-    let with_save f =
-      let save = M.get_full () in
-      try f () with
-      | e -> (
-          M.set_full save ;
-          raise e
-        )
-
-    let transition = fun ~source:_ ~(operation:operation) ->
-      with_save @@ fun () ->
-      match operation.content with
-      | Add z -> (
-          let counter = get () in
-          set (Z.add counter z)
-        )
-
-
-  end
-
-end
-  
-(* let kind_to_rollup : rollup_kind -> (module ROLLUP) = function
- *   | Counter -> (module Counter_rollup) *)
-
-open NS
-
 let max_stream_node_size = 1000000
 let max_leaf_size = max_stream_node_size - 100
 
 module Stateful_patricia() = struct
-  let t = ref Patricia.empty
+  let t = ref M.empty
   include struct
     module Pure = NS.Patricia
     open Pure
@@ -137,12 +56,13 @@ module Stateful_patricia() = struct
     let get_full () = !t
     let set_full x = t := x
     let get k = get !t k
+    let mem k = mem !t k
     let set k v =
       if Compare.Int.(Bytes.length v > max_leaf_size)
       then raise (Failure ("max_leaf_size exceeded")) (* TODO: add exception *)
       else t := set !t k v
   end
-  let get_hash () = Patricia.get_hash !t
+  let get_hash () = M.get_hash !t
 
 end
 
@@ -159,6 +79,11 @@ module Stateful_produce_patricia() = struct
       t := t' ;
       s := s' ;
       v
+    let mem k =
+      let (b , (t' , s')) = mem (!t , !s) k in
+      t := t' ;
+      s := s' ;
+      b
     let set k v =
       let (t' , s') = set (!t , !s) k v in
       t := t' ;
@@ -174,12 +99,17 @@ module Stateful_consume_patricia() = struct
     include NS.Patricia_consume_stream
     let get_hash () = get_hash !t
     let get_full () = !t
-    let set_full x = t := x ; s := []
+    let set_full x = t := x
     let get k =
       let (v , (t' , s')) = get (!t , !s) k in
       t := t' ;
       s := s' ;
       v
+    let mem k =
+      let (b , (t' , s')) = mem (!t , !s) k in
+      t := t' ;
+      s := s' ;
+      b
     let set k v =
       let (t' , s') = set (!t , !s) k v in
       t := t' ;
@@ -189,65 +119,235 @@ module Stateful_consume_patricia() = struct
 
 end
 
-module Make_create_reject_rollup(R : ROLLUP) = struct
-  include R.Make(Stateful_produce_patricia() : ROLLUP_STORAGE)
 
-  let raw_transition ~source ~message =
-    let operation_opt = Data_encoding.Binary.of_bytes R.operation_encoding message in
-    let operation = match operation_opt with
-      | Some x -> x
-      | None -> assert false     (* TODO: Add error *)
-    in
-    transition ~source ~operation
+(* Common batch abstraction *)
+module Batcher = struct
 
+  type signer = Signature.public_key
+  type hash = Hash of bytes
+
+  exception Invalid_signature
   
-  let transitions : transaction list -> unit =
-    let aux : transaction -> unit = fun { content ; signer } ->
-      raw_transition ~source:signer ~message:content
-    in
-    List.iter aux
+  module type PARAMETER = sig
+    type t
+    val encoding : t Data_encoding.t
+    module Transition : functor (M : ROLLUP_STORAGE) -> sig
+      val init : unit -> unit
+      val main : source:signer -> parameter:t -> unit
+    end
+  end
+
+  module Make(P : PARAMETER) = struct
+
+    module Replay_counter = struct
+      type t = Z.t
+      let to_key : signer -> NS.key = fun signer ->
+        let bytes = Data_encoding.Binary.to_bytes_exn Signature.public_key_encoding signer in
+        NS.key_of_bytes bytes
+
+      let of_value : NS.value -> t = fun raw ->
+        match Data_encoding.(Binary.of_bytes z raw) with
+        | Some x -> x
+        | None -> assert false
+      let to_value : t -> NS.value = fun raw ->
+        match Data_encoding.(Binary.to_bytes z raw) with
+        | Some x -> x
+        | None -> assert false
+    end
+
+    module Operation = struct
+      type t = {
+        counter : Replay_counter.t ;
+        content : P.t ;
+      }
+
+      let encoding : t Data_encoding.t = Data_encoding.(
+        conv
+          (fun { counter ; content } -> (counter , content))
+          (fun (counter , content) -> { counter ; content })
+        @@ tup2 z P.encoding
+      )
+
+      let to_bytes : t -> bytes = Data_encoding.Binary.to_bytes_exn encoding
+    end
+    
+    type t = {
+      content : (signer * Operation.t) list ;
+      aggregated_signature : Signature.signature ;
+    }
+
+    let encoding : t Data_encoding.t =
+      Data_encoding.(
+        conv
+          (fun { content = c ; aggregated_signature = a } -> (c , a))
+          (fun (c , a) -> { content = c ; aggregated_signature = a })
+        @@ tup2
+          (list (tup2 Signature.public_key_encoding Operation.encoding))
+          Signature.signature_encoding
+      )
+
+    module Transition = functor (M : ROLLUP_STORAGE) -> struct
+
+      module M = M
+      
+      let with_save f =
+        let save = M.get_full () in
+        try f () with
+        | e -> (
+            M.set_full save ;
+            raise e
+          )
+      
+      module Aux = P.Transition(M)
+
+      let single_operation : (signer * Operation.t) -> unit = fun (signer , op) ->
+        let Operation.{ counter ; content } = op in
+
+        (* Check Replay_counter *)
+        let key = Replay_counter.to_key signer in
+        let stored_counter =
+          if M.mem key
+          then Replay_counter.of_value (M.get key)
+          else Z.zero
+        in
+        if Compare.Z.(counter <= stored_counter) then raise (Failure "double count") ;
+        M.set key (Replay_counter.to_value counter) ;
+        
+        (* Perform Operation *)
+        Aux.main ~source:signer ~parameter:content
+        
+      
+      let main : t -> unit = fun t ->
+        with_save @@ fun () ->
+        let { content ; aggregated_signature } = t in
+
+        (* Check Signatures *)
+        let open Rollup.Signature in
+        let identified_hashes =
+          let aux : (signer * Operation.t) -> (public_key * hash) =
+            fun (signer , op) -> (signer , do_hash (Message (Operation.to_bytes op)))
+          in
+          List.map aux content
+        in
+        if (not @@ Rollup.Signature.check_signed_hashes { identified_hashes ; aggregated_signature })
+        then raise Invalid_signature ;
+        
+        (* Perform Operations *)
+        List.iter single_operation content
+
+      let init () = Aux.init ()
+      
+    end
+
+    module MakeRegular() = struct
+      module S = Stateful_patricia()
+      module T = Transition(S : ROLLUP_STORAGE)
+
+      let empty : M.t =
+        S.set_full S.empty ;
+        T.init () ;
+        S.get_full ()
+
+      let transition : M.t -> t -> M.t = fun s t ->
+        S.set_full s ;
+        T.main t ;
+        S.get_full ()
+
+      let single_transition : M.t  -> (signer * Operation.t) -> M.t = fun s (signer , op) ->
+        S.set_full s ;
+        T.single_operation (signer , op) ;
+        S.get_full ()
+        
+      let get_root : M.t -> _ = fun s ->
+        S.set_full s ;
+        Root (S.get_hash ())
+
+    end
+    
+    module MakeReject() = struct
+      module S = Stateful_produce_patricia()
+      module T = Transition(S : ROLLUP_STORAGE)
+      
+      let transition : M.t -> t -> state_trace = fun s t ->
+        let s' = S.of_patricia s in
+        S.set_full s' ;
+        S.s := [] ;
+        T.main t ;
+        !S.s
+    end
+
+    module MakeReplay() = struct
+      module S = Stateful_consume_patricia()
+      module T = Transition(S : ROLLUP_STORAGE)
+      
+      let transition : hash:bytes -> t -> state_trace -> hash = fun ~hash t trace ->
+        let s' = S.empty_hash hash in
+        S.set_full s' ;
+        S.s := List.rev trace ;
+        T.main t ;
+        Hash S.(get_hash ())
+    end
+
+  end
 
 end
 
-module Make_reject_replay_rollup(R : ROLLUP) : sig
-  val transitions : hash:hash -> stream:stream -> transaction list -> unit
-  val get_full_hash : unit -> hash
-end = struct
-  module P = Stateful_consume_patricia()
-  include R.Make(P : ROLLUP_STORAGE)
+module Counter_rollup = struct
 
-  let get_full_hash () = Patricia_consume_stream.get_hash !P.t
+  module Internal = struct
+    type t =
+      | Add of Z.t
 
-  let raw_transition ~source ~message =
-    let operation_opt = Data_encoding.Binary.of_bytes R.operation_encoding message in
-    let operation = match operation_opt with
-      | Some x -> x
-      | None -> assert false     (* TODO: Add error *)
-    in
-    transition ~source ~operation
+    let encoding : t Data_encoding.t =
+      Data_encoding.(
+        conv
+          (function Add x -> x) (fun x -> Add x)
+        @@ z
+      )
+
+    let z_encode = fun z -> Bytes.of_string (Z.to_string z)
+    let z_decode = fun bytes -> Z.of_string (Bytes.to_string bytes)
+
+    let single_key = NS.key_of_bytes Bytes.empty
+
+    module MakeView = functor(M : ROLLUP_STORAGE) -> struct
+      let get () = z_decode @@ M.get single_key
+      let set n = M.set single_key @@ z_encode n
+    end
+
+    module MakePureView = functor(M : ROLLUP_STORAGE) -> struct
+      module Stateful = MakeView(M)
+      let get t =
+        M.set_full t ;
+        Stateful.get ()
+    end
+
+    module Transition = functor(M : ROLLUP_STORAGE) -> struct
+      include MakeView(M)
+
+      let init () : unit =
+        M.set_full M.empty ;
+        M.set single_key (z_encode Z.zero)
+      
+      let main = fun ~(source:Batcher.signer) ~(parameter:t) ->
+        ignore source ;
+        match parameter with
+        | Add z -> (
+            let counter = get () in
+            set (Z.add counter z)
+          )
+    end
+  end
+
+  module Main = Batcher.Make(Internal)
   
-  let transitions ~(hash : hash) ~(stream : stream) : transaction list -> unit =
-    let aux : transaction -> unit = fun { content ; signer } ->
-      raw_transition ~source:signer ~message:content
-    in
-    P.s := stream ;
-    P.t := NS.Patricia_consume_stream.empty_hash hash ;
-    List.iter aux
-  
+  type parameter = Main.t
+  let parameter_encoding = Main.encoding
+    
 end
-
-module Counter_reject_replay = Make_reject_replay_rollup(Counter_rollup)
-
-let check_micro_block_signature : Block_onchain_content.micro -> bool = fun micro_block ->
-  let open Rollup.Signature in
-  let Block_onchain_content.{ transactions ; aggregated_signature ; _ } = micro_block in
-  let identified_hashes =
-    let aux : transaction -> (public_key * hash) =
-      fun { content ; signer } -> (signer , do_hash (Message content))
-    in
-    List.map aux transactions
-  in
-  Rollup.Signature.check_signed_hashes { identified_hashes ; aggregated_signature }
+  
+(* let kind_to_rollup : rollup_kind -> (module ROLLUP) = function
+ *   | Counter -> (module Counter_rollup) *)
 
 let main (ctxt : Alpha_context.t) ~(source : Contract.t) (content : Rollup.operation_content) =
   let dummy_result : Rollup.dummy_result =
@@ -299,67 +399,62 @@ let main (ctxt : Alpha_context.t) ~(source : Contract.t) (content : Rollup.opera
             | Some x -> return x
             | None -> failwith "bad micro block index"
           in
+          let replay state_trace =
+            let Block_onchain_content.{ parameter ; before_root = Root hash ; _ } = micro_block in
+            let module Replay = Counter_rollup.Main.MakeReplay () in
+            let* parameter =
+              match Data_encoding.Binary.of_bytes Counter_rollup.Main.encoding parameter with
+              | Some x -> return x
+              | None -> failwith "bad encoding" (* TODO: add error *)
+            in
+            return @@ Replay.transition ~hash parameter state_trace
+          in
           let* () =
             match rejection_content with
             | Invalid_signature () -> (
-                let check = check_micro_block_signature micro_block in
-                if check
-                then failwith "signatures are ok" (* TODO: add error *)
-                else return ()
+                try (
+                  let _ = replay [] in
+                  failwith "signatures are ok"
+                ) with
+                | Batcher.Invalid_signature -> return ()
+                | _ -> failwith "unexpected error"
               )
             | Gas_overflow stream -> (
-                let Block_onchain_content.{ transactions ; before_root = Root hash ; _ } = micro_block in
-                try
-                  let () = Counter_reject_replay.transitions ~hash ~stream transactions in
+                try (
+                  let _ = replay stream in
                   failwith "didn't gas overflow"
-                with
+                ) with
                 (* | Gas_overflow_exception -> return () *) (* TODO: add Gas_overflow_exception *)
                 | _ -> failwith "unexpected error"
               )
             | Persisting_state_too_big stream -> (
-                let Block_onchain_content.{ transactions ; before_root = Root hash ; _ } = micro_block in
-                try
-                  let () = Counter_reject_replay.transitions ~hash ~stream transactions in
+                try (
+                  let _ = replay stream in
                   failwith "didn't gas overflow"
-                with
+                ) with
                 (* | Persisting_state_too_big_exception -> return () *) (* TODO: add Persisting_state_too_Big_exception *)
                 | _ -> failwith "unexpected error"
               )
             | State_overflow stream -> (
-                let Block_onchain_content.{ transactions ; before_root = Root hash ; _ } = micro_block in
-                try
-                  let () = Counter_reject_replay.transitions ~hash ~stream transactions in
-                  failwith "didn't state overflow"
-                with
+                try (
+                  let _ = replay stream in
+                  failwith "didn't gas overflow"
+                ) with
                 (* | State_overflow_exception -> return () *) (* TODO: add State_overflow_exception *)
                 | _ -> failwith "unexpected error"
               )
             | Invalid_state_hash stream -> (
-                let Block_onchain_content.{ transactions ; before_root = Root hash ; after_root = Root after_hash } = micro_block in
+                let Block_onchain_content.{ after_root = Root after_hash ; _ } = micro_block in
                 try (
-                  let () = Counter_reject_replay.transitions ~hash ~stream transactions in
-                  let after_hash' = Counter_reject_replay.get_full_hash () in
+                  let* (Hash after_hash') = replay stream in
                   if Compare.Bytes.(after_hash = after_hash')
                   then failwith "good state hash"
                   else return ()
                 ) with
-                | _ -> failwith "unexpected error"
-              )
-            | Invalid_block_id tx_i -> (
-                let Block_onchain_content.{ transactions ; _ } = micro_block in
-                let { content ; signer = _ } =
-                  match List.nth_opt transactions tx_i with
-                  | Some x -> x
-                  | None -> failwith "bad transaction index"
-                in
-                let Operation_replay.{ block_level ; _ } =
-                  match Data_encoding.Binary.of_bytes Counter_rollup.operation_encoding content with
-                  | Some x -> x
-                  | None -> failwith "unexpected error"
-                in
-                if Compare.Z.(level = block_level)
-                then failwith "rollup block level is ok"
-                else return ()
+                | exn -> (
+                    raise exn
+                    (* failwith "unexpected error" *)
+                  )
               )
           in
           let* (indices , ctxt) = reorg_rollup ctxt ~id:rollup_id ~level in
@@ -372,37 +467,6 @@ let main (ctxt : Alpha_context.t) ~(source : Contract.t) (content : Rollup.opera
             micro_block_rejection = micro_block_rejection ; 
           } in
           return (ctxt, Rollup_result (Micro_block_rejection_result result), [])
-        )
-      | Double_injection ((mb_i_a , tx_i_a) , (mb_i_b , tx_i_b)) -> (
-          let Block_onchain_content.{ micro_blocks ; tezos_level = _ } = block in
-          let* () =
-            let* micro_block_a =
-              match List.nth_opt micro_blocks mb_i_a with
-              | Some x -> return x
-              | None -> failwith "bad micro block index"
-            in
-            let Block_onchain_content.{ transactions = tx_a ; _ } = micro_block_a in
-            let { content = content_a ; signer = _ } =
-              match List.nth_opt tx_a tx_i_a with
-              | Some x -> x
-              | None -> failwith "bad transaction index"
-            in
-            let* micro_block_b =
-              match List.nth_opt micro_blocks mb_i_b with
-              | Some x -> return x
-              | None -> failwith "bad micro block index"
-            in
-            let Block_onchain_content.{ transactions = tx_b ; _ } = micro_block_b in
-            let { content = content_b ; signer = _ } =
-              match List.nth_opt tx_b tx_i_b with
-              | Some x -> x
-              | None -> failwith "bad transaction index"
-            in
-            if Compare.Bytes.(content_a <> content_b)
-            then failwith "not a double injection"
-            else return ()
-          in
-          failwith "TODO"
         )
     )
   | Deposit () ->

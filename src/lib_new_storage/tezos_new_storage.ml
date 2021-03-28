@@ -377,7 +377,9 @@ module Stub = struct
       aux i 128
     in
     fun x -> List.concat @@ List.map bits_of_bytes @@ List.of_seq @@ Bytes.to_seq x
-    
+  let key_to_string : key -> string = fun k ->
+    String.of_seq @@ List.to_seq @@
+    List.map (fun b -> if b then '1' else '0') k
 
   let get_hash : value Map.t -> hash =
     fun t ->
@@ -386,6 +388,7 @@ module Stub = struct
   module Patricia = struct
     type t = value Map.t
     let empty : t = Map.empty
+    let mem : t -> key -> bool = fun t k -> Map.mem k t
     let get : t -> key -> value = fun t k -> Map.find k t
     let set : t -> key -> value -> t = fun t k v -> Map.add k v t
     let unset : t -> key -> t = fun t k -> Map.remove k t
@@ -406,6 +409,11 @@ module Stub = struct
       let v = Patricia.get t k in
       (v , (t , v :: s))
 
+    let mem : tt -> key -> bool * tt = fun (t , s) k ->
+      let b = Patricia.mem t k in
+      let raw = Bytes.make 1 @@ if b then '1' else '0' in
+      (b , (t , raw :: s))
+    
     let set : tt -> key -> value -> tt = fun (t , s) k v ->
       let t = Patricia.set t k v in
       (t , s)
@@ -431,6 +439,16 @@ module Stub = struct
       let t = Patricia.set t k v in
       (v , (t , s))
 
+    let mem : tt -> key -> bool * tt = fun (t , s) _k ->
+      let (raw , s) = consume s in
+      let b = match (Bytes.to_string raw).[0] with
+        | '1' -> true
+        | '0' -> false
+        | _ -> raise (Failure "bad stream")
+      in
+      (b , (t , s))
+
+    
     let set : tt -> key -> value -> tt = fun (t , s) k v ->
       let t = Patricia.set t k v in
       (t , s)

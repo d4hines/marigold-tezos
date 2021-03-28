@@ -28,6 +28,7 @@ type key
 (* Both are from root to leaves *)
 val key_of_bytes : bytes -> key
 val key_of_bits : bool list -> key
+val key_to_string : key -> string
 
 type value = bytes
 val nul : value
@@ -43,6 +44,7 @@ module Patricia : sig
   val empty : t
   val get_hash : t -> hash
   val get : t -> key -> value
+  val mem : t -> key -> bool
   val set : t -> key -> value -> t
   val unset : t -> key -> t
 end
@@ -54,6 +56,7 @@ module Patricia_produce_stream : sig
   val of_patricia : Patricia.t -> t
   val empty : t
   val get : tt -> key -> value * tt
+  val mem : tt -> key -> bool * tt
   val set : tt -> key -> value -> tt
 end
 
@@ -64,5 +67,6 @@ module Patricia_consume_stream : sig
   val get_hash : t -> hash
   val empty : t
   val get : tt -> key -> value * tt
+  val mem : tt -> key -> bool * tt
   val set : tt -> key -> value -> tt
 end

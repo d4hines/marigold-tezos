@@ -53,8 +53,7 @@ type block_commitment_internal_result = {
 }
 
 let genesis_micro_block : Block_onchain_content.micro = {
-  transactions = [] ;
-  aggregated_signature = Signature Bls12_381.G2.zero ;
+  parameter = Bytes.empty ;
   events = [] ;
   before_root = Root Merkle.empty ;
   after_root = Root Merkle.empty ;
@@ -115,10 +114,10 @@ let commit_block block_commitment ctxt ~operator =
       | [] -> []
       | hd :: tl -> (
           let Block_commitment.{
-              transactions ; aggregated_signature ; after_root
+              parameter ; after_root
             } = hd in
           let hd' = Block_onchain_content.{
-              transactions ; aggregated_signature ; after_root ;
+              parameter ; after_root ;
               before_root = last_root ;
               events = [] ;
             } in

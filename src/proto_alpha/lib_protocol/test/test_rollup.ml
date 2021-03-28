@@ -73,6 +73,7 @@ let bootstrap2 () =
   return ((a , b) , i)
 
 open Tezos_rollup_alpha.Counter
+module Main = Tezos_rollup_alpha.Counter.Main
 
 let bls_bootstrap2 () = S.Dev.(create_account () , create_account ())
 
@@ -101,9 +102,12 @@ let alter_block_commitment (alter : [`Root | `Signature]) : R.Block_commitment.t
         { mbc with after_root }
       )
     | `Signature -> (
-        let Signature s = mbc.aggregated_signature in
+        let parameter = Data_encoding.Binary.of_bytes_exn Main.encoding mbc.parameter in
+        let Signature s = parameter.aggregated_signature in        
         let aggregated_signature = R.Signature.(Signature (Environment.Bls12_381.G2.(add one s))) in
-        { mbc with aggregated_signature }
+        let parameter = { parameter with aggregated_signature } in
+        let parameter = Data_encoding.Binary.to_bytes_exn Main.encoding parameter in
+        { mbc with parameter }
       )
   in
   match bc.micro_block_commitments with
@@ -120,24 +124,25 @@ let counter_good = test "counter-good" @@ fun () ->
   let* i = bake i in
   (* Create Rollup Offchain *)
   let module Operator = MakeOperator(struct let rollup_id = rollup_id end) in
+  let o_ctxt = Operator.empty in
   let (bls_a , bls_b) = bls_bootstrap2 () in
   
-  let basic_commit i =
+  let basic_commit i o_ctxt index =
     (* Operate some operations Offchain *)
-    let () =
-      let block_level = Operator.get_block_level () in
-      let op_a = Client.sign_add_int ~block_level ~account:bls_a 42 in
-      let op_b = Client.sign_add_int ~block_level ~account:bls_b (-23) in
-      Operator.process_signed_operation op_a ;
-      Operator.process_signed_operation op_b ;
-      ()
+    let o_ctxt =
+      let op_a = Client.sign_add_int ~counter:index ~account:bls_a 42 in
+      let op_b = Client.sign_add_int ~counter:index ~account:bls_b (-23) in
+      let o_ctxt = Operator.process_signed_operation o_ctxt op_a in
+      let o_ctxt = Operator.process_signed_operation o_ctxt op_b in
+      o_ctxt
     in
     (* Commit the result Onchain *)
-    let* i =
-      let block = Operator.finish_block () in
+    let* (i , o_ctxt) =
+      let (block , o_ctxt) = Operator.finish_block o_ctxt in
       let bc = Operator.commit_block block in
       let* op = Op.Rollup.block_commitment (I i) ~source:rollup_operator bc in
-      Incremental.add_operation i op
+      let* i = Incremental.add_operation i op in
+      return (i , o_ctxt)
     in
     (* Need to bake, rollups can not post multiple commitments in the same block *)
     let* block_commitment =
@@ -147,21 +152,23 @@ let counter_good = test "counter-good" @@ fun () ->
       | _ -> failwith "expected a rollup block commitment result"
     in
     let* i = bake i in
-    return (i , block_commitment)
+    return (i , o_ctxt , block_commitment)
   in  
   (* Do multiple commitments *)
-  let* (i , bc_a) = basic_commit i in
-  let* (i , bc_b) = basic_commit i in
-  let* (i , bc_c) = basic_commit i in
+  let* (i , o_ctxt , bc_a) = basic_commit i o_ctxt 1 in
+  let* (i , o_ctxt , bc_b) = basic_commit i o_ctxt 2 in
+  let* (i , o_ctxt , bc_c) = basic_commit i o_ctxt 3 in
   ignore i ;
+  ignore o_ctxt ;
   (* Have a validator check them *)
   let module Validator = MakeValidator(struct let rollup_id = rollup_id end) in
-  Validator.process_block_commitment bc_a ;
-  Validator.process_block_commitment bc_b ;
-  Validator.process_block_commitment bc_c ;
+  let v_ctxt = Validator.empty in
+  let v_ctxt = Validator.process_block_commitment v_ctxt bc_a in
+  let v_ctxt = Validator.process_block_commitment v_ctxt bc_b in
+  let v_ctxt = Validator.process_block_commitment v_ctxt bc_c in
   (* Manually check final state *)
-  let state = Validator.Operator.StatefulContext.get () in
-  (* 3 * (42 - 23) *)
+  let state = Validator.View.get v_ctxt in
+  (* 3 * (42 - 23) = 57 *)
   assert (Z.(state = (of_int 57))) ;
   return ()
 
@@ -176,28 +183,29 @@ let counter_bad = test "counter-bad" @@ fun () ->
   let* i = bake i in
   (* Create Rollup Offchain *)
   let module Operator = MakeOperator(struct let rollup_id = rollup_id end) in
+  let o_ctxt = Operator.empty in
   let (bls_a , bls_b) = bls_bootstrap2 () in
   
   (* Need to bake, rollups can start only in next block *)
   let* i = bake i in
   
-  let basic_commit alter i =
+  let basic_commit alter i index =
     (* Operate some operations Offchain *)
-    let () =
-      let block_level = Operator.get_block_level () in
-      let op_a = Client.sign_add_int ~block_level ~account:bls_a 42 in
-      let op_b = Client.sign_add_int ~block_level ~account:bls_b (-23) in
-      Operator.process_signed_operation op_a ;
-      Operator.process_signed_operation op_b ;
-      ()
+    let o_ctxt =
+      let op_a = Client.sign_add_int ~counter:index ~account:bls_a 42 in
+      let op_b = Client.sign_add_int ~counter:index ~account:bls_b (-23) in
+      let o_ctxt = Operator.process_signed_operation o_ctxt op_a in
+      let o_ctxt = Operator.process_signed_operation o_ctxt op_b in
+      o_ctxt
     in
     (* Commit the result Onchain *)
-    let* i =
-      let block = Operator.finish_block () in
+    let* (i , _o_ctxt) =
+      let (block , o_ctxt) = Operator.finish_block o_ctxt in
       let bc = Operator.commit_block block in
       let bc = alter_block_commitment alter bc in
       let* op = Op.Rollup.block_commitment (I i) ~source:rollup_operator bc in
-      Incremental.add_operation i op
+      let* i = Incremental.add_operation i op in
+      return (i , o_ctxt)
     in
     (* Need to bake, rollups can not post multiple commitments in the same block *)
     let* block_commitment =
@@ -211,16 +219,20 @@ let counter_bad = test "counter-bad" @@ fun () ->
   in
   (* Try to commit bad content *)
   let* () =
-    let* (i , (bc , level)) = basic_commit `Root i in
+    let* (i , (bc , level)) = basic_commit `Root i 1 in
     (* Have a validator check them *)
     let module Validator = MakeValidator(struct let rollup_id = rollup_id end) in
+    let v_ctxt = Validator.empty in
     let { micro_block_index ; state_trace } : bad_root =
       try (
-        Validator.process_block_commitment bc ;
+        let _ = Validator.process_block_commitment v_ctxt bc in
         raise @@ Failure("unexpected success")
       ) with
       | Bad_root x -> x
-      | _exn -> raise @@ Failure("unexpected error")
+      | exn -> (
+          raise exn
+          (* raise @@ Failure("unexpected error") *)
+        )
     in
     (* Have the validator do the rejection proof *)
     let* () =
@@ -239,12 +251,13 @@ let counter_bad = test "counter-bad" @@ fun () ->
   in
   (* Try to commit bad signatures *)
   let* () =
-    let* (i , (bc , level)) = basic_commit `Signature i in
+    let* (i , (bc , level)) = basic_commit `Signature i 2 in
     (* Have a validator check them *)
     let module Validator = MakeValidator(struct let rollup_id = rollup_id end) in
+    let v_ctxt = Validator.empty in
     let { micro_block_index } : bad_signature =
       try (
-        Validator.process_block_commitment bc ;
+        let _ = Validator.process_block_commitment v_ctxt bc in
         raise @@ Failure("unexpected success")
       ) with
       | Bad_signature x -> x
