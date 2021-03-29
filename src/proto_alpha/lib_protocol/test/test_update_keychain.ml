@@ -250,21 +250,21 @@ module Test_Keychain = struct
        spending key from pkh1 == None
        master key from pkh0 == pkA
        master key from pkh1 == None *)
-    is_some "get spending key from pkh0"
-    @@ Keychain.get_spending_key ctx pkh0
+    Keychain.get_spending_key ctx pkh0
+    |> is_some "get spending key from pkh0"
     >>=? fun sk0 ->
     Assert.equal_pk ~loc:__LOC__ pkB sk0
     >>=? fun () ->
-    is_none "get spending key from pkh1"
-    @@ Keychain.get_spending_key ctx pkh1
+    Keychain.get_spending_key ctx pkh1
+    |> is_none "get spending key from pkh1"
     >>=? fun () ->
-    is_some "get master key from pkh0"
-    @@ Keychain.get_master_key ctx pkh0
+    Keychain.get_master_key ctx pkh0
+    |> is_some "get master key from pkh0"
     >>=? fun mk0 ->
     Assert.equal_pk ~loc:__LOC__ pkA mk0
     >>=? fun () ->
-    is_none "get master key from pkh1"
-    @@ Keychain.get_master_key ctx pkh1
+    Keychain.get_master_key ctx pkh1
+    |> is_none "get master key from pkh1"
     >>=? fun () ->
     (* init keychain for pkh1 with its manager*)
     Keychain.init_with_manager ctx pkh1 None
@@ -272,13 +272,13 @@ module Test_Keychain = struct
     (* getting keys on pkhs:
        spending key from pkh1 == mgtk1
        master key from pkh1 == mgtk1 *)
-    is_some "get master key from pkh1"
-    @@ Keychain.get_master_key ctx pkh1
+    Keychain.get_master_key ctx pkh1
+    |> is_some "get master key from pkh1"
     >>=? fun mk1 ->
     Assert.equal_pk ~loc:__LOC__ mk1 mgtk1
     >>=? fun () ->
-    is_some "get spending key from pkh1"
-    @@ Keychain.get_spending_key ctx pkh1
+    Keychain.get_spending_key ctx pkh1
+    |> is_some "get spending key from pkh1"
     >>=? fun sk1 ->
     Assert.equal_pk ~loc:__LOC__ sk1 mgtk1
     >>=? fun () ->
@@ -287,8 +287,8 @@ module Test_Keychain = struct
        spending key from pkh1 == pkB *)
     Keychain.set_spending_key ctx pkh1 pkB
     >>= wrap >>=? fun ctx ->
-    is_some "get spending key from pkh1"
-    @@ Keychain.get_spending_key ctx pkh1
+    Keychain.get_spending_key ctx pkh1
+    |> is_some "get spending key from pkh1"
     >>=? fun sk1 ->
     Assert.not_equal_pk ~loc:__LOC__ sk1 mgtk1
     >>=? fun () ->
@@ -299,15 +299,82 @@ module Test_Keychain = struct
        master key from pkh1 == mgtk1 *)
     Keychain.set_master_key ctx pkh1 pkA
     >>= wrap >>=? fun ctx ->
-    is_some "get master key from pkh1"
-    @@ Keychain.get_master_key ctx pkh1
+    Keychain.get_master_key ctx pkh1
+    |> is_some "get master key from pkh1"
     >>=? fun mk1 ->
     Assert.equal_pk ~loc:__LOC__ mk1 mgtk1
     >>=? fun () ->
     return_unit
 
-  (* [TODO] test case for delayed master key update *)
+  (* check if the master key of given key hash in given block
+     equals to the given key *)
+  let checkMasterKey block pkh pk_opt =
+    Incremental.begin_construction block
+    >>=? fun incr ->
+    let ctx = Incremental.alpha_ctxt incr in
+    Keychain.get_master_key ctx pkh
+    >>= wrap >>=? fun mk_opt ->
+    match (mk_opt, pk_opt) with
+    | None, None -> return_unit
+    | Some mk, Some pk ->
+      Assert.equal_pk ~loc:__LOC__ mk pk
+      >>=? fun () ->
+      return_unit
+    | _, _ -> failwith "check master key fails"
+
   let test_delayed_update () =
+    let open Block in
+    let policy = By_priority 0 in
+    Context.init 1
+    >>=? fun (b_pre_init, cs) ->
+    Incremental.begin_construction b_pre_init
+    >>=? fun incr ->
+    let ctx = Incremental.alpha_ctxt incr in
+    let acc = WithExceptions.Option.get ~loc:__LOC__ @@ List.nth cs 0 in
+    Context.Contract.pkh acc
+    >>=? fun pkh ->
+    let (_pkhA, pkA, skA) = Signature.generate_key () in
+    let (_pkhB, pkB, _skB) = Signature.generate_key () in
+    let master_key_delay_cycles =
+      (Constants.parametric ctx).master_key_delay_cycles in
+    (* check: there is no master key for pkh *)
+    checkMasterKey b_pre_init pkh None
+    >>=? fun () ->
+    (* init keychain with master = pkA *)
+    Op.update_keychain (B b_pre_init) acc (Some pkA) (Some pkA)
+    >>=? fun operation ->
+    bake b_pre_init ~operation
+    >>=? fun b_init ->
+    (* check: the master of pkh == pkA *)
+    checkMasterKey b_init pkh (Some pkA)
+    >>=? fun () ->
+    (* ask for update master key *)
+    Op.update_keychain (B b_init) ~sk:skA acc (Some pkB) None
+    >>=? fun operation ->
+    bake b_init ~operation
+    >>=? fun b ->
+    (* check: the master of pkh == pkA (<> pkB) *)
+    checkMasterKey b pkh (Some pkA)
+    >>=? fun () ->
+    (* move cycle to 1 *)
+    bake_until_cycle_end ~policy b
+    >>=? fun b ->
+    (* check: the master of pkh == pkA (<> pkB) *)
+    checkMasterKey b pkh (Some pkA)
+    >>=? fun () ->
+    (* move cycle to n-1 *)
+    let delta = master_key_delay_cycles - 2 in
+    bake_until_n_cycle_end ~policy delta b
+    >>=? fun b ->
+    (* check: the master of pkh == pkA (<> pkB) *)
+    checkMasterKey b pkh (Some pkA)
+    >>=? fun () ->
+    (* move cycle to n *)
+    bake_until_cycle_end ~policy b
+    >>=? fun b ->
+    (* check: the master of pkh == pkB *)
+    checkMasterKey b pkh (Some pkB)
+    >>=? fun () ->
     return_unit
 
 end
@@ -325,9 +392,21 @@ let tests =
       "keychain: delayed updating"
       `Quick
       Test_Keychain.test_delayed_update;
-    Test_services.tztest "keychain: creating keys" `Quick Test_Update_keychain.test_sample_update_keychain_op;
-    Test_services.tztest "keychain: transaction by consensus key" `Quick Test_Update_keychain.test_update_keychain_transaction_by_consensus_key;
-    Test_services.tztest "keychain: transaction by spending key" `Quick Test_Update_keychain.test_update_keychain_transaction_by_spending_key;
-    Test_services.tztest "keychain: transaction by arbitrary key" `Quick Test_Update_keychain.test_update_keychain_transaction_by_arbitrary_key;
+    Test_services.tztest
+      "baking account test creating keys"
+      `Quick
+      Test_Update_keychain.test_sample_update_keychain_op;
+    Test_services.tztest
+      "baking account test transaction by consensus key"
+      `Quick
+      Test_Update_keychain.test_update_keychain_transaction_by_consensus_key;
+    Test_services.tztest
+      "baking account test transaction by spending key"
+      `Quick
+      Test_Update_keychain.test_update_keychain_transaction_by_spending_key;
+    Test_services.tztest
+      "baking account test transaction by arbitrary key"
+      `Quick
+      Test_Update_keychain.test_update_keychain_transaction_by_arbitrary_key;
     Test_services.tztest "keychain: endorsement by consensus key" `Quick Test_Update_keychain.test_simple_endorsement_with_keychain;
   ]
