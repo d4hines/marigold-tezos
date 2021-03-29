@@ -127,6 +127,39 @@ module Test_Update_keychain = struct
 
    let test_update_keychain_transaction_by_arbitrary_key =
      test_update_keychain_transaction None
+
+   (** Apply a single endorsement from the slot 0 endorser. *)
+   let test_simple_endorsement_with_keychain () =
+     Context.init 5
+     >>=? fun (b, accounts) ->
+     let src_contract = WithExceptions.Option.get ~loc:__LOC__ @@ List.nth accounts 0 in
+     Context.Contract.manager (B b) src_contract
+     >>=? fun src ->
+     let ({c_pk; s_pk; _ } as ba) =
+     new_key_chain src.pkh Consensus_key in
+     Op.update_keychain (B b) src_contract (Some c_pk) (Some s_pk)
+     >>=? fun op_ba ->
+     Block.bake b ~operation:op_ba
+     >>=? fun b ->
+     Context.get_endorser (B b)
+     >>=? fun (delegate, slots) ->
+     Op.endorsement_with_slot ~delegate:(delegate, slots) ~sk:(kc_sign ba) (B b) ()
+     >>=? fun op ->
+     Context.Contract.balance (B b) (Contract.implicit_contract delegate)
+     >>=? fun initial_balance ->
+     let policy = Block.Excluding [delegate] in
+     Block.get_next_baker ~policy b
+     >>=? fun (_, priority, _) ->
+     Block.bake ~policy ~operations:[Operation.pack op] b
+     >>=? fun b2 ->
+       Test_endorsement.assert_endorser_balance_consistency
+         ~loc:__LOC__
+         (B b2)
+         ~priority
+         ~endorsing_power:(List.length slots)
+         delegate
+         initial_balance
+
 end
 
 module Test_Keychain = struct
@@ -292,8 +325,9 @@ let tests =
       "keychain: delayed updating"
       `Quick
       Test_Keychain.test_delayed_update;
-    Test_services.tztest "baking account test creating keys" `Quick Test_Update_keychain.test_sample_update_keychain_op;
-    Test_services.tztest "baking account test transaction by consensus key" `Quick Test_Update_keychain.test_update_keychain_transaction_by_consensus_key;
-    Test_services.tztest "baking account test transaction by spending key" `Quick Test_Update_keychain.test_update_keychain_transaction_by_spending_key;
-    Test_services.tztest "baking account test transaction by arbitrary key" `Quick Test_Update_keychain.test_update_keychain_transaction_by_arbitrary_key ;
+    Test_services.tztest "keychain: creating keys" `Quick Test_Update_keychain.test_sample_update_keychain_op;
+    Test_services.tztest "keychain: transaction by consensus key" `Quick Test_Update_keychain.test_update_keychain_transaction_by_consensus_key;
+    Test_services.tztest "keychain: transaction by spending key" `Quick Test_Update_keychain.test_update_keychain_transaction_by_spending_key;
+    Test_services.tztest "keychain: transaction by arbitrary key" `Quick Test_Update_keychain.test_update_keychain_transaction_by_arbitrary_key;
+    Test_services.tztest "keychain: endorsement by consensus key" `Quick Test_Update_keychain.test_simple_endorsement_with_keychain;
   ]
