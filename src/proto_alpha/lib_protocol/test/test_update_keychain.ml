@@ -23,6 +23,12 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+(*
+This testing file consists of two parts for testing.
+All operation related test cases are defined in [module Test_Operation]; and,
+all storage accessing test cases are written in [module Test_Storage].
+*)
+
 open Protocol
 open Alpha_context
 
@@ -47,7 +53,24 @@ let is_some msg k =
   | Some x -> return x
   | None -> failwith "expect a None (%s)" msg
 
-module Test_Update_keychain = struct
+(* check if the master key of given key hash in given block
+   equals to the given key *)
+let checkMasterKey block pkh pk_opt =
+  Incremental.begin_construction block
+  >>=? fun incr ->
+  let ctx = Incremental.alpha_ctxt incr in
+  Keychain.get_master_key ctx pkh
+  >>= wrap >>=? fun mk_opt ->
+  match (mk_opt, pk_opt) with
+  | None, None -> return_unit
+  | Some mk, Some pk ->
+    Assert.equal_pk ~loc:__LOC__ mk pk
+    >>=? fun () ->
+    return_unit
+  | _, _ -> failwith "check master key fails"
+
+
+module Test_Operation = struct
   let test_sample_update_keychain_op () =
       Context.init 1
       >>=? fun (blk, contracts) ->
@@ -119,17 +142,74 @@ module Test_Update_keychain = struct
          Assert.balance_was_credited ~loc:__LOC__ (B blk) dst_contract bal_dst amount
       )
 
-   let test_update_keychain_transaction_by_spending_key =
-     test_update_keychain_transaction (Some Spending_key)
+  let test_update_keychain_transaction_by_spending_key =
+    test_update_keychain_transaction (Some Spending_key)
 
-   let test_update_keychain_transaction_by_consensus_key =
-     test_update_keychain_transaction (Some Consensus_key)
+  let test_update_keychain_transaction_by_consensus_key =
+    test_update_keychain_transaction (Some Consensus_key)
 
-   let test_update_keychain_transaction_by_arbitrary_key =
-     test_update_keychain_transaction None
+  let test_update_keychain_transaction_by_arbitrary_key =
+    test_update_keychain_transaction None
+
+
+  let test_delayed_update () =
+    let open Block in
+    let policy = By_priority 0 in
+    Context.init 1
+    >>=? fun (b_pre_init, cs) ->
+    Incremental.begin_construction b_pre_init
+    >>=? fun incr ->
+    let ctx = Incremental.alpha_ctxt incr in
+    let acc = WithExceptions.Option.get ~loc:__LOC__ @@ List.nth cs 0 in
+    Context.Contract.pkh acc
+    >>=? fun pkh ->
+    let (_pkhA, pkA, skA) = Signature.generate_key () in
+    let (_pkhB, pkB, _skB) = Signature.generate_key () in
+    let master_key_delay_cycles =
+      (Constants.parametric ctx).master_key_delay_cycles in
+    (* check: there is no master key for pkh *)
+    checkMasterKey b_pre_init pkh None
+    >>=? fun () ->
+    (* init keychain with master = pkA *)
+    Op.update_keychain (B b_pre_init) acc (Some pkA) (Some pkA)
+    >>=? fun operation ->
+    bake b_pre_init ~operation
+    >>=? fun b_init ->
+    (* check: the master of pkh == pkA *)
+    checkMasterKey b_init pkh (Some pkA)
+    >>=? fun () ->
+    (* ask for update master key *)
+    Op.update_keychain (B b_init) ~sk:skA acc (Some pkB) None
+    >>=? fun operation ->
+    bake b_init ~operation
+    >>=? fun b ->
+    (* check: the master of pkh == pkA (<> pkB) *)
+    checkMasterKey b pkh (Some pkA)
+    >>=? fun () ->
+    (* move cycle to 1 *)
+    bake_until_cycle_end ~policy b
+    >>=? fun b ->
+    (* check: the master of pkh == pkA (<> pkB) *)
+    checkMasterKey b pkh (Some pkA)
+    >>=? fun () ->
+    (* move cycle to n-1 *)
+    let delta = master_key_delay_cycles - 2 in
+    bake_until_n_cycle_end ~policy delta b
+    >>=? fun b ->
+    (* check: the master of pkh == pkA (<> pkB) *)
+    checkMasterKey b pkh (Some pkA)
+    >>=? fun () ->
+    (* move cycle to n *)
+    bake_until_cycle_end ~policy b
+    >>=? fun b ->
+    (* check: the master of pkh == pkB *)
+    checkMasterKey b pkh (Some pkB)
+    >>=? fun () ->
+    return_unit
+
 end
 
-module Test_Keychain = struct
+module Test_Storage = struct
   let init n =
     Context.init n
     >>=? fun (b, cs) ->
@@ -272,107 +352,35 @@ module Test_Keychain = struct
     Assert.equal_pk ~loc:__LOC__ mk1 mgtk1
     >>=? fun () ->
     return_unit
-
-  (* check if the master key of given key hash in given block
-     equals to the given key *)
-  let checkMasterKey block pkh pk_opt =
-    Incremental.begin_construction block
-    >>=? fun incr ->
-    let ctx = Incremental.alpha_ctxt incr in
-    Keychain.get_master_key ctx pkh
-    >>= wrap >>=? fun mk_opt ->
-    match (mk_opt, pk_opt) with
-    | None, None -> return_unit
-    | Some mk, Some pk ->
-      Assert.equal_pk ~loc:__LOC__ mk pk
-      >>=? fun () ->
-      return_unit
-    | _, _ -> failwith "check master key fails"
-
-  let test_delayed_update () =
-    let open Block in
-    let policy = By_priority 0 in
-    Context.init 1
-    >>=? fun (b_pre_init, cs) ->
-    Incremental.begin_construction b_pre_init
-    >>=? fun incr ->
-    let ctx = Incremental.alpha_ctxt incr in
-    let acc = WithExceptions.Option.get ~loc:__LOC__ @@ List.nth cs 0 in
-    Context.Contract.pkh acc
-    >>=? fun pkh ->
-    let (_pkhA, pkA, skA) = Signature.generate_key () in
-    let (_pkhB, pkB, _skB) = Signature.generate_key () in
-    let master_key_delay_cycles =
-      (Constants.parametric ctx).master_key_delay_cycles in
-    (* check: there is no master key for pkh *)
-    checkMasterKey b_pre_init pkh None
-    >>=? fun () ->
-    (* init keychain with master = pkA *)
-    Op.update_keychain (B b_pre_init) acc (Some pkA) (Some pkA)
-    >>=? fun operation ->
-    bake b_pre_init ~operation
-    >>=? fun b_init ->
-    (* check: the master of pkh == pkA *)
-    checkMasterKey b_init pkh (Some pkA)
-    >>=? fun () ->
-    (* ask for update master key *)
-    Op.update_keychain (B b_init) ~sk:skA acc (Some pkB) None
-    >>=? fun operation ->
-    bake b_init ~operation
-    >>=? fun b ->
-    (* check: the master of pkh == pkA (<> pkB) *)
-    checkMasterKey b pkh (Some pkA)
-    >>=? fun () ->
-    (* move cycle to 1 *)
-    bake_until_cycle_end ~policy b
-    >>=? fun b ->
-    (* check: the master of pkh == pkA (<> pkB) *)
-    checkMasterKey b pkh (Some pkA)
-    >>=? fun () ->
-    (* move cycle to n-1 *)
-    let delta = master_key_delay_cycles - 2 in
-    bake_until_n_cycle_end ~policy delta b
-    >>=? fun b ->
-    (* check: the master of pkh == pkA (<> pkB) *)
-    checkMasterKey b pkh (Some pkA)
-    >>=? fun () ->
-    (* move cycle to n *)
-    bake_until_cycle_end ~policy b
-    >>=? fun b ->
-    (* check: the master of pkh == pkB *)
-    checkMasterKey b pkh (Some pkB)
-    >>=? fun () ->
-    return_unit
-
 end
 
 let tests =
   [ Test_services.tztest
       "keychain: initializing and existence"
       `Quick
-      Test_Keychain.test_create;
+      Test_Storage.test_create;
     Test_services.tztest
       "keychain: accessing"
       `Quick
-      Test_Keychain.test_access;
+      Test_Storage.test_access;
     Test_services.tztest
       "keychain: delayed updating"
       `Quick
-      Test_Keychain.test_delayed_update;
+      Test_Operation.test_delayed_update;
     Test_services.tztest
       "baking account test creating keys"
       `Quick
-      Test_Update_keychain.test_sample_update_keychain_op;
+      Test_Operation.test_sample_update_keychain_op;
     Test_services.tztest
       "baking account test transaction by consensus key"
       `Quick
-      Test_Update_keychain.test_update_keychain_transaction_by_consensus_key;
+      Test_Operation.test_update_keychain_transaction_by_consensus_key;
     Test_services.tztest
       "baking account test transaction by spending key"
       `Quick
-      Test_Update_keychain.test_update_keychain_transaction_by_spending_key;
+      Test_Operation.test_update_keychain_transaction_by_spending_key;
     Test_services.tztest
       "baking account test transaction by arbitrary key"
       `Quick
-      Test_Update_keychain.test_update_keychain_transaction_by_arbitrary_key;
+      Test_Operation.test_update_keychain_transaction_by_arbitrary_key;
   ]
