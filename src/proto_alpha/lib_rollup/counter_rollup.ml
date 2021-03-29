@@ -88,15 +88,16 @@ end
 
 module Rejection = struct
 
+  let invalid ~rollup_id ~level ~micro_block_index state_trace =
+    let open R.Block_rejection in
+    let rejection_content = Reject_micro_block { micro_block_index ; state_trace } in
+    { rollup_id ; level ; rejection_content }
+    
   let invalid_signature ~rollup_id ~level ~micro_block_index =
-    let rejection_content = R.Micro_block_rejection.Invalid_signature () in
-    let rejection_content = R.Block_rejection.Reject_micro_block { micro_block_index ; rejection_content } in
-    R.Block_rejection.{ rollup_id ; level ; rejection_content }
+    invalid ~rollup_id ~level ~micro_block_index []
 
   let invalid_state_hash ~rollup_id ~level ~micro_block_index state_trace =
-    let rejection_content = R.Micro_block_rejection.Invalid_state_hash state_trace in
-    let rejection_content = R.Block_rejection.Reject_micro_block { micro_block_index ; rejection_content } in
-    R.Block_rejection.{ rollup_id ; level ; rejection_content }
+    invalid ~rollup_id ~level ~micro_block_index state_trace
 
 end
 
@@ -184,19 +185,14 @@ module Operator = struct
   
 end
 
-type bad_signature = {
-  micro_block_index : int ;
-}
-exception Bad_signature of bad_signature
-type bad_root = {
-  micro_block_index : int ;
-  state_trace : R.state_trace ;
-}
-exception Bad_root of bad_root
-
 module Validator = struct
 
-  exception Bad_root_aux of bad_signature
+  type bad = {
+    micro_block_index : int ;
+    state_trace : R.state_trace ;
+  }
+  exception Bad of bad
+  exception Bad_aux of int
   
   module CR = RA.Counter_rollup.Main.MakeRegular()
   module CR_Reject = RA.Counter_rollup.Main.MakeReject()
@@ -221,19 +217,19 @@ module Validator = struct
       | None -> raise (Failure "bad encoding")
     in
     try (
-      let s = CR.transition s parameter in
+      let s =
+        try CR.transition s parameter
+        with
+        | RA.Batcher.Invalid_signature -> raise (Bad_aux micro_block_index)
+        (* TODO: List *all* other bad cases *)
+      in
       let after_root' = CR.get_root s in
-      if after_root <> after_root' then raise (Bad_root_aux { micro_block_index }) ;
+      if after_root <> after_root' then raise (Bad_aux micro_block_index) ;
       { t with state = s }
     ) with
-    | Bad_root_aux { micro_block_index } -> (
-        let state_trace = CR_Reject.transition s parameter in
-        let Root hash = CR.get_root s in
-        let _good_hash = CR_Replay.transition ~hash parameter state_trace in
-        raise (Bad_root { state_trace ; micro_block_index })
-      )
-    | RA.Batcher.Invalid_signature -> (
-        raise @@ Bad_signature { micro_block_index }
+    | Bad_aux micro_block_index -> (
+        let state_trace = CR_Reject.transition s parameter  in
+        raise (Bad { state_trace ; micro_block_index })
       )
     | exn -> (
         (* Format.printf "Exception: %s\n" @@ Printexc.to_string exn ; *)

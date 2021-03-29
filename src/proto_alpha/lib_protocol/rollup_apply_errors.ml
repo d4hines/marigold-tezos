@@ -66,3 +66,34 @@ let () =
       | _ ->
           None)
     (fun (r , c) -> Rollup_rejection_too_old_timestamp { rollup_block_timestamp = r ; current_timestamp = c } )
+
+type rollup_invalid_rejection =
+  | Rollup_bad_micro_block_index
+  | Rollup_valid
+  | Rollup_unexpected_error
+
+let rollup_invalid_rejection_encoding : rollup_invalid_rejection Data_encoding.t =
+  let open Data_encoding in
+  union [
+    case ~title:"bad_micro_block_index" (Tag 0) unit
+      (function Rollup_bad_micro_block_index -> Some () | _ -> None)
+      (fun () -> Rollup_bad_micro_block_index) ;
+    case ~title:"valid_state_hash" (Tag 1) unit
+      (function Rollup_valid -> Some () | _ -> None)
+      (fun () -> Rollup_valid) ;
+    case ~title:"unexpected_error" (Tag 2) unit
+      (function Rollup_unexpected_error -> Some () | _ -> None)
+      (fun () -> Rollup_unexpected_error) ;
+  ]
+
+type error += Rollup_invalid_rejection of rollup_invalid_rejection
+
+let () =
+  register_error_kind
+    `Temporary
+    ~id:"rollup.invalid_rejection"
+    ~title:"Invalid rejection of a block"
+    ~description:"A rollup block rejection was submitted, but the rejection is invalid"
+    rollup_invalid_rejection_encoding
+    (function Rollup_invalid_rejection x -> Some x | _ -> None)
+    (fun x -> Rollup_invalid_rejection x)

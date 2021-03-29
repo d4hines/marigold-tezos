@@ -130,6 +130,7 @@ module Batcher = struct
   type hash = Hash of bytes
 
   exception Invalid_signature
+  exception Double_count
   
   module type PARAMETER = sig
     type t
@@ -213,7 +214,7 @@ module Batcher = struct
           then Replay_counter.of_value (M.get key)
           else Z.zero
         in
-        if Compare.Z.(counter <= stored_counter) then raise (Failure "double count") ;
+        if Compare.Z.(counter <= stored_counter) then raise Double_count ;
         M.set key (Replay_counter.to_value counter) ;
         
         (* Perform Operation *)
@@ -275,7 +276,9 @@ module Batcher = struct
         let s' = S.of_patricia s in
         S.set_full s' ;
         S.s := [] ;
-        T.main t ;
+        (* TODO: Wrap this in Make_reject exception *)
+        (try T.main t
+        with _ -> ()) ;
         !S.s
     end
 
@@ -417,71 +420,40 @@ let main (ctxt : Alpha_context.t) ~(source : Contract.t) (content : Rollup.opera
       in
       match rejection_content with
       | Reject_micro_block micro_block_rejection -> (
-          let Micro_block_rejection.{ micro_block_index ; rejection_content } =
+          let Micro_block_rejection.{ micro_block_index ; state_trace } =
             micro_block_rejection
           in
           let* micro_block =
-            match List.nth_opt micro_blocks micro_block_index with
+            if Compare.Int.(micro_block_index < 0)
+            then fail (Rollup_invalid_rejection Rollup_bad_micro_block_index)
+            else match List.nth_opt micro_blocks micro_block_index with
             | Some x -> return x
-            | None -> failwith "bad micro block index" (* TODO: add error *)
+            | None -> fail (Rollup_invalid_rejection Rollup_bad_micro_block_index)
           in
-          let replay state_trace =
-            let Block_onchain_content.{ parameter ; before_root = Root hash ; _ } = micro_block in
-            let module Replay = Counter_rollup.Main.MakeReplay () in
-            let* parameter =
-              match Data_encoding.Binary.of_bytes Counter_rollup.Main.encoding parameter with
-              | Some x -> return x
-              | None -> failwith "bad encoding" (* TODO: add error *)
-            in
-            return @@ Replay.transition ~hash parameter state_trace
+          let Block_onchain_content.{
+              parameter ;
+              before_root = Root hash ;
+              after_root = Root after_hash
+            } = micro_block in
+          let module Replay = Counter_rollup.Main.MakeReplay () in
+          let* parameter =
+            match Data_encoding.Binary.of_bytes Counter_rollup.Main.encoding parameter with
+            | Some x -> return x
+            | None -> failwith "bad encoding" (* TODO: add error *)
           in
           let* () =
-            match rejection_content with
-            | Invalid_signature () -> (
-                try (
-                  let _ = replay [] in
-                  failwith "signatures are ok"
-                ) with
-                | Batcher.Invalid_signature -> return ()
-                | _ -> failwith "unexpected error"
-              )
-            | Gas_overflow stream -> (
-                try (
-                  let _ = replay stream in
-                  failwith "didn't gas overflow"
-                ) with
-                (* | Gas_overflow_exception -> return () *) (* TODO: add Gas_overflow_exception *)
-                | _ -> failwith "unexpected error"
-              )
-            | Persisting_state_too_big stream -> (
-                try (
-                  let _ = replay stream in
-                  failwith "didn't gas overflow"
-                ) with
-                (* | Persisting_state_too_big_exception -> return () *) (* TODO: add Persisting_state_too_Big_exception *)
-                | _ -> failwith "unexpected error"
-              )
-            | State_overflow stream -> (
-                try (
-                  let _ = replay stream in
-                  failwith "didn't gas overflow"
-                ) with
-                (* | State_overflow_exception -> return () *) (* TODO: add State_overflow_exception *)
-                | _ -> failwith "unexpected error"
-              )
-            | Invalid_state_hash stream -> (
-                let Block_onchain_content.{ after_root = Root after_hash ; _ } = micro_block in
-                try (
-                  let* (Hash after_hash') = replay stream in
-                  if Compare.Bytes.(after_hash = after_hash')
-                  then failwith "good state hash"
-                  else return ()
-                ) with
-                | exn -> (
-                    raise exn
-                    (* failwith "unexpected error" *)
-                  )
-              )
+            try (
+              let Hash after_hash' = Replay.transition ~hash parameter state_trace in
+              if Compare.Bytes.(after_hash = after_hash')
+              then fail (Rollup_invalid_rejection Rollup_valid)
+              else return ()
+            ) with
+            | Batcher.Invalid_signature -> return ()
+            | _ -> fail (Rollup_invalid_rejection Rollup_unexpected_error)
+          (* | Gas_overflow
+           * | Persisting_state_too_big
+           * | State_overflow
+           *)
           in
           let* (indices , ctxt) = reorg_rollup ctxt ~id:rollup_id ~level in
 

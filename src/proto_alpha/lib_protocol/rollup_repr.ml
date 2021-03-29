@@ -237,63 +237,16 @@ let state_trace_encoding : state_trace Data_encoding.t = Data_encoding.(list byt
 
 module Micro_block_rejection = struct
   
-  type invalid_signature = unit
-  let invalid_signature_encoding : invalid_signature Data_encoding.t =
-    Data_encoding.unit
-
-  type gas_overflow = state_trace
-  let gas_overflow_encoding : gas_overflow Data_encoding.t = state_trace_encoding
-
-  type state_overflow = state_trace
-  let state_overflow_encoding : state_overflow Data_encoding.t = state_trace_encoding
-  
-  type invalid_block_id = transaction_index
-  let invalid_block_id_encoding : invalid_block_id Data_encoding.t =
-    transaction_index_encoding
-
-  type rejection_content =
-    | Gas_overflow of gas_overflow (* A micro block goes over the gas limit *)
-    | State_overflow of state_overflow (* A micro block requires too much state to check *)
-    | Invalid_signature of invalid_signature (* A tx has an invalid signature (public key, tx and sig don't match) *)
-    | Invalid_state_hash of state_trace   (* The resulting state hash is not correct *)
-    | Persisting_state_too_big of state_trace (* Evaluation results in persisting a leaf too big in the store *)
-    (* TODO: | Invalid_event_hash *) 
-
-  let rejection_content_encoding : rejection_content Data_encoding.t = Data_encoding.(
-      union [
-        case (Tag 0) ~title:"gas_overflow"
-          gas_overflow_encoding
-          (function Gas_overflow go -> Some go | _ -> None)
-          (fun go -> Gas_overflow go) ;
-        case (Tag 1) ~title:"state_overflow"
-          state_overflow_encoding
-          (function State_overflow so -> Some so | _ -> None)
-          (fun so -> State_overflow so) ;
-        case (Tag 2) ~title:"invalid_signature"
-          invalid_signature_encoding
-          (function Invalid_signature is -> Some is | _ -> None)
-          (fun is -> Invalid_signature is) ;
-        case (Tag 3) ~title:"invalid_state_hash"
-          state_trace_encoding
-          (function Invalid_state_hash st -> Some st | _ -> None)
-          (fun st -> Invalid_state_hash st) ;
-        case (Tag 4) ~title:"persisting_state_too_big"
-          state_trace_encoding
-          (function Persisting_state_too_big st -> Some st | _ -> None)
-          (fun st -> Persisting_state_too_big st) ;
-      ]
-    )
-  
   type t = {
     micro_block_index : micro_block_index ;
-    rejection_content : rejection_content ;
+    state_trace : state_trace ;
   }
 
   let encoding : t Data_encoding.t = Data_encoding.(
       conv
-        (fun { micro_block_index = mbi ; rejection_content = rc } -> ( mbi , rc ))
-        (fun ( mbi , rc ) -> { micro_block_index = mbi ; rejection_content = rc })
-      @@ tup2 micro_block_index_encoding rejection_content_encoding
+        (fun { micro_block_index = mbi ; state_trace = st } -> ( mbi , st ))
+        (fun ( mbi , st ) -> { micro_block_index = mbi ; state_trace = st })
+      @@ tup2 micro_block_index_encoding state_trace_encoding
     )
 end
 
