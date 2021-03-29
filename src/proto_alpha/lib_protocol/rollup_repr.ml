@@ -162,6 +162,7 @@ module Block_onchain_content = struct
   type t = {
     micro_blocks : micro list ;
     tezos_level : Level_repr.t ;
+    timestamp : Time_repr.t ;
   }
 
   let micro_encoding : micro Data_encoding.t = Data_encoding.(
@@ -175,11 +176,11 @@ module Block_onchain_content = struct
 
   let encoding : t Data_encoding.t = Data_encoding.(
       conv
-        ( fun { micro_blocks = mb ; tezos_level = tl } ->
-            ( mb , tl) )
-        ( fun ( mb , tl) ->
-            { micro_blocks = mb ; tezos_level = tl })
-      @@ tup2 (list micro_encoding) Level_repr.encoding
+        ( fun { micro_blocks = mb ; tezos_level = tl ; timestamp = t } ->
+            ( mb , tl , t ) )
+        ( fun ( mb , tl , t ) ->
+            { micro_blocks = mb ; tezos_level = tl ; timestamp = t })
+      @@ tup3 (list micro_encoding) Level_repr.encoding Time_repr.encoding
     )
 
 end

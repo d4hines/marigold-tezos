@@ -100,9 +100,7 @@ module Rejection = struct
 
 end
 
-module type ROLLUP_ID = sig val rollup_id : Z.t end
-
-module MakeOperator(P : ROLLUP_ID) = struct
+module Operator = struct
 
   module CR = RA.Counter_rollup.Main.MakeRegular()
 
@@ -110,6 +108,8 @@ module MakeOperator(P : ROLLUP_ID) = struct
     current_micro_block : micro_block ;
     current_block : block ;
     state : CR.S.t ;
+    rollup_id : Z.t ;
+    operator : Alpha_context.Contract.t ;
   }
   
   let empty_root = CR.(get_root empty)
@@ -123,19 +123,19 @@ module MakeOperator(P : ROLLUP_ID) = struct
 
   let empty_block block_level = { rev_micro_blocks = [] ; block_level }
 
-  let empty = {
+  let empty ~rollup_id ~operator = {
     current_micro_block = empty_micro_block ;
     current_block = empty_block Z.zero ;
     state = CR.empty ;
+    rollup_id ;
+    operator ;
   }
-
-  let rollup_id = P.rollup_id
 
   let pp_root ppf (R.Root hash) =
     Printf.fprintf ppf "root(%s)" (Bytes.to_string hash)
   
   let finish_micro_block t =
-    let { current_micro_block ; current_block ; state } = t in
+    let { current_micro_block ; current_block ; state ; rollup_id = _ ; operator = _ } = t in
     let previous_micro_block = current_micro_block in
     let previous_root = previous_micro_block.after_root in
     let root = CR.get_root state in
@@ -180,7 +180,7 @@ module MakeOperator(P : ROLLUP_ID) = struct
     in
     { t with current_micro_block ; state }
 
-  let commit_block block = Commitment.make ~rollup_id block
+  let commit_block { rollup_id ; _ } block = Commitment.make ~rollup_id block
   
 end
 
@@ -194,22 +194,27 @@ type bad_root = {
 }
 exception Bad_root of bad_root
 
-module MakeValidator(P : sig val rollup_id : Z.t end) = struct
+module Validator = struct
 
-  let rollup_id = P.rollup_id
-  
   exception Bad_root_aux of bad_signature
   
   module CR = RA.Counter_rollup.Main.MakeRegular()
   module CR_Reject = RA.Counter_rollup.Main.MakeReject()
   module CR_Replay = RA.Counter_rollup.Main.MakeReplay()
   
-  type t = CR.S.t
+  type t = {
+    state : CR.S.t ;
+    rollup_id : Z.t ;
+  }
 
-  let empty = CR.empty
+  let empty ~rollup_id : t = {
+    state = CR.empty ;
+    rollup_id ;
+  }
 
   let process_micro_block_commitment : t -> (int * R.Block_commitment.micro) -> t =
-    fun s (micro_block_index , { parameter ; after_root }) ->
+    fun t (micro_block_index , { parameter ; after_root }) ->
+    let { state = s ; _ } = t in
     let parameter =
       match Data_encoding.Binary.of_bytes_opt Main.encoding parameter with
       | Some x -> x
@@ -219,7 +224,7 @@ module MakeValidator(P : sig val rollup_id : Z.t end) = struct
       let s = CR.transition s parameter in
       let after_root' = CR.get_root s in
       if after_root <> after_root' then raise (Bad_root_aux { micro_block_index }) ;
-      s
+      { t with state = s }
     ) with
     | Bad_root_aux { micro_block_index } -> (
         let state_trace = CR_Reject.transition s parameter in
@@ -235,13 +240,13 @@ module MakeValidator(P : sig val rollup_id : Z.t end) = struct
         raise exn
       )
 
-  let process_block_commitment : t -> R.Block_commitment.t -> t = fun s bc ->
+  let process_block_commitment : t -> R.Block_commitment.t -> t = fun t bc ->
     let R.Block_commitment.{ micro_block_commitments ; rollup_id = _ } = bc in
-    List.fold_left process_micro_block_commitment s
+    List.fold_left process_micro_block_commitment t
     @@ List.mapi (fun i x -> (i , x)) micro_block_commitments
 
-  let invalid_signature = Rejection.invalid_signature ~rollup_id
-  let invalid_state_hash = Rejection.invalid_state_hash ~rollup_id
+  let invalid_signature { rollup_id ; _ } = Rejection.invalid_signature ~rollup_id
+  let invalid_state_hash { rollup_id ; _ } = Rejection.invalid_state_hash ~rollup_id
 
   module View = RA.Counter_rollup.Internal.MakePureView(CR.T.M)
 

@@ -25,6 +25,7 @@
 
 open Alpha_context
 open Apply_results
+include Rollup_apply_errors
 open Rollup
 
 let (let*) = (>>=?)
@@ -44,6 +45,8 @@ module M = NS.Patricia
 
 let max_stream_node_size = 1000000
 let max_leaf_size = max_stream_node_size - 100
+let tezos_level_finality = Int32.of_int 15
+let timestamp_finality = Int64.of_int (15 * 60)
 
 module Stateful_patricia() = struct
   let t = ref M.empty
@@ -386,18 +389,41 @@ let main (ctxt : Alpha_context.t) ~(source : Contract.t) (content : Rollup.opera
     )
   | Reject_block block_rejection -> (
       let Block_rejection.{ rollup_id ; level ; rejection_content } = block_rejection in
-      (* TODO: error if block being rejected is too old *)
       let* block = get_block ctxt rollup_id level in
+      let Block_onchain_content.{ micro_blocks ; tezos_level ; timestamp } = block in
+      (* Check if rejection is too old *)
+      let* () =
+        let current_tezos_level = Raw_context.current_level ctxt in
+        let current_timestamp = Raw_context.current_timestamp ctxt in
+        let tezos_level_diff = Level_repr.diff current_tezos_level tezos_level in
+        let timestamp_diff = Time.diff current_timestamp timestamp in
+        let* () =
+          if Compare.Int32.(tezos_level_diff > tezos_level_finality)
+          then fail @@ Rollup_rejection_too_old_level {
+              rollup_block_tezos_level = tezos_level ;
+              current_tezos_level ;
+            }
+          else return ()
+        in
+        let* () =
+          if Compare.Int64.(timestamp_diff > timestamp_finality)
+          then fail @@ Rollup_rejection_too_old_timestamp {
+              rollup_block_timestamp = timestamp ;
+              current_timestamp ;
+            }
+          else return ()
+        in
+        return ()
+      in
       match rejection_content with
       | Reject_micro_block micro_block_rejection -> (
-          let Block_onchain_content.{ micro_blocks ; tezos_level = _ } = block in
           let Micro_block_rejection.{ micro_block_index ; rejection_content } =
             micro_block_rejection
           in
           let* micro_block =
             match List.nth_opt micro_blocks micro_block_index with
             | Some x -> return x
-            | None -> failwith "bad micro block index"
+            | None -> failwith "bad micro block index" (* TODO: add error *)
           in
           let replay state_trace =
             let Block_onchain_content.{ parameter ; before_root = Root hash ; _ } = micro_block in

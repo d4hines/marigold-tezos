@@ -62,6 +62,7 @@ let genesis_micro_block : Block_onchain_content.micro = {
 let genesis_block : Block_onchain_content.t = {
   micro_blocks = [ genesis_micro_block ] ;
   tezos_level = Level_repr.root_level @@ Raw_level_repr.root ;
+  timestamp = Time_repr.of_seconds Int64.zero ;
 }
 
 let create_rollup ~operator ~kind ctxt =
@@ -129,6 +130,7 @@ let commit_block block_commitment ctxt ~operator =
   let block = Block_onchain_content.{
       micro_blocks ;
       tezos_level = Raw_context.current_level ctxt ;
+      timestamp = Raw_context.current_timestamp ctxt ;
     } in
   let*= ctxt = Storage.Rollups.Block_content.add ctxt (rollup_id , level) block in
   return ({ level } , ctxt)
