@@ -25,6 +25,7 @@
 
 open Protocol
 open Alpha_context
+open Test_tez
 
 open Account.Update_keychain
 
@@ -160,6 +161,79 @@ module Test_Update_keychain = struct
          delegate
          initial_balance
 
+   let test_registered_self_delegate_key_init_delegation () =
+     Context.init 5
+     >>=? fun (b, bootstrap_contracts) ->
+     let bootstrap =
+       WithExceptions.Option.get ~loc:__LOC__ @@ List.hd bootstrap_contracts
+     in
+     let contract = WithExceptions.Option.get ~loc:__LOC__ @@ List.nth bootstrap_contracts 1 in
+     Context.Contract.manager (B b) contract
+     >>=? fun src ->
+     let ({c_pk; s_pk; _ }) = new_key_chain src.pkh Consensus_key in
+     Op.update_keychain (B b) contract (Some c_pk) (Some s_pk)
+     >>=? fun op_ba ->
+     Block.bake b ~operation:op_ba
+     >>=? fun b ->
+     let delegate_contract = WithExceptions.Option.get ~loc:__LOC__ @@ List.nth bootstrap_contracts 2 in
+     Context.Contract.manager (B b) delegate_contract
+     >>=? fun d_src ->
+     let d_ba = new_key_chain d_src.pkh Consensus_key in
+     Op.update_keychain (B b) delegate_contract (Some d_ba.c_pk) (Some d_ba.s_pk)
+     >>=? fun op_ba ->
+     Block.bake b ~operation:op_ba
+     >>=? fun b ->
+     Incremental.begin_construction b
+     >>=? fun i ->
+     let contract = Alpha_context.Contract.implicit_contract src.pkh in
+     let delegate_contract =
+       Alpha_context.Contract.implicit_contract d_src.pkh
+     in
+     Op.transaction (I i) bootstrap contract (Tez.of_int 10)
+     >>=? fun op ->
+     Incremental.add_operation i op
+     >>=? fun i ->
+     Op.transaction (I i) bootstrap delegate_contract (Tez.of_int 10)
+     >>=? fun op ->
+     Incremental.add_operation i op
+     >>=? fun i ->
+     Op.delegation (I i) delegate_contract (Some d_src.pkh) ~sk:d_ba.c_sk ~kc:d_ba
+     >>=? fun op ->
+     Incremental.add_operation i op
+     >>=? fun i ->
+     Op.delegation (I i) contract (Some d_src.pkh)
+     >>=? fun op ->
+     Incremental.add_operation i op
+     >>=? fun i ->
+     Context.Contract.delegate (I i) contract
+     >>=? fun delegate ->
+     Assert.equal_pkh ~loc:__LOC__ delegate d_src.pkh
+     >>=? fun () -> return_unit
+
+   (* keychain can't be reveal*)
+   let test_simple_reveal () =
+     Context.init 2
+     >>=? fun (blk, contracts) ->
+     let c = WithExceptions.Option.get ~loc:__LOC__ @@ List.hd contracts in
+     let src_contract = WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 1 in 
+     Context.Contract.manager (B blk) src_contract
+     >>=? fun src ->
+     let ({c_pk; s_pk; _ } as ba) = new_key_chain src.pkh Consensus_key in
+     Op.update_keychain (B blk) src_contract (Some c_pk) (Some s_pk)
+     >>=? fun operation ->
+     Block.bake blk ~operation
+     >>=? fun blk ->
+     Op.transaction (B blk) c src_contract Tez.one
+     >>=? fun operation ->
+     Block.bake blk ~operation
+     >>=? fun blk ->
+     Op.revelation (B blk) c_pk ~ba
+     >>=? fun operation ->
+     Block.bake blk ~operation
+     >>= fun res ->
+     (Assert.proto_error ~loc:__LOC__ res (function
+          | Contract_storage.Previously_revealed_key _ -> true
+          | _ -> false ))
 end
 
 module Test_Keychain = struct
@@ -376,7 +450,6 @@ module Test_Keychain = struct
     checkMasterKey b pkh (Some pkB)
     >>=? fun () ->
     return_unit
-
 end
 
 let tests =
@@ -408,5 +481,7 @@ let tests =
       "baking account test transaction by arbitrary key"
       `Quick
       Test_Update_keychain.test_update_keychain_transaction_by_arbitrary_key;
+    Test_services.tztest "keychain: revelation by consensus key" `Quick Test_Update_keychain.test_simple_reveal;
+    Test_services.tztest "keychain: delegation by consensus key" `Quick Test_Update_keychain.test_registered_self_delegate_key_init_delegation;
     Test_services.tztest "keychain: endorsement by consensus key" `Quick Test_Update_keychain.test_simple_endorsement_with_keychain;
   ]

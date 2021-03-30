@@ -297,8 +297,12 @@ let manager_operation ?counter ?(fee = Tez.zero) ?gas_limit ?storage_limit
       in
       Contents_list (Cons (op_reveal, Single op))
 
-let revelation ?(fee = Tez.zero) ctxt public_key =
-  let pkh = Signature.Public_key.hash public_key in
+let revelation ?(fee = Tez.zero) ?ba ctxt public_key =
+  let pkh =
+    match ba with
+    | Some b -> b.ba_pkh
+    | None -> Signature.Public_key.hash public_key
+  in
   let source = Contract.implicit_contract pkh in
   Context.Contract.counter ctxt source
   >>=? fun counter ->
@@ -310,7 +314,7 @@ let revelation ?(fee = Tez.zero) ctxt public_key =
       (Single
          (Manager_operation
             {
-              source = Signature.Public_key.hash public_key;
+              source = pkh;
               fee;
               counter;
               operation = Reveal public_key;
@@ -318,7 +322,11 @@ let revelation ?(fee = Tez.zero) ctxt public_key =
               storage_limit = Z.zero;
             }))
   in
-  sign account.sk ctxt sop
+  match ba with
+  | Some b ->
+    sign b.c_sk ctxt sop
+  | None ->
+    sign account.sk ctxt sop
 
 let failing_noop ctxt source arbitrary =
   let op = Contents_list (Single (Failing_noop arbitrary)) in
@@ -397,12 +405,17 @@ let transaction ?counter ?fee ?gas_limit ?storage_limit
   Context.Contract.manager ctxt src
   >|=? fun account -> sign account.sk ctxt sop
 
-let delegation ?fee ctxt source dst =
+let delegation ?fee ?sk ?kc ctxt source dst =
   let top = Delegation dst in
-  manager_operation ?fee ~source ctxt top
+  (match kc with
+  | Some k -> manager_operation_update_keychain ?fee k ctxt top
+  | None -> manager_operation ?fee ~source ctxt top)
   >>=? fun sop ->
   Context.Contract.manager ctxt source
-  >|=? fun account -> sign account.sk ctxt sop
+  >|=? fun account ->
+  match sk with
+  | Some s -> sign s ctxt sop
+  | None -> sign account.sk ctxt sop
 
 let activation ctxt (pkh : Signature.Public_key_hash.t) activation_code =
   ( match pkh with

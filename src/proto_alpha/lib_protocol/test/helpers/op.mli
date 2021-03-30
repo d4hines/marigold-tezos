@@ -77,13 +77,15 @@ val transaction_update_keychain :
 
 val delegation :
   ?fee:Tez.tez ->
+  ?sk:Signature.secret_key ->
+  ?kc:Account.Update_keychain.update_keychain ->
   Context.t ->
   Contract.t ->
   public_key_hash option ->
   Operation.packed tzresult Lwt.t
 
 val revelation :
-  ?fee:Tez.tez -> Context.t -> public_key -> Operation.packed tzresult Lwt.t
+  ?fee:Tez.tez -> ?ba:Account.Update_keychain.t -> Context.t -> public_key -> Operation.packed tzresult Lwt.t
 
 val failing_noop :
   Context.t -> public_key_hash -> string -> Operation.packed tzresult Lwt.t
