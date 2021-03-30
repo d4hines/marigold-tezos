@@ -31,6 +31,7 @@ all storage accessing test cases are written in [module Test_Storage].
 
 open Protocol
 open Alpha_context
+open Test_tez
 
 open Account.Update_keychain
 
@@ -249,6 +250,79 @@ module Test_Operation = struct
       delegate
       initial_balance
 
+   let test_registered_self_delegate_key_init_delegation () =
+     Context.init 5
+     >>=? fun (b, bootstrap_contracts) ->
+     let bootstrap =
+       WithExceptions.Option.get ~loc:__LOC__ @@ List.hd bootstrap_contracts
+     in
+     let contract = WithExceptions.Option.get ~loc:__LOC__ @@ List.nth bootstrap_contracts 1 in
+     Context.Contract.manager (B b) contract
+     >>=? fun src ->
+     let ({c_pk; s_pk; _ }) = new_key_chain src.pkh Consensus_key in
+     Op.update_keychain (B b) contract (Some c_pk) (Some s_pk)
+     >>=? fun op_ba ->
+     Block.bake b ~operation:op_ba
+     >>=? fun b ->
+     let delegate_contract = WithExceptions.Option.get ~loc:__LOC__ @@ List.nth bootstrap_contracts 2 in
+     Context.Contract.manager (B b) delegate_contract
+     >>=? fun d_src ->
+     let d_ba = new_key_chain d_src.pkh Consensus_key in
+     Op.update_keychain (B b) delegate_contract (Some d_ba.c_pk) (Some d_ba.s_pk)
+     >>=? fun op_ba ->
+     Block.bake b ~operation:op_ba
+     >>=? fun b ->
+     Incremental.begin_construction b
+     >>=? fun i ->
+     let contract = Alpha_context.Contract.implicit_contract src.pkh in
+     let delegate_contract =
+       Alpha_context.Contract.implicit_contract d_src.pkh
+     in
+     Op.transaction (I i) bootstrap contract (Tez.of_int 10)
+     >>=? fun op ->
+     Incremental.add_operation i op
+     >>=? fun i ->
+     Op.transaction (I i) bootstrap delegate_contract (Tez.of_int 10)
+     >>=? fun op ->
+     Incremental.add_operation i op
+     >>=? fun i ->
+     Op.delegation (I i) delegate_contract (Some d_src.pkh) ~sk:d_ba.c_sk ~kc:d_ba
+     >>=? fun op ->
+     Incremental.add_operation i op
+     >>=? fun i ->
+     Op.delegation (I i) contract (Some d_src.pkh)
+     >>=? fun op ->
+     Incremental.add_operation i op
+     >>=? fun i ->
+     Context.Contract.delegate (I i) contract
+     >>=? fun delegate ->
+     Assert.equal_pkh ~loc:__LOC__ delegate d_src.pkh
+     >>=? fun () -> return_unit
+
+   (* keychain can't be reveal*)
+   let test_simple_reveal () =
+     Context.init 2
+     >>=? fun (blk, contracts) ->
+     let c = WithExceptions.Option.get ~loc:__LOC__ @@ List.hd contracts in
+     let src_contract = WithExceptions.Option.get ~loc:__LOC__ @@ List.nth contracts 1 in 
+     Context.Contract.manager (B blk) src_contract
+     >>=? fun src ->
+     let ({c_pk; s_pk; _ } as ba) = new_key_chain src.pkh Consensus_key in
+     Op.update_keychain (B blk) src_contract (Some c_pk) (Some s_pk)
+     >>=? fun operation ->
+     Block.bake blk ~operation
+     >>=? fun blk ->
+     Op.transaction (B blk) c src_contract Tez.one
+     >>=? fun operation ->
+     Block.bake blk ~operation
+     >>=? fun blk ->
+     Op.revelation (B blk) c_pk ~ba
+     >>=? fun operation ->
+     Block.bake blk ~operation
+     >>= fun res ->
+     (Assert.proto_error ~loc:__LOC__ res (function
+          | Contract_storage.Previously_revealed_key _ -> true
+          | _ -> false ))
 end
 
 module Test_Storage = struct
@@ -394,6 +468,77 @@ module Test_Storage = struct
     Assert.equal_pk ~loc:__LOC__ mk1 mgtk1
     >>=? fun () ->
     return_unit
+
+  (* check if the master key of given key hash in given block
+     equals to the given key *)
+  let checkMasterKey block pkh pk_opt =
+    Incremental.begin_construction block
+    >>=? fun incr ->
+    let ctx = Incremental.alpha_ctxt incr in
+    Keychain.get_master_key ctx pkh
+    >>= wrap >>=? fun mk_opt ->
+    match (mk_opt, pk_opt) with
+    | None, None -> return_unit
+    | Some mk, Some pk ->
+      Assert.equal_pk ~loc:__LOC__ mk pk
+      >>=? fun () ->
+      return_unit
+    | _, _ -> failwith "check master key fails"
+
+  let test_delayed_update () =
+    let open Block in
+    let policy = By_priority 0 in
+    Context.init 1
+    >>=? fun (b_pre_init, cs) ->
+    Incremental.begin_construction b_pre_init
+    >>=? fun incr ->
+    let ctx = Incremental.alpha_ctxt incr in
+    let acc = WithExceptions.Option.get ~loc:__LOC__ @@ List.nth cs 0 in
+    Context.Contract.pkh acc
+    >>=? fun pkh ->
+    let (_pkhA, pkA, skA) = Signature.generate_key () in
+    let (_pkhB, pkB, _skB) = Signature.generate_key () in
+    let master_key_delay_cycles =
+      (Constants.parametric ctx).master_key_delay_cycles in
+    (* check: there is no master key for pkh *)
+    checkMasterKey b_pre_init pkh None
+    >>=? fun () ->
+    (* init keychain with master = pkA *)
+    Op.update_keychain (B b_pre_init) acc (Some pkA) (Some pkA)
+    >>=? fun operation ->
+    bake b_pre_init ~operation
+    >>=? fun b_init ->
+    (* check: the master of pkh == pkA *)
+    checkMasterKey b_init pkh (Some pkA)
+    >>=? fun () ->
+    (* ask for update master key *)
+    Op.update_keychain (B b_init) ~sk:skA acc (Some pkB) None
+    >>=? fun operation ->
+    bake b_init ~operation
+    >>=? fun b ->
+    (* check: the master of pkh == pkA (<> pkB) *)
+    checkMasterKey b pkh (Some pkA)
+    >>=? fun () ->
+    (* move cycle to 1 *)
+    bake_until_cycle_end ~policy b
+    >>=? fun b ->
+    (* check: the master of pkh == pkA (<> pkB) *)
+    checkMasterKey b pkh (Some pkA)
+    >>=? fun () ->
+    (* move cycle to n-1 *)
+    let delta = master_key_delay_cycles - 2 in
+    bake_until_n_cycle_end ~policy delta b
+    >>=? fun b ->
+    (* check: the master of pkh == pkA (<> pkB) *)
+    checkMasterKey b pkh (Some pkA)
+    >>=? fun () ->
+    (* move cycle to n *)
+    bake_until_cycle_end ~policy b
+    >>=? fun b ->
+    (* check: the master of pkh == pkB *)
+    checkMasterKey b pkh (Some pkB)
+    >>=? fun () ->
+    return_unit
 end
 
 let tests =
@@ -425,6 +570,14 @@ let tests =
       "baking account test transaction by arbitrary key"
       `Quick
       Test_Operation.test_update_keychain_transaction_by_arbitrary_key;
+    Test_services.tztest
+      "keychain: revelation by consensus key"
+      `Quick
+      Test_Operation.test_simple_reveal;
+    Test_services.tztest
+      "keychain: delegation by consensus key"
+      `Quick
+      Test_Operation.test_registered_self_delegate_key_init_delegation;
     Test_services.tztest
       "keychain: endorsement by consensus key"
       `Quick
