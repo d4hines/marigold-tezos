@@ -157,6 +157,7 @@ let reorg_rollup ctxt ~id ~level =
   let indices = aux_indices level in
   let aux ctxt i = Storage.Rollups.Block_content.remove ctxt (id , i) >>= return in
   let* ctxt = Error_monad.fold_left_s aux ctxt indices in
+  let* ctxt = Storage.Rollups.Rollup_content.update ctxt id { rollup with level = Z.(sub level one) } in
   return (indices , ctxt)
 
 (* Used for tests, debugging, etc. *)

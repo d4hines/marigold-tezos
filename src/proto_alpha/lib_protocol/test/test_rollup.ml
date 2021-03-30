@@ -69,6 +69,12 @@ let assert_fail x f =
       | None -> failwith "failed without error"
     )
 
+let assert_raise x f =
+  try (
+    let _ = x () in
+    raise (Failure "assert_raise: succeeded")
+  ) with e -> f e
+
 let assert_fail_proto x f =
   assert_fail x @@ function
   | Environment.Ecoproto_error x -> f x
@@ -140,12 +146,12 @@ let alter_block_commitment (alter : [`Root | `Signature | `None]) :
   | _ -> raise (Failure "expected only one micro block")
 
 
-let basic_commit ?(alter=`None) ~accounts i o_ctxt index =
+let basic_commit ?(alter=`None) ~accounts i o_ctxt =
   let (bls_a , bls_b) = accounts in
   (* Operate some operations Offchain *)
   let o_ctxt =
-    let op_a = Client.sign_add_int ~counter:index ~account:bls_a 42 in
-    let op_b = Client.sign_add_int ~counter:index ~account:bls_b (-23) in
+    let op_a = Client.sign_add_int o_ctxt ~account:bls_a 42 in
+    let op_b = Client.sign_add_int o_ctxt ~account:bls_b (-23) in
     let o_ctxt = Operator.process_signed_operation o_ctxt op_a in
     let o_ctxt = Operator.process_signed_operation o_ctxt op_b in
     o_ctxt
@@ -183,9 +189,9 @@ let counter_good = test "counter-good" @@ fun () ->
 
   let basic_commit = basic_commit ~accounts in
   (* Do multiple commitments *)
-  let* (i , o_ctxt , (bc_a , _)) = basic_commit i o_ctxt 1 in
-  let* (i , o_ctxt , (bc_b , _)) = basic_commit i o_ctxt 2 in
-  let* (i , o_ctxt , (bc_c , _)) = basic_commit i o_ctxt 3 in
+  let* (i , o_ctxt , (bc_a , _)) = basic_commit i o_ctxt in
+  let* (i , o_ctxt , (bc_b , _)) = basic_commit i o_ctxt in
+  let* (i , o_ctxt , (bc_c , _)) = basic_commit i o_ctxt in
   ignore i ;
   ignore o_ctxt ;
   (* Have a validator check them *)
@@ -216,7 +222,7 @@ let counter_rejection = test "counter-rejection" @@ fun () ->
   
   (* Try to commit bad content *)
   let* () =
-    let* (i , _ , (bc , level)) = basic_commit ~accounts ~alter:`Root i o_ctxt 1 in
+    let* (i , _ , (bc , level)) = basic_commit ~accounts ~alter:`Root i o_ctxt in
     (* Have a validator check them *)
     let v_ctxt = Validator.empty ~rollup_id in
     let { micro_block_index ; state_trace } : Validator.bad =
@@ -247,22 +253,22 @@ let counter_rejection = test "counter-rejection" @@ fun () ->
   in
   (* Try to commit bad signatures *)
   let* () =
-    let* (i , _ , (bc , level)) = basic_commit ~alter:`Signature ~accounts i o_ctxt 2 in
+    let* (i , _ , (bc , level)) = basic_commit ~alter:`Signature ~accounts i o_ctxt in
     (* Have a validator check them *)
     let v_ctxt = Validator.empty ~rollup_id in
-    let { micro_block_index ; _ } : Validator.bad =
+    let { micro_block_index ; state_trace } : Validator.bad =
       try (
         let _ = Validator.process_block_commitment v_ctxt bc in
         raise @@ Failure("unexpected success")
       ) with
       | Validator.Bad x -> x
       | exn ->
-        Format.printf "Woo: %s\n" @@ Printexc.to_string exn ;
-        raise @@ Failure("unexpected error")
+        raise exn
+        (* raise @@ Failure("unexpected error") *)
     in
     (* Have the validator do the rejection proof *)
     let* () =
-      let is = Validator.invalid_signature ~micro_block_index ~level v_ctxt in
+      let is = Validator.invalid_signature ~micro_block_index ~level v_ctxt state_trace in
       let* op = Op.Rollup.reject_block (I i) ~source:rollup_watcher is in
       let* i = Incremental.add_operation i op in
       let* result = Incremental.get_last_operation_result i in
@@ -293,7 +299,7 @@ let counter_rejection_too_old = test "counter-rejection-too-old" @@ fun () ->
   let* i = bake i in
   
   (* Commit bad content *)
-  let* (i , _ , (bc , level)) = basic_commit ~accounts ~alter:`Root i o_ctxt 1 in
+  let* (i , _ , (bc , level)) = basic_commit ~accounts ~alter:`Root i o_ctxt in
   (* Bake enough tezos blocks so that the rollup block is final *)
   let* i =
     let aux i _ =
@@ -346,7 +352,7 @@ let counter_invalid_rejection = test "counter-invalid-rejection" @@ fun () ->
   let v_ctxt = Validator.empty ~rollup_id in
   (* Fake commit bad content to get the good rejection *)
   let* (micro_block_index , state_trace) =
-    let* (_ , _ , (bc , _)) = basic_commit ~accounts ~alter:`Root i o_ctxt 1 in
+    let* (_ , _ , (bc , _)) = basic_commit ~accounts ~alter:`Root i o_ctxt in
     (* Have a validator check them *)
     let v_ctxt = Validator.empty ~rollup_id in
     let { micro_block_index ; state_trace } : Validator.bad =
@@ -363,7 +369,7 @@ let counter_invalid_rejection = test "counter-invalid-rejection" @@ fun () ->
     return (micro_block_index , state_trace)
   in
   (* Commit Good content *)
-  let* (i , _ , (_ , level)) = basic_commit ~accounts i o_ctxt 1 in
+  let* (i , _ , (_ , level)) = basic_commit ~accounts i o_ctxt in
   let test micro_block_index level state_trace f =
     let br = Validator.invalid_state_hash ~micro_block_index ~level v_ctxt state_trace in
     let* op = Op.Rollup.reject_block (I i) ~source:rollup_watcher br in
@@ -389,7 +395,7 @@ let counter_invalid_rejection = test "counter-invalid-rejection" @@ fun () ->
   return ()
 
 let counter_double_inclusion = test "counter-double-inclusion" @@ fun () ->
-  let* ((rollup_operator , _rollup_watcher) , i) = bootstrap2 () in
+  let* ((rollup_operator , rollup_watcher) , i) = bootstrap2 () in
   (* Create Rollup Onchain *)
   let* (rollup_id , i) = create_counter_rollup ~rollup_operator i in
   (* Need to bake, rollups can start only in next block *)
@@ -400,30 +406,170 @@ let counter_double_inclusion = test "counter-double-inclusion" @@ fun () ->
 
   let (bls_a , _) = accounts in
   (* Create same operation offchain *)
-  let op_a = Client.sign_add_int ~counter:1 ~account:bls_a 42 in
-  let op_b = Client.sign_add_int ~counter:1 ~account:bls_a 23 in
+  let op_a = GenericClient.sign_add_int ~counter:Z.one ~rollup_id ~account:bls_a 42 in
+  let op_b = GenericClient.sign_add_int ~counter:Z.one ~rollup_id ~account:bls_a 23 in
   let o_ctxt = Operator.process_signed_operation o_ctxt op_a in
-  let o_ctxt = Operator.process_signed_operation o_ctxt op_b in
-  (* Commit the result Onchain *)
-  let* (i , _o_ctxt) =
-    let (block , o_ctxt) = Operator.finish_block o_ctxt in
-    let bc = Operator.commit_block o_ctxt block in
-    let* op = Op.Rollup.block_commitment (I i) ~source:o_ctxt.operator bc in
-    let* i = Incremental.add_operation i op in
-    return (i , o_ctxt)
+  (* Have the operator fail *)
+  let* () =
+    assert_raise (fun () -> Operator.process_signed_operation o_ctxt op_b) @@ function
+    | RA.Batcher.Invalid_signature -> return ()
+    | exn -> raise exn
   in
-  (* Need to bake, rollups can not post multiple commitments in the same block *)
-  let* _i = bake i in
+  (* Include bad operation *)
+  let o_ctxt = Operator.Wrong.include_signed_operation o_ctxt op_b in
+  (* Commit the result Onchain *)
+  let (block , o_ctxt) = Operator.finish_block o_ctxt in
+  let bc = Operator.commit_block o_ctxt block in
+  let* op = Op.Rollup.block_commitment (I i) ~source:o_ctxt.operator bc in
+  let* i = Incremental.add_operation i op in
+  let* (bc , level) =
+    let* result = Incremental.get_last_operation_result i in
+    assert_rollup_applied result @@ function
+    | Block_commitment_result { commitment ; level ; _ } -> return (commitment , level)
+    | _ -> failwith "expected a rollup block commitment result"
+  in
 
+  (* Need to bake, rollups can not post multiple commitments in the same block *)
+  let* i = bake i in
+  (* Have a validator check them *)
+  let v_ctxt = Validator.empty ~rollup_id in
+  let { micro_block_index ; state_trace } : Validator.bad =
+    try (
+      let _ = Validator.process_block_commitment v_ctxt bc in
+      raise @@ Failure "unexpected success"
+    ) with
+    | Validator.Bad x -> x
+    (* | _exn -> raise @@ Failure "unexpected error" *)
+    | exn -> raise exn
+  in
+  let br = Validator.invalid ~micro_block_index ~level v_ctxt state_trace in
+  let* op = Op.Rollup.reject_block (I i) ~source:rollup_watcher br in
+  let* i = Incremental.add_operation i op in
+  let* result = Incremental.get_last_operation_result i in
+  let* () =
+    assert_rollup_applied result @@ function
+    | Micro_block_rejection_result _ -> return ()
+    | _ -> failwith "unexpected result"
+  in
   
   return ()
 
+
+let counter_commit_after_rejection = test "counter-commit-after-rejection" @@ fun () ->
+  let* ((rollup_operator , rollup_watcher) , i) = bootstrap2 () in
+  
+  (* Create Rollup Onchain *)
+  let* (rollup_id , i) = create_counter_rollup ~rollup_operator i in
+  (* Need to bake, rollups can start only in next block *)
+  let* i = bake i in
+  (* Create Rollup Offchain *)
+  let o_ctxt = Operator.empty ~rollup_id ~operator:rollup_operator in
+  let accounts = bls_bootstrap2 () in
+  
+  (* Need to bake, rollups can start only in next block *)
+  let* i = bake i in
+  
+  (* Commit bad content *)
+  let* (i , _ , (bc , level)) = basic_commit ~accounts ~alter:`Root i o_ctxt in
+  (* Have a validator check them *)
+  let v_ctxt = Validator.empty ~rollup_id in
+  let { micro_block_index ; state_trace } : Validator.bad =
+    try (
+      let _ = Validator.process_block_commitment v_ctxt bc in
+      raise @@ Failure("unexpected success")
+    ) with
+    | Validator.Bad x -> x
+    | exn -> (
+        raise exn
+        (* raise @@ Failure("unexpected error") *)
+      )
+  in
+  (* Have the validator do the rejection proof *)
+  let br = Validator.invalid_state_hash ~micro_block_index ~level v_ctxt state_trace in
+  let* op = Op.Rollup.reject_block (I i) ~source:rollup_watcher br in
+  let* i = Incremental.add_operation i op in
+  let* result = Incremental.get_last_operation_result i in
+  let* () = assert_rollup_applied result @@ function
+    | Micro_block_rejection_result { removed_rollup_block_indices ; _ } -> (
+        assert (removed_rollup_block_indices = [ level ]) ;
+        return ()
+      )
+    | _ -> failwith "expected a rollup micro block rejection result"
+  in
+  let* i = bake i in
+  (* Resubmit valid block *)
+  let* (i , _ , _) = basic_commit ~accounts ~alter:`Root i o_ctxt in
+  ignore i ;
+  return ()
+
+
+let counter_prevent_cross_rollup_sign = test "counter-prevent-cross-rollup-sign" @@ fun () ->
+  let* ((rollup_operator , rollup_watcher) , i) = bootstrap2 () in
+  (* Create Rollup Onchain *)
+  let* (rollup_id , i) = create_counter_rollup ~rollup_operator i in
+  (* Need to bake, rollups can start only in next block *)
+  let* i = bake i in
+  (* Create Rollup Offchain *)
+  let o_ctxt = Operator.empty ~rollup_id ~operator:rollup_operator in
+  let accounts = bls_bootstrap2 () in
+
+  let (bls_a , bls_b) = accounts in
+  (* Create same operation offchain *)
+  let op_a = GenericClient.sign_add_int ~counter:Z.one ~rollup_id ~account:bls_a 42 in
+  let op_b = GenericClient.sign_add_int ~counter:Z.one ~rollup_id:(Z.succ rollup_id) ~account:bls_b 23 in
+  let o_ctxt = Operator.process_signed_operation o_ctxt op_a in
+  (* Have the operator fail *)
+  let* () =
+    assert_raise (fun () -> Operator.process_signed_operation o_ctxt op_b) @@ function
+    | RA.Batcher.Invalid_signature -> return ()
+    | exn -> raise exn
+  in
+  (* Include bad operation *)
+  let o_ctxt = Operator.Wrong.include_signed_operation o_ctxt op_b in
+  (* Commit the result Onchain *)
+  let (block , o_ctxt) = Operator.finish_block o_ctxt in
+  let bc = Operator.commit_block o_ctxt block in
+  let* op = Op.Rollup.block_commitment (I i) ~source:o_ctxt.operator bc in
+  let* i = Incremental.add_operation i op in
+  let* (bc , level) =
+    let* result = Incremental.get_last_operation_result i in
+    assert_rollup_applied result @@ function
+    | Block_commitment_result { commitment ; level ; _ } -> return (commitment , level)
+    | _ -> failwith "expected a rollup block commitment result"
+  in
+
+  (* Need to bake, rollups can not post multiple commitments in the same block *)
+  let* i = bake i in
+  (* Have a validator check them *)
+  let v_ctxt = Validator.empty ~rollup_id in
+  let { micro_block_index ; state_trace } : Validator.bad =
+    try (
+      let _ = Validator.process_block_commitment v_ctxt bc in
+      raise @@ Failure "unexpected success"
+    ) with
+    | Validator.Bad x -> x
+    (* | _exn -> raise @@ Failure "unexpected error" *)
+    | exn -> raise exn
+  in
+  let br = Validator.invalid ~micro_block_index ~level v_ctxt state_trace in
+  let* op = Op.Rollup.reject_block (I i) ~source:rollup_watcher br in
+  let* i = Incremental.add_operation i op in
+  let* result = Incremental.get_last_operation_result i in
+  let* () =
+    assert_rollup_applied result @@ function
+    | Micro_block_rejection_result _ -> return ()
+    | _ -> failwith "unexpected result"
+  in
+  
+  return ()
+
+
 (*
   TODO:
-  - Test double tx inclusion
-  - Test committing after rejection
-  - Test prevent sign tx from other rollup
+  - Cleanup view abstraction
+  - Abstract batcher incremental API
   - account compression (represent accounts as integers)
+  - events
   - tx_only rollup
   - Test bad state trace
   - Test too much gas
@@ -438,4 +584,6 @@ let tests = [
   counter_rejection_too_old ;
   counter_invalid_rejection ;
   counter_double_inclusion ;
+  counter_commit_after_rejection ;
+  counter_prevent_cross_rollup_sign ;
 ]

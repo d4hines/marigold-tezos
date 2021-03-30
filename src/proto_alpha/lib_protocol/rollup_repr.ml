@@ -33,6 +33,11 @@ end
 
 open Signature
 
+module Rollup_id = struct
+  type t = Z.t
+  let encoding : t Data_encoding.t = Data_encoding.z
+end
+
 module Rollup_level = struct
   type t = Z.t
   let encoding : t Data_encoding.t = Data_encoding.z
@@ -207,7 +212,7 @@ module Block_commitment = struct
   
   type t = {
     micro_block_commitments : micro list ;
-    rollup_id : Z.t ;
+    rollup_id : Rollup_id.t ;
   }
 
   let micro_encoding : micro Data_encoding.t = Data_encoding.(
@@ -270,7 +275,7 @@ module Block_rejection = struct
     )
 
   type t = {
-    rollup_id : Z.t ;
+    rollup_id : Rollup_id.t ;
     level : Rollup_level.t ;
     rejection_content : content ;
   }

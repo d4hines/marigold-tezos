@@ -39,9 +39,17 @@ type deposit = {
 type on_chain_operation =
   | Deposit of deposit
 
-
 module NS = New_storage
 module M = NS.Patricia
+
+let hex ppf b =
+  let s = Bytes.to_string b in
+  Format.fprintf ppf "0x" ;
+  for i = 0 to (String.length s) - 1 do
+    Format.fprintf ppf "%02x" (Char.code s.[i])
+  done ;
+  ()
+
 
 let max_stream_node_size = 1000000
 let max_leaf_size = max_stream_node_size - 100
@@ -76,18 +84,23 @@ module Stateful_produce_patricia() = struct
     include NS.Patricia_produce_stream
     let get_hash () = get_hash !t
     let get_full () = !t
-    let set_full x = t := x ; s := []
+    let set_full x = t := x
     let get k =
+      (* Hack.print @@ Format.asprintf "Patricia_produce.get %s -> " @@ NS.key_to_string k ; *)
       let (v , (t' , s')) = get (!t , !s) k in
+      (* Hack.print @@ Format.asprintf "%a\n" hex v ; *)
       t := t' ;
       s := s' ;
       v
     let mem k =
+      (* Hack.print @@ Format.asprintf "Patricia_produce.mem %s -> " @@ NS.key_to_string k ; *)
       let (b , (t' , s')) = mem (!t , !s) k in
+      (* Hack.print @@ Format.asprintf "%b\n" b ; *)
       t := t' ;
       s := s' ;
       b
     let set k v =
+      (* Hack.print @@ Format.asprintf "Patricia_produce.set %s -> %a\n" (NS.key_to_string k) hex v ; *)
       let (t' , s') = set (!t , !s) k v in
       t := t' ;
       s := s' ;
@@ -104,16 +117,21 @@ module Stateful_consume_patricia() = struct
     let get_full () = !t
     let set_full x = t := x
     let get k =
+      (* Hack.print @@ Format.asprintf "Patricia_consume.get %s -> " @@ NS.key_to_string k ; *)
       let (v , (t' , s')) = get (!t , !s) k in
+      (* Hack.print @@ Format.asprintf "%a\n" hex v ; *)
       t := t' ;
       s := s' ;
       v
     let mem k =
+      (* Hack.print @@ Format.asprintf "Patricia_consume.mem %s -> " @@ NS.key_to_string k ; *)
       let (b , (t' , s')) = mem (!t , !s) k in
+      (* Hack.print @@ Format.asprintf "%b\n" b ; *)
       t := t' ;
       s := s' ;
       b
     let set k v =
+      (* Hack.print @@ Format.asprintf "Patricia_produce.set %s -> %a\n" (NS.key_to_string k) hex v ; *)
       let (t' , s') = set (!t , !s) k v in
       t := t' ;
       s := s' ;
@@ -130,7 +148,6 @@ module Batcher = struct
   type hash = Hash of bytes
 
   exception Invalid_signature
-  exception Double_count
   
   module type PARAMETER = sig
     type t
@@ -148,7 +165,6 @@ module Batcher = struct
       let to_key : signer -> NS.key = fun signer ->
         let bytes = Data_encoding.Binary.to_bytes_exn Signature.public_key_encoding signer in
         NS.key_of_bytes bytes
-
       let of_value : NS.value -> t = fun raw ->
         match Data_encoding.(Binary.of_bytes z raw) with
         | Some x -> x
@@ -157,22 +173,33 @@ module Batcher = struct
         match Data_encoding.(Binary.to_bytes z raw) with
         | Some x -> x
         | None -> assert false
+      let encoding = Data_encoding.z
     end
 
     module Operation = struct
-      type t = {
+      type content = P.t
+      let content_encoding : content Data_encoding.t = P.encoding                       
+
+      type t = P.t
+      let encoding = content_encoding
+      
+      type explicit = {
         counter : Replay_counter.t ;
+        rollup_id : Rollup_id.t ;
         content : P.t ;
       }
 
-      let encoding : t Data_encoding.t = Data_encoding.(
+      let aux_explicit_encoding : explicit Data_encoding.t = Data_encoding.(
         conv
-          (fun { counter ; content } -> (counter , content))
-          (fun (counter , content) -> { counter ; content })
-        @@ tup2 z P.encoding
+          (fun { counter ; rollup_id ; content } -> (counter , rollup_id , content))
+          (fun (counter , rollup_id , content) -> { counter ; rollup_id ; content })
+        @@ tup3 Replay_counter.encoding Rollup_id.encoding P.encoding
       )
 
-      let to_bytes : t -> bytes = Data_encoding.Binary.to_bytes_exn encoding
+      let explicit_to_bytes : explicit -> bytes = Data_encoding.Binary.to_bytes_exn aux_explicit_encoding
+
+      let to_explicit ~counter ~rollup_id : t -> explicit = fun content ->
+        { counter ; rollup_id ; content }
     end
     
     type t = {
@@ -190,6 +217,26 @@ module Batcher = struct
           Signature.signature_encoding
       )
 
+    type explicit = {
+      content : (signer * Operation.t) list ;
+      rollup_id : Rollup.Rollup_id.t ;
+      aggregated_signature : Signature.signature ;
+    }
+
+    let explicit_encoding : explicit Data_encoding.t =
+      Data_encoding.(
+        conv
+          (fun { content = c ; rollup_id = r ; aggregated_signature = a } -> (c , r , a))
+          (fun (c , r , a) -> { content = c ; rollup_id = r ; aggregated_signature = a })
+        @@ tup3
+          (list (tup2 Signature.public_key_encoding Operation.encoding))
+          Rollup.Rollup_id.encoding
+          Signature.signature_encoding
+      )
+
+    let to_explicit ~rollup_id : t -> explicit = fun { content ; aggregated_signature } ->
+      { content ; rollup_id ; aggregated_signature }
+
     module Transition = functor (M : ROLLUP_STORAGE) -> struct
 
       module M = M
@@ -201,43 +248,76 @@ module Batcher = struct
             M.set_full save ;
             raise e
           )
-      
-      module Aux = P.Transition(M)
 
-      let single_operation : (signer * Operation.t) -> unit = fun (signer , op) ->
-        let Operation.{ counter ; content } = op in
+      module View = struct
 
-        (* Check Replay_counter *)
-        let key = Replay_counter.to_key signer in
-        let stored_counter =
+        let get_counter signer =
+          let key = Replay_counter.to_key signer in
           if M.mem key
           then Replay_counter.of_value (M.get key)
           else Z.zero
-        in
-        if Compare.Z.(counter <= stored_counter) then raise Double_count ;
-        M.set key (Replay_counter.to_value counter) ;
-        
-        (* Perform Operation *)
+
+        let set_counter signer counter =
+          let key = Replay_counter.to_key signer in
+          M.set key (Replay_counter.to_value counter)
+
+      end
+      
+      module PureView = struct
+        let with_state f t =
+          M.set_full t ;
+          f ()
+
+        let do_state f t =
+          with_state f t ;
+          M.get_full ()
+
+        let do_with_state f t =
+          let value = with_state f t in
+          (value , M.get_full ())
+
+        let get_counter = with_state @@ fun () -> View.get_counter
+        let set_counter s k v = (do_state @@ fun () -> View.set_counter k v) s
+      end
+      
+      module Aux = P.Transition(M)
+
+      let single_operation : (signer * Operation.content) -> unit = fun (signer , content) ->
         Aux.main ~source:signer ~parameter:content
         
+      let get_explicit_operation ~rollup_id : signer * Operation.t -> Operation.explicit =
+        fun (signer , content) ->
+        let stored_counter = View.get_counter signer in
+        let counter = Z.succ stored_counter in
+        View.set_counter signer counter ;
+        Operation.{ counter ; rollup_id ; content }        
       
-      let main : t -> unit = fun t ->
-        with_save @@ fun () ->
-        let { content ; aggregated_signature } = t in
-
-        (* Check Signatures *)
+      let check_signatures ~explicit_operations ~aggregated_signature =
         let open Rollup.Signature in
         let identified_hashes =
-          let aux : (signer * Operation.t) -> (public_key * hash) =
-            fun (signer , op) -> (signer , do_hash (Message (Operation.to_bytes op)))
+          let aux : (signer * Operation.explicit) -> (public_key * hash) =
+            fun (signer , op) ->
+              (* let message = Operation.explicit_to_bytes op in *)
+              (* Hack.print @@ Format.asprintf "\nCheck all signature:%a\n" hex message ; *)
+              (signer , do_hash (Message (Operation.explicit_to_bytes op)))
           in
-          List.map aux content
+          List.map aux explicit_operations
         in
         if (not @@ Rollup.Signature.check_signed_hashes { identified_hashes ; aggregated_signature })
         then raise Invalid_signature ;
+        ()
+
+        
+      let main : explicit -> unit = fun t ->
+        let { content = ops ; aggregated_signature ; rollup_id } = t in
+
+        let explicit_operations =
+          List.map (fun (x , y) -> (x , get_explicit_operation ~rollup_id (x , y))) ops
+        in
+        check_signatures ~explicit_operations ~aggregated_signature ;
         
         (* Perform Operations *)
-        List.iter single_operation content
+        List.iter single_operation ops
 
       let init () = Aux.init ()
       
@@ -252,12 +332,12 @@ module Batcher = struct
         T.init () ;
         S.get_full ()
 
-      let transition : M.t -> t -> M.t = fun s t ->
+      let transition : M.t -> explicit -> M.t = fun s t ->
         S.set_full s ;
         T.main t ;
         S.get_full ()
 
-      let single_transition : M.t  -> (signer * Operation.t) -> M.t = fun s (signer , op) ->
+      let single_transition : M.t  -> (signer * Operation.content) -> M.t = fun s (signer , op) ->
         S.set_full s ;
         T.single_operation (signer , op) ;
         S.get_full ()
@@ -272,7 +352,7 @@ module Batcher = struct
       module S = Stateful_produce_patricia()
       module T = Transition(S : ROLLUP_STORAGE)
       
-      let transition : M.t -> t -> state_trace = fun s t ->
+      let transition : M.t -> explicit -> state_trace = fun s t ->
         let s' = S.of_patricia s in
         S.set_full s' ;
         S.s := [] ;
@@ -286,7 +366,7 @@ module Batcher = struct
       module S = Stateful_consume_patricia()
       module T = Transition(S : ROLLUP_STORAGE)
       
-      let transition : hash:bytes -> t -> state_trace -> hash = fun ~hash t trace ->
+      let transition : hash:bytes -> explicit -> state_trace -> hash = fun ~hash t trace ->
         let s' = S.empty_hash hash in
         S.set_full s' ;
         S.s := List.rev trace ;
@@ -443,6 +523,10 @@ let main (ctxt : Alpha_context.t) ~(source : Contract.t) (content : Rollup.opera
           in
           let* () =
             try (
+              let parameter = Counter_rollup.Main.to_explicit ~rollup_id parameter in
+              (* Hack.print
+               * @@ Format.asprintf "\nSTART ROLLUP REPLAY ONCHAIN (trace length: %d)\n"
+               * @@ List.length state_trace ; *)
               let Hash after_hash' = Replay.transition ~hash parameter state_trace in
               if Compare.Bytes.(after_hash = after_hash')
               then fail (Rollup_invalid_rejection Rollup_valid)
@@ -450,6 +534,7 @@ let main (ctxt : Alpha_context.t) ~(source : Contract.t) (content : Rollup.opera
             ) with
             | Batcher.Invalid_signature -> return ()
             | _ -> fail (Rollup_invalid_rejection Rollup_unexpected_error)
+            (* | exn -> raise exn *)
           (* | Gas_overflow
            * | Persisting_state_too_big
            * | State_overflow
