@@ -129,7 +129,7 @@ module Update_keychain = struct
 
   let kc_sign t =
     match t.sign_by with
-    | Spending_key -> t.c_sk
-    | Consensus_key -> t.s_sk
+    | Spending_key -> t.s_sk
+    | Consensus_key -> t.c_sk
 end
 

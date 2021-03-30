@@ -92,11 +92,17 @@ let get_contract_delegate ctxt contract =
   Storage.Contract.Delegate.find ctxt contract
 
 let delegate_pubkey ctxt delegate =
-  Storage.Contract.Manager.find ctxt (Contract_repr.implicit_contract delegate)
+  Storage.Keychain.find ctxt delegate
   >>=? function
-  | None | Some (Manager_repr.Hash _) ->
+  | Some keychain ->
+    return Keychain_repr.(keychain.master_key)
+  | None ->
+    let contract = Contract_repr.implicit_contract delegate in
+    Storage.Contract.Manager.find ctxt contract
+    >>=? function
+    | None | Some (Manager_repr.Hash _) ->
       fail (Unregistered_delegate delegate)
-  | Some (Manager_repr.Public_key pk) ->
+    | Some (Manager_repr.Public_key pk) ->
       return pk
 
 let clear_cycle ctxt cycle =
@@ -169,6 +175,8 @@ module Random = struct
       seed
       [Bytes.of_string ("level " ^ use ^ ":"); int32_to_bytes position]
 
+  (* 這裡要回傳 pkh 而不是 pk
+     之後才可以用 pkh 去取得 master pkh*)
   let owner c kind (level : Level_repr.t) offset =
     let cycle = level.Level_repr.cycle in
     Seed_storage.for_cycle c cycle

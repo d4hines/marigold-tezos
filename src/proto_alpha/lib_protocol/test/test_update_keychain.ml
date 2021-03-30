@@ -40,7 +40,10 @@ let pk_pp = Signature.Public_key.pp
 
 let keychain_pp = Keychain.pp
 
+(* Utils *)
+
 let wrap x = Lwt.return (Environment.wrap_tzresult x)
+
 let wrap_result x = Lwt.return (Environment.wrap_tztrace x)
 
 let is_none msg k =
@@ -151,7 +154,6 @@ module Test_Operation = struct
   let test_update_keychain_transaction_by_arbitrary_key =
     test_update_keychain_transaction None
 
-
   let test_delayed_update () =
     let open Block in
     let policy = By_priority 0 in
@@ -206,6 +208,46 @@ module Test_Operation = struct
     checkMasterKey b pkh (Some pkB)
     >>=? fun () ->
     return_unit
+
+  (** Apply a single endorsement from the slot 0 endorser. *)
+  let test_simple_endorsement_with_keychain () =
+    Context.init 5
+    >>=? fun (b, accounts) ->
+    let src_contract = WithExceptions.Option.get ~loc:__LOC__ @@
+      List.nth accounts 0 in
+    Context.Contract.manager (B b) src_contract
+    >>=? fun src ->
+    let ({c_pk; s_pk; _ } as ba) =
+      new_key_chain src.pkh Consensus_key in
+    Op.update_keychain (B b) src_contract (Some c_pk) (Some s_pk)
+    >>=? fun op_ba ->
+    Block.bake b ~operation:op_ba
+    >>=? fun b ->
+    Context.get_endorser (B b)
+    >>=? fun (delegate, slots) ->
+    Op.endorsement_with_slot
+      ~delegate:(delegate, slots)
+      ~sk:(kc_sign ba)
+      (B b)
+      ()
+    >>=? fun op ->
+    Context.Contract.balance (B b) (Contract.implicit_contract delegate)
+    >>=? fun initial_balance ->
+    let policy = Block.Excluding [delegate] in
+    Block.get_next_baker ~policy b
+    >>=? fun (_, priority, _) ->
+    let () = Format.fprintf Format.std_formatter "---%s\n" __LOC__ in
+    (* problemic bake *)
+    Block.bake ~policy ~operations:[Operation.pack op] b
+    >>=? fun b2 ->
+    let () = Format.fprintf Format.std_formatter "---%s\n" __LOC__  in
+    Test_endorsement.assert_endorser_balance_consistency
+      ~loc:__LOC__
+      (B b2)
+      ~priority
+      ~endorsing_power:(List.length slots)
+      delegate
+      initial_balance
 
 end
 
@@ -383,4 +425,8 @@ let tests =
       "baking account test transaction by arbitrary key"
       `Quick
       Test_Operation.test_update_keychain_transaction_by_arbitrary_key;
+    Test_services.tztest
+      "keychain: endorsement by consensus key"
+      `Quick
+      Test_Operation.test_simple_endorsement_with_keychain;
   ]

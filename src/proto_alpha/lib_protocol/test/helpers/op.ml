@@ -59,7 +59,7 @@ let endorsement ?delegate ?level ctxt ?(signing_context = ctxt) () =
       signing_context
       op )
 
-let endorsement_with_slot ?delegate ?level ctxt ?(signing_context = ctxt) () =
+let endorsement_with_slot ?delegate ?sk ?level ctxt ?(signing_context = ctxt) () =
   (match delegate with None -> Context.get_endorser ctxt | Some v -> return v)
   >>=? fun (delegate_pkh, slots) ->
   let slot = WithExceptions.Option.get ~loc:__LOC__ (List.hd slots) in
@@ -73,10 +73,15 @@ let endorsement_with_slot ?delegate ?level ctxt ?(signing_context = ctxt) () =
           ok level )
     >|? fun level ->
     let op = Single (Endorsement {level}) in
+    let sk' =
+      (match sk with
+      | Some s -> s
+      | None -> delegate.sk)
+    in
     let endorsement =
       sign
         ~watermark:Signature.(Endorsement Chain_id.zero)
-        delegate.sk
+        sk'
         signing_context
         op
     in

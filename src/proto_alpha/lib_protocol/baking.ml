@@ -300,11 +300,14 @@ let check_endorsement_rights ctxt chain_id ~slot
     || Compare.Int.(slot >= Constants.endorsers_per_block ctxt)
   then fail (Invalid_endorsement_slot slot)
   else
+    (* 這裡主要是用 original pk 然後轉 pkh 在使用
+       而不是去讀去 manager key as its original pk *)
     let current_level = Level.current ctxt in
     let (Single (Endorsement {level; _})) = op.protocol_data.contents in
     Roll.endorsement_rights_owner ctxt (Level.from_raw ctxt level) ~slot
     >>=? fun pk ->
     let pkh = Signature.Public_key.hash pk in
+    (* 因此到這裡取得的是錯的 *)
     match Operation.check_signature pk chain_id op with
     | Error _ ->
         fail Unexpected_endorsement

@@ -36,6 +36,7 @@ val endorsement :
 
 val endorsement_with_slot :
   ?delegate:public_key_hash * int list ->
+  ?sk:Signature.Secret_key.t ->
   ?level:Raw_level.t ->
   Context.t ->
   ?signing_context:Context.t ->
