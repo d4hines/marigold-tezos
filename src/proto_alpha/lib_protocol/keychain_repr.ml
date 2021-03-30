@@ -1,3 +1,4 @@
+
 (*****************************************************************************)
 (*                                                                           *)
 (* Open Source License                                                       *)
@@ -36,6 +37,7 @@ type t = {
   master_key : Signature.Public_key.t;
   next_master_key : next_key;
   spending_key : Signature.Public_key.t;
+  forsaken_key : Signature.Public_key.t list;
 }
 
 type keychain = t
@@ -92,23 +94,31 @@ let next_key_encoding =
         (function Delay du -> Some ((), du) | _ -> None )
         (fun ((), du) -> Delay du) ]
 
-let pp ppf {master_key; next_master_key; spending_key} =
-  Format.fprintf ppf "master_key: %a (%a), spending_key: %a"
+let rec forsaken_key_pp ppf = function
+  | [] -> ()
+  | (k :: ks) ->
+    let () = Format.fprintf ppf "%a;" Signature.Public_key.pp k in
+    forsaken_key_pp ppf ks
+
+let pp ppf {master_key; next_master_key; spending_key; forsaken_key} =
+  Format.fprintf ppf "master_key: %a (%a), spending_key: %a\n%a"
     Signature.Public_key.pp
     master_key
     next_key_pp
     next_master_key
     Signature.Public_key.pp
     spending_key
+    forsaken_key_pp
+    forsaken_key
 
 let encoding =
   let open Data_encoding in
   conv
-    (fun {master_key; next_master_key; spending_key} ->
-      (master_key, next_master_key, spending_key))
-    (fun (master_key, next_master_key, spending_key) ->
-       {master_key; next_master_key;spending_key})
-    (obj3
+    (fun {master_key; next_master_key; spending_key; forsaken_key} ->
+      (master_key, next_master_key, spending_key, forsaken_key))
+    (fun (master_key, next_master_key, spending_key, forsaken_key) ->
+       {master_key; next_master_key;spending_key; forsaken_key})
+    (obj4
       (req
          "master_key"
          ~description:
@@ -123,4 +133,10 @@ let encoding =
          "spending_key"
          ~description:
            "The public key for transaction oply"
-         Signature.Public_key.encoding))
+         Signature.Public_key.encoding)
+      (req
+         "forsaken_key"
+         ~description:
+           "The old keys which shouldn't be used again"
+         (list Signature.Public_key.encoding))
+    )

@@ -981,6 +981,7 @@ module Keychain : sig
     master_key : Signature.Public_key.t;
     next_master_key : next_key;
     spending_key : Signature.Public_key.t;
+    forsaken_key : Signature.Public_key.t list;
   }
 
   val encoding : t Data_encoding.encoding
@@ -1011,6 +1012,9 @@ module Keychain : sig
 
   val get_spending_key :
     context -> public_key_hash -> public_key option tzresult Lwt.t
+
+  val get_forsaken_key :
+    context -> public_key_hash -> public_key list option tzresult Lwt.t
 
   val set :
     context ->

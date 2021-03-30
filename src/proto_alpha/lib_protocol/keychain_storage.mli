@@ -31,8 +31,9 @@ type keychain = Keychain_repr.t
 
 type context = Raw_context.t
 
-type error += (* Permanent *)
-              Unregistered_key_hash of pkh
+type error +=
+  (* Permanent *)
+  | Unregistered_key_hash of pkh
 
 val exists : Raw_context.t -> pkh -> bool Lwt.t
 
@@ -55,6 +56,9 @@ val get_master_key : context -> pkh -> pk option tzresult Lwt.t
 
 (** Get the current valid spending key *)
 val get_spending_key : context -> pkh -> pk option tzresult Lwt.t
+
+(** Get the current forsaken keys *)
+val get_forsaken_key : context -> pkh -> pk list option tzresult Lwt.t
 
 (** Update keychain with two given keys as master key and spending key
     Raises {!Unregistered_key_hash} if the keychain is non-existing *)

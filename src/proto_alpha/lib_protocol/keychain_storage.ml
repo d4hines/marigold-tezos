@@ -35,7 +35,11 @@ type context = Raw_context.t
 
 type error +=
   | (* Permanent *)
-      Unregistered_key_hash of Signature.Public_key_hash.t
+    Unregistered_key_hash of  Signature.Public_key_hash.t
+  | (* Permanent *)
+    Key_update_conflict
+  | (* Permanent *)
+    Key_update_forsaken
 
 let () =
   let open Data_encoding in
@@ -52,7 +56,29 @@ let () =
         k)
     (obj1 (req "hash" Signature.Public_key_hash.encoding))
     (function Unregistered_key_hash h -> Some h | _ -> None)
-    (fun h -> Unregistered_key_hash h)
+    (fun h -> Unregistered_key_hash h) ;
+  register_error_kind
+    `Permanent
+    ~id:"keychain.Key_update_conflict"
+    ~title:"???"
+    ~description:"???"
+    ~pp:(fun ppf () ->
+        Format.fprintf
+          ppf "Cannot update master key with the same master key itself.")
+    Data_encoding.unit
+    (function Key_update_conflict -> Some () | _ -> None)
+    (fun () -> Key_update_conflict) ;
+  register_error_kind
+    `Permanent
+    ~id:"keychain.Key_update_forsaken"
+    ~title:"???"
+    ~description:"???"
+    ~pp:(fun ppf () ->
+        Format.fprintf
+          ppf "Cannot update master key with a forsaken key.")
+    Data_encoding.unit
+    (function Key_update_forsaken -> Some () | _ -> None)
+    (fun () -> Key_update_forsaken)
 
 let exists ctx pkh = Storage.Keychain.mem ctx pkh
 
@@ -61,7 +87,7 @@ let init ctx pkh master_key spending_key =
   Storage.Keychain.init
     ctx
     pkh
-    {master_key; next_master_key ;spending_key}
+    {master_key; next_master_key ;spending_key; forsaken_key = []}
 
 let init_with_manager ctx pkh pk_opt =
   Contract_storage.get_manager_key ctx pkh
@@ -78,9 +104,13 @@ let master_key_update_internal ctx keychain : Keychain_repr.t =
   | Delay update ->
     let current_cycle = (Level_storage.current ctx).cycle in
     if Cycle_repr.(current_cycle >= update.activate_cycle) then
+      let current_master_key = keychain.master_key in
       let master_key = update.pending_key in
       let next_master_key = No_next_key in
-      {keychain with master_key; next_master_key}
+      {keychain with
+       master_key;
+       next_master_key;
+       forsaken_key = [current_master_key]}
     else keychain
 
 let find ctx pkh =
@@ -111,13 +141,30 @@ let get_spending_key ctx pkh =
     Some updated_keychain.spending_key
   else return_none
 
-let setup_next_key_internal ctx keychain pending_key : Keychain_repr.t =
-  let delayed_cycles = (Raw_context.constants ctx).master_key_delay_cycles in
-  let current_cycle = (Level_storage.current ctx).cycle in
-  let activate_cycle = Cycle_repr.add current_cycle delayed_cycles in
-  let update = Keychain_repr.{ activate_cycle; pending_key} in
-  let next = Keychain_repr.Delay update in
-  {keychain with Keychain_repr.next_master_key = next}
+let get_forsaken_key ctx pkh =
+  exists ctx pkh
+  >>= fun existing ->
+  if existing then
+    Storage.Keychain.get ctx pkh
+    >|=? fun keychain ->
+    let updated_keychain = master_key_update_internal ctx keychain in
+    Some updated_keychain.forsaken_key
+  else return_none
+
+let setup_next_key_internal ctx keychain pending_key =
+  let mk = keychain.master_key in
+  let fks = keychain.forsaken_key in
+  if Signature.Public_key.equal pending_key mk then
+    fail Key_update_conflict
+  else if List.exists (fun k -> Signature.Public_key.equal pending_key k) fks then
+    fail Key_update_forsaken
+  else
+    let delayed_cycles = (Raw_context.constants ctx).master_key_delay_cycles in
+    let current_cycle = (Level_storage.current ctx).cycle in
+    let activate_cycle = Cycle_repr.add current_cycle delayed_cycles in
+    let update = Keychain_repr.{ activate_cycle; pending_key} in
+    let next = Keychain_repr.Delay update in
+    return {keychain with Keychain_repr.next_master_key = next}
 
 let set ctx pkh master_key_opt spending_key_opt =
   exists ctx pkh
@@ -125,14 +172,17 @@ let set ctx pkh master_key_opt spending_key_opt =
   if existing then
     Storage.Keychain.get ctx pkh
     >>=? fun keychain ->
-    let keychain = match master_key_opt, spending_key_opt with
-      | None, None -> keychain
-      | None, Some spending_key -> {keychain with spending_key}
+    begin
+      match master_key_opt, spending_key_opt with
+      | None, None -> return keychain
+      | None, Some spending_key -> return {keychain with spending_key}
       | Some master_key, None ->
         setup_next_key_internal ctx keychain master_key
       | Some master_key, Some spending_key ->
         setup_next_key_internal ctx {keychain with spending_key} master_key
-    in Storage.Keychain.update ctx pkh keychain
+    end
+    >>=? fun keychain ->
+    Storage.Keychain.update ctx pkh keychain
   else fail (Unregistered_key_hash pkh)
 
 let set_master_key ctx pkh master_key =
@@ -141,7 +191,8 @@ let set_master_key ctx pkh master_key =
   if existing then
     Storage.Keychain.get ctx pkh
     >>=? fun keychain ->
-    let keychain_next = setup_next_key_internal ctx keychain master_key in
+    setup_next_key_internal ctx keychain master_key
+    >>=? fun keychain_next ->
     Storage.Keychain.update ctx pkh keychain_next
   else fail (Unregistered_key_hash pkh)
 

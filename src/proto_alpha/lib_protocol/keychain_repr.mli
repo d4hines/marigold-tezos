@@ -36,6 +36,7 @@ type t = {
   master_key : Signature.Public_key.t;
   next_master_key : next_key;
   spending_key : Signature.Public_key.t;
+  forsaken_key : Signature.Public_key.t list;
 }
 
 type keychain = t
