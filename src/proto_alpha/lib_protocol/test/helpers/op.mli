@@ -31,6 +31,7 @@ val endorsement :
   ?level:Raw_level.t ->
   Context.t ->
   ?signing_context:Context.t ->
+  ?sk:Signature.Secret_key.t ->
   unit ->
   Kind.endorsement Operation.t tzresult Lwt.t
 

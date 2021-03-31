@@ -36,7 +36,7 @@ let sign ?(watermark = Signature.Generic_operation) sk ctxt contents =
   let signature = Some (Signature.sign ~watermark sk unsigned) in
   ({shell = {branch}; protocol_data = {contents; signature}} : _ Operation.t)
 
-let endorsement ?delegate ?level ctxt ?(signing_context = ctxt) () =
+let endorsement ?delegate ?level ctxt ?(signing_context = ctxt) ?sk () =
   ( match delegate with
   | None ->
       Context.get_endorser ctxt >|=? fun (delegate, _slots) -> delegate
@@ -53,11 +53,19 @@ let endorsement ?delegate ?level ctxt ?(signing_context = ctxt) () =
           ok level )
     >|? fun level ->
     let op = Single (Endorsement {level}) in
-    sign
-      ~watermark:Signature.(Endorsement Chain_id.zero)
-      delegate.sk
-      signing_context
-      op )
+    match sk with
+    | Some s ->
+      (sign
+         ~watermark:Signature.(Endorsement Chain_id.zero)
+         s
+         signing_context
+         op )
+    | None ->
+      (sign
+         ~watermark:Signature.(Endorsement Chain_id.zero)
+         delegate.sk
+         signing_context
+         op ))
 
 let endorsement_with_slot ?delegate ?sk ?level ctxt ?(signing_context = ctxt) () =
   (match delegate with None -> Context.get_endorser ctxt | Some v -> return v)
