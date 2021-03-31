@@ -323,6 +323,44 @@ module Test_Operation = struct
      (Assert.proto_error ~loc:__LOC__ res (function
           | Contract_storage.Previously_revealed_key _ -> true
           | _ -> false ))
+
+   let test_origination_balances ~loc:_ ?(fee = Tez.zero) ?(credit = Tez.zero) ()
+     =
+     Context.init 1
+     >>=? fun (b, contracts) ->
+     let contract = WithExceptions.Option.get ~loc:__LOC__ @@ List.hd contracts in
+     Context.Contract.manager (B b) contract
+     >>=? fun src ->
+     let ({c_pk; s_pk; _ } as ba) = new_key_chain src.pkh Consensus_key in
+     Op.update_keychain (B b) contract (Some c_pk) (Some s_pk)
+     >>=? fun operation ->
+     Block.bake b ~operation
+     >>=? fun b ->
+     Context.Contract.balance (B b) contract
+     >>=? fun balance ->
+     Op.origination (B b) contract ~fee ~credit ~script:Op.dummy_script ~sk:ba.c_sk ~kc:ba
+     >>=? fun (operation, new_contract) ->
+     Context.get_constants (B b)
+     >>=? fun { parametric =
+                  {origination_size; cost_per_byte; block_security_deposit; _};
+                _ } ->
+     Tez.(cost_per_byte *? Int64.of_int origination_size)
+     >>?= fun origination_burn ->
+     Tez.( +? ) credit block_security_deposit
+     >>? Tez.( +? ) fee
+     >>? Tez.( +? ) origination_burn
+     >>? Tez.( +? ) Op.dummy_script_cost
+     >>?= fun total_fee ->
+     Block.bake ~operation b
+     >>=? fun b ->
+     (* check that after the block has been baked the source contract
+        was debited all the fees *)
+     Assert.balance_was_debited ~loc:__LOC__ (B b) contract balance total_fee
+     >>=? fun _ ->
+     (* check the balance of the originate contract is equal to credit *)
+     Assert.balance_is ~loc:__LOC__ (B b) new_contract credit
+
+   let test_balances_simple () = test_origination_balances ~loc:__LOC__ ()
 end
 
 module Test_Storage = struct
@@ -574,6 +612,7 @@ let tests =
       "keychain: revelation by consensus key"
       `Quick
       Test_Operation.test_simple_reveal;
+    Test_services.tztest "keychain: origination " `Quick Test_Operation.test_balances_simple;
     Test_services.tztest
       "keychain: delegation by consensus key"
       `Quick
