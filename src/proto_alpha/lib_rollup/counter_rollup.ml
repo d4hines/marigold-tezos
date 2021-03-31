@@ -26,34 +26,21 @@
 open Protocol
 
 module Counter = Rollup_apply.Counter_rollup
-module Main = Counter.Main
+
+open Counter
 
 module RA = Rollup_apply
 module R = Alpha_context.Rollup
 module S = R.Signature
 
-module CR = Main.MakeRegular()
-module CR_Reject = Main.MakeReject()
-module CR_Replay = Main.MakeReplay()
+module CR = Counter.Regular
+module CR_Reject = Counter.Reject
+module CR_Replay = Counter.Replay
 
-module BatcherView = CR.T.PureView
-
-type signed_operation = {
-  signer : S.public_key ;
-  content : Main.Operation.t ;
-  signature : S.signature ;
-}
-
-let signed_operation_encoding : signed_operation Data_encoding.t =
-  Data_encoding.(
-    conv
-    (fun { signer = se ; content = c ; signature = su } -> (se , c , su))
-    (fun (se , c , su) -> { signer = se ; content = c ; signature = su })
-  @@ tup3 S.public_key_encoding Main.Operation.encoding S.signature_encoding
-)
+module BatcherView = CR.T_aux.PureView
 
 type micro_block = {
-  rev_transactions : signed_operation list ;
+  rev_transactions : IntraOperation.signed list ;
   before_root : R.root ;
   after_root : R.root ;
   aggregated_signature_opt : S.signature option ;
@@ -77,7 +64,7 @@ module Commitment = struct
   let make_micro : micro_block -> R.Block_commitment.micro = fun mb ->
       let { rev_transactions ; before_root = _ ; after_root ; aggregated_signature_opt } = mb in
       let content =
-        let aux { signer ; content ; signature = _ } = (signer , content) in
+        let aux IntraOperation.{ signer ; content ; signature = _ } = (signer , content) in
         List.map aux @@
         List.rev rev_transactions
       in
@@ -85,7 +72,7 @@ module Commitment = struct
         | Some x -> x
         | None -> raise (Failure "no aggregated signature")
       in
-      let parameter = Data_encoding.Binary.to_bytes_exn Main.encoding Main.{ content ; aggregated_signature } in
+      let parameter = Data_encoding.Binary.to_bytes_exn Counter.Parameter.encoding { content ; aggregated_signature } in
       { parameter ; after_root }
     
   let make ~rollup_id : block -> R.Block_commitment.t = fun block ->
@@ -117,8 +104,6 @@ module Rejection = struct
 end
 
 module Operator = struct
-
-  module CR = Main.MakeRegular()
 
   type t = {
     current_micro_block : micro_block ;
@@ -176,21 +161,9 @@ module Operator = struct
     | None -> Some s
     | Some x -> Some (S.add_signature x s)
   
-  let process_signed_operation t ({ signer ; content ; signature } as signed_operation) =
-    let (raw_content , state) =
-      let { rollup_id ; state ; _ } = t in
-      let counter = BatcherView.get_counter state signer in
-      let counter = Z.succ counter in
-      let content = Main.Operation.to_explicit ~rollup_id ~counter content in
-      let state = BatcherView.set_counter state signer counter in
-      (Main.Operation.explicit_to_bytes content , state)
-    in
-    (* Format.printf "\nProcess signed content: %a\n" hex raw_content ; *)
-    let hash = S.do_hash (Message raw_content) in
-    (if not (S.check_signature signer hash signature)
-     then raise RA.Batcher.Invalid_signature) ; (* TODO: Add error *)
-    let operation = content in
-    let state = CR.single_transition state (signer , operation) in
+  let process_signed_operation t (IntraOperation.{ signer ; content ; signature } as signed_operation) =
+    let { state ; rollup_id ; _ } = t in
+    let state = CR.incremental_transition ~rollup_id state  { signer ; content ; signature } in
     let { before_root ; after_root = _ ; aggregated_signature_opt ; rev_transactions } =
       t.current_micro_block
     in
@@ -208,7 +181,7 @@ module Operator = struct
 
   module Wrong = struct
     (* Include signed operation without changing the state *)
-    let include_signed_operation t ({ signature ; _ } as signed_operation) =
+    let include_signed_operation t (IntraOperation.{ signature ; _ } as signed_operation) =
       let { before_root ; after_root ; aggregated_signature_opt ; rev_transactions } =
         t.current_micro_block
       in
@@ -249,11 +222,11 @@ module Validator = struct
     fun t (micro_block_index , { parameter ; after_root }) ->
     let { state = s ; rollup_id ; _ } = t in
     let parameter =
-      match Data_encoding.Binary.of_bytes_opt Main.encoding parameter with
+      match Data_encoding.Binary.of_bytes_opt Counter.Parameter.encoding parameter with
       | Some x -> x
       | None -> raise (Failure "bad encoding")
     in
-    let parameter = Main.to_explicit ~rollup_id parameter in
+    let parameter = Parameter.to_explicit ~rollup_id parameter in
     try (
       let s =
         try CR.transition s parameter
@@ -286,23 +259,23 @@ module Validator = struct
   let invalid_signature { rollup_id ; _ } = Rejection.invalid_signature ~rollup_id
   let invalid_state_hash { rollup_id ; _ } = Rejection.invalid_state_hash ~rollup_id
 
-  module View = RA.Counter_rollup.Internal.MakePureView(CR.T.M)
+  module View = Counter.Regular.View
 
 end
 
 
 module GenericClient = struct
 
-  let make_add z : Main.Operation.t =
+  let make_add z : IntraOperation.t =
     Add z
   
   let sign_operation ~rollup_id ~counter ~account ~operation =
-    let explicit_operation = Main.Operation.to_explicit ~counter ~rollup_id operation in
-    let raw_content = Main.Operation.explicit_to_bytes explicit_operation in
+    let explicit_operation = IntraOperation.to_explicit ~counter ~rollup_id operation in
+    let raw_content = IntraOperation.explicit_to_bytes explicit_operation in
     (* Format.printf "\nSign content: %a\n" hex raw_content ; *)
     let signature = S.(sign_hash account.secret_key @@ do_hash (Message raw_content)) in
     let signer = account.public_key in
-    { content = operation ; signature ; signer }
+    IntraOperation.{ content = operation ; signature ; signer }
 
   let sign_add ~rollup_id ~counter ~account z =
     let operation = make_add z in

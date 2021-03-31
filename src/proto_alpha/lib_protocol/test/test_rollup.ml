@@ -29,7 +29,9 @@ let (let*) x f = x >>=? f
 let (!*) i = Incremental.alpha_ctxt i
 let (let**) x f = x >>= fun x -> Lwt.return @@ Environment.wrap_tzresult x >>=? f
 
-module Rollup = Protocol.Alpha_context.Rollup
+module ProtocolCounter = Protocol.Rollup_apply.Counter_rollup
+module AlphaRollup = Protocol.Alpha_context.Rollup
+module LibCounter = Tezos_rollup_alpha.Counter
 
 let assert_rollup_applied : Protocol.operation_receipt -> (_ -> _ tzresult Lwt.t) -> _ = fun x f ->
   match x with
@@ -101,14 +103,13 @@ let bootstrap2 () =
   return ((a , b) , i)
 
 open Tezos_rollup_alpha.Counter
-module Main = Tezos_rollup_alpha.Counter.Main
 
 let bls_bootstrap2 () = S.Dev.(create_account () , create_account ())
 
 let create_counter_rollup ~rollup_operator i =
   let* i =
     let source = rollup_operator in
-    let kind = Rollup.Counter in
+    let kind = AlphaRollup.Counter in
     let* op = Op.Rollup.creation ~source ~kind (I i) in
     let* i = Incremental.add_operation i op in
     return i
@@ -132,11 +133,11 @@ let alter_block_commitment (alter : [`Root | `Signature | `None]) :
         { mbc with after_root }
       )
     | `Signature -> (
-        let parameter = Data_encoding.Binary.of_bytes_exn Main.encoding mbc.parameter in
+        let parameter = Data_encoding.Binary.of_bytes_exn ProtocolCounter.Parameter.encoding mbc.parameter in
         let Signature s = parameter.aggregated_signature in        
         let aggregated_signature = R.Signature.(Signature (Environment.Bls12_381.G2.(add one s))) in
         let parameter = { parameter with aggregated_signature } in
-        let parameter = Data_encoding.Binary.to_bytes_exn Main.encoding parameter in
+        let parameter = Data_encoding.Binary.to_bytes_exn ProtocolCounter.Parameter.encoding parameter in
         { mbc with parameter }
       )
     | `None -> mbc
@@ -566,15 +567,14 @@ let counter_prevent_cross_rollup_sign = test "counter-prevent-cross-rollup-sign"
 
 (*
   TODO:
-  - Cleanup view abstraction
-  - Abstract batcher incremental API
   - account compression (represent accounts as integers)
   - events
   - tx_only rollup
-  - Test bad state trace
+  - Split between good and bad accounts
   - Test too much gas
   - Test too big leaf
   - Test too much state
+  - Meter on chain gas and space
 *)
 
 
