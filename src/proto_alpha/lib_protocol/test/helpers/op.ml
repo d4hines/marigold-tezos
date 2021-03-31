@@ -339,7 +339,7 @@ let originated_contract op =
 exception Impossible
 
 let origination ?counter ?delegate ~script ?(preorigination = None) ?public_key
-    ?credit ?fee ?gas_limit ?storage_limit ctxt source =
+    ?credit ?fee ?gas_limit ?storage_limit ?sk ?kc ctxt source =
   Context.Contract.manager ctxt source
   >>=? fun account ->
   let default_credit = Tez.of_mutez @@ Int64.of_int 1000001 in
@@ -348,17 +348,32 @@ let origination ?counter ?delegate ~script ?(preorigination = None) ?public_key
   in
   let credit = Option.value ~default:default_credit credit in
   let operation = Origination {delegate; script; credit; preorigination} in
-  manager_operation
-    ?counter
-    ?public_key
-    ?fee
-    ?gas_limit
-    ?storage_limit
-    ~source
-    ctxt
-    operation
+  (match kc with 
+   | Some ba ->
+     manager_operation_update_keychain
+       ?counter
+       ?fee
+       ?gas_limit
+       ?storage_limit
+       ba
+       ctxt
+       operation
+   | None ->
+     manager_operation
+       ?counter
+       ?public_key
+       ?fee
+       ?gas_limit
+       ?storage_limit
+       ~source
+       ctxt
+       operation
+  )
   >|=? fun sop ->
-  let op = sign account.sk ctxt sop in
+  let op = match sk with
+  | Some s -> sign s ctxt sop
+  | None -> sign account.sk ctxt sop
+  in
   (op, originated_contract op)
 
 let miss_signed_endorsement ?level ctxt =
