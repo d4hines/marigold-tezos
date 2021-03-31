@@ -407,8 +407,10 @@ let counter_double_inclusion = test "counter-double-inclusion" @@ fun () ->
 
   let (bls_a , _) = accounts in
   (* Create same operation offchain *)
-  let op_a = GenericClient.sign_add_int ~counter:Z.one ~rollup_id ~account:bls_a 42 in
-  let op_b = GenericClient.sign_add_int ~counter:Z.one ~rollup_id ~account:bls_a 23 in
+  let op_a = GenericClient.sign_add_int ~counter:Z.one ~rollup_id ~account:bls_a
+      (Client.signer_storage o_ctxt) 42 in
+  let op_b = GenericClient.sign_add_int ~counter:Z.one ~rollup_id ~account:bls_a
+      (Client.signer_storage o_ctxt) 23 in
   let o_ctxt = Operator.process_signed_operation o_ctxt op_a in
   (* Have the operator fail *)
   let* () =
@@ -516,8 +518,10 @@ let counter_prevent_cross_rollup_sign = test "counter-prevent-cross-rollup-sign"
 
   let (bls_a , bls_b) = accounts in
   (* Create same operation offchain *)
-  let op_a = GenericClient.sign_add_int ~counter:Z.one ~rollup_id ~account:bls_a 42 in
-  let op_b = GenericClient.sign_add_int ~counter:Z.one ~rollup_id:(Z.succ rollup_id) ~account:bls_b 23 in
+  let op_a = GenericClient.sign_add_int ~counter:Z.one ~rollup_id ~account:bls_a
+      (Client.signer_storage o_ctxt) 42 in
+  let op_b = GenericClient.sign_add_int ~counter:Z.one ~rollup_id:(Z.succ rollup_id) ~account:bls_b
+      (Client.signer_storage o_ctxt) 23 in
   let o_ctxt = Operator.process_signed_operation o_ctxt op_a in
   (* Have the operator fail *)
   let* () =
@@ -567,10 +571,10 @@ let counter_prevent_cross_rollup_sign = test "counter-prevent-cross-rollup-sign"
 
 (*
   TODO:
-  - account compression (represent accounts as integers)
+  - account compression for signer (represent accounts as integers)
   - events
   - tx_only rollup
-  - Split between good and bad accounts
+  - rethink all names
   - Test too much gas
   - Test too big leaf
   - Test too much state

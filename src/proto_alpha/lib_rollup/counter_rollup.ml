@@ -40,7 +40,7 @@ module CR_Replay = Counter.Replay
 module BatcherView = CR.T_aux.PureView
 
 type micro_block = {
-  rev_transactions : IntraOperation.signed list ;
+  rev_transactions : InfraOperation.signed list ;
   before_root : R.root ;
   after_root : R.root ;
   aggregated_signature_opt : S.signature option ;
@@ -64,7 +64,7 @@ module Commitment = struct
   let make_micro : micro_block -> R.Block_commitment.micro = fun mb ->
       let { rev_transactions ; before_root = _ ; after_root ; aggregated_signature_opt } = mb in
       let content =
-        let aux IntraOperation.{ signer ; content ; signature = _ } = (signer , content) in
+        let aux InfraOperation.{ signer ; content ; signature = _ } = (signer , content) in
         List.map aux @@
         List.rev rev_transactions
       in
@@ -161,7 +161,7 @@ module Operator = struct
     | None -> Some s
     | Some x -> Some (S.add_signature x s)
   
-  let process_signed_operation t (IntraOperation.{ signer ; content ; signature } as signed_operation) =
+  let process_signed_operation t (InfraOperation.{ signer ; content ; signature } as signed_operation) =
     let { state ; rollup_id ; _ } = t in
     let state = CR.incremental_transition ~rollup_id state  { signer ; content ; signature } in
     let { before_root ; after_root = _ ; aggregated_signature_opt ; rev_transactions } =
@@ -181,7 +181,7 @@ module Operator = struct
 
   module Wrong = struct
     (* Include signed operation without changing the state *)
-    let include_signed_operation t (IntraOperation.{ signature ; _ } as signed_operation) =
+    let include_signed_operation t (InfraOperation.{ signature ; _ } as signed_operation) =
       let { before_root ; after_root ; aggregated_signature_opt ; rev_transactions } =
         t.current_micro_block
       in
@@ -226,7 +226,7 @@ module Validator = struct
       | Some x -> x
       | None -> raise (Failure "bad encoding")
     in
-    let parameter = Parameter.to_explicit ~rollup_id parameter in
+    let parameter = Parameter.make_explicit ~rollup_id parameter in
     try (
       let s =
         try CR.transition s parameter
@@ -266,34 +266,42 @@ end
 
 module GenericClient = struct
 
-  let make_add z : IntraOperation.t =
+  let make_add z : InfraOperation.t =
     Add z
   
-  let sign_operation ~rollup_id ~counter ~account ~operation =
-    let explicit_operation = IntraOperation.to_explicit ~counter ~rollup_id operation in
-    let raw_content = IntraOperation.explicit_to_bytes explicit_operation in
+  let sign_operation ~rollup_id ~counter ~account (module M : RA.Batcher.ROLLUP_SIGNER_STORAGE) ~operation =
+    let module Make_explicit = InfraOperation.MakeMakeExplicit(M) in
+    let explicit_operation = Make_explicit.main ~counter ~rollup_id operation in
+    let raw_content = InfraOperation.explicit_to_bytes explicit_operation in
     (* Format.printf "\nSign content: %a\n" hex raw_content ; *)
     let signature = S.(sign_hash account.secret_key @@ do_hash (Message raw_content)) in
     let signer = account.public_key in
-    IntraOperation.{ content = operation ; signature ; signer }
+    InfraOperation.{ content = operation ; signature ; signer }
 
-  let sign_add ~rollup_id ~counter ~account z =
+  let sign_add ~rollup_id ~counter ~account (module M : RA.Batcher.ROLLUP_SIGNER_STORAGE) z =
     let operation = make_add z in
-    sign_operation ~account ~operation ~counter ~rollup_id
+    sign_operation ~account ~operation ~counter ~rollup_id (module M : RA.Batcher.ROLLUP_SIGNER_STORAGE)
 
-  let sign_add_int ~rollup_id ~counter ~account n =
-    sign_add ~account ~counter ~rollup_id (Z.of_int n)
+  let sign_add_int ~rollup_id ~counter ~account (module M : RA.Batcher.ROLLUP_SIGNER_STORAGE) n =
+    sign_add ~account ~counter ~rollup_id (module M : RA.Batcher.ROLLUP_SIGNER_STORAGE) (Z.of_int n)
 
 end
 
 
 module Client = struct
 
+  let signer_storage (t : Operator.t) : (module RA.Batcher.ROLLUP_SIGNER_STORAGE) =
+    let module SignerStorage : RA.Batcher.ROLLUP_SIGNER_STORAGE = struct    
+      let to_id signer = BatcherView.Signer.to_id signer t.state
+      let of_id id = BatcherView.Signer.of_id id t.state
+    end in
+    (module SignerStorage : RA.Batcher.ROLLUP_SIGNER_STORAGE)
+  
   let interactive f ~(account : S.account) (t : Operator.t) =
     let Operator.{ rollup_id ; state ; _ } = t in
-    let counter = BatcherView.get_counter state account.public_key in
+    let counter = BatcherView.get_counter account.public_key state in
     let counter = Z.succ counter in
-    f ~rollup_id ~counter ~account
+    f ~rollup_id ~counter ~account (signer_storage t)
 
   include GenericClient
   

@@ -135,61 +135,129 @@ end
 module Batcher = struct
 
   type signer = Signature.public_key
+  let  signer_encoding : signer Data_encoding.t = Signature.public_key_encoding
+  type signer_id = int
+  let signer_id_encoding : signer_id Data_encoding.t = Data_encoding.int31
   type hash = Hash of bytes
 
   exception Invalid_signature
+
+  
+  module type ROLLUP_SIGNER_STORAGE = sig
+    val of_id : signer_id -> signer
+    val to_id : signer -> signer_id
+  end
   
   module type PARAMETER = sig
-    type t
-    val encoding : t Data_encoding.t
-    module Transition : functor (M : ROLLUP_STORAGE) -> sig
+    module InfraOperation : sig
+      type t
+      val encoding : t Data_encoding.t
+      type explicit
+      val explicit_encoding : explicit Data_encoding.t
+
+      module MakeMakeExplicit : functor (M : ROLLUP_SIGNER_STORAGE) -> sig
+        val main : t -> explicit
+      end
+    end
+
+    module InfraTransition : functor (M : ROLLUP_STORAGE) -> sig
       val init : unit -> unit
-      val main : source:signer -> parameter:t -> unit
+      val main : source:signer -> parameter:InfraOperation.explicit -> unit
     end
   end
 
+  module Replay_counter = struct
+    type t = Z.t
+    let prefix k = Bytes.(cat (of_string "replay") k)
+    let to_key : signer -> NS.key = fun signer ->
+      let bytes = Data_encoding.Binary.to_bytes_exn Signature.public_key_encoding signer in
+      NS.key_of_bytes @@ prefix bytes
+    let of_value : NS.value -> t = fun raw ->
+      match Data_encoding.(Binary.of_bytes z raw) with
+      | Some x -> x
+      | None -> assert false
+    let to_value : t -> NS.value = fun raw ->
+      match Data_encoding.(Binary.to_bytes z raw) with
+      | Some x -> x
+      | None -> assert false
+    let encoding = Data_encoding.z
+  end
+
+  module Signer_storage = struct
+    (* TODO: explicit key size limit *)
+    type counter = int
+    let counter_encoding = Data_encoding.int31
+    let counter_key = NS.key_of_bytes @@ Bytes.of_string "signer-counter"
+        
+    let prefix_key k = Bytes.(cat (of_string "signer-id") k)
+    let signer_to_key : signer -> NS.key = fun signer ->
+      let bytes = Data_encoding.Binary.to_bytes_exn Signature.public_key_encoding signer in
+      NS.key_of_bytes @@ prefix_key bytes
+    let prefix_id k = Bytes.(cat (of_string "id-signer") k)
+    let id_to_key : signer_id -> NS.key = fun id ->
+      let bytes = Data_encoding.Binary.to_bytes_exn Data_encoding.int31 id in
+      NS.key_of_bytes @@ prefix_id bytes
+
+    let counter_of_value : NS.value -> counter = fun raw ->
+      match Data_encoding.(Binary.of_bytes counter_encoding raw) with
+      | Some x -> x
+      | None -> assert false
+    let counter_to_value : counter -> NS.value = fun raw ->
+      match Data_encoding.(Binary.to_bytes counter_encoding raw) with
+      | Some x -> x
+      | None -> assert false
+    let signer_of_value : NS.value -> signer = fun raw ->
+      match Data_encoding.(Binary.of_bytes signer_encoding raw) with
+      | Some x -> x
+      | None -> assert false
+    let signer_to_value : signer -> NS.value = fun raw ->
+      match Data_encoding.(Binary.to_bytes signer_encoding raw) with
+      | Some x -> x
+      | None -> assert false
+    let id_of_value : NS.value -> signer_id = fun raw ->
+      match Data_encoding.(Binary.of_bytes signer_id_encoding raw) with
+      | Some x -> x
+      | None -> assert false
+    let id_to_value : signer_id -> NS.value = fun raw ->
+      match Data_encoding.(Binary.to_bytes signer_id_encoding raw) with
+      | Some x -> x
+      | None -> assert false
+
+  end
+  
+  
   module Make(P : PARAMETER) = struct
 
-    module Replay_counter = struct
-      type t = Z.t
-      let to_key : signer -> NS.key = fun signer ->
-        let bytes = Data_encoding.Binary.to_bytes_exn Signature.public_key_encoding signer in
-        NS.key_of_bytes bytes
-      let of_value : NS.value -> t = fun raw ->
-        match Data_encoding.(Binary.of_bytes z raw) with
-        | Some x -> x
-        | None -> assert false
-      let to_value : t -> NS.value = fun raw ->
-        match Data_encoding.(Binary.to_bytes z raw) with
-        | Some x -> x
-        | None -> assert false
-      let encoding = Data_encoding.z
-    end
 
-    module Operation = struct
-      type content = P.t
-      let content_encoding : content Data_encoding.t = P.encoding                       
+    module InfraOperation = struct
+      type content = P.InfraOperation.explicit
+      let content_encoding : content Data_encoding.t = P.InfraOperation.explicit_encoding
 
-      type t = P.t
-      let encoding = content_encoding
+      type t = P.InfraOperation.t
+      let encoding = P.InfraOperation.encoding
       
       type explicit = {
         counter : Replay_counter.t ;
         rollup_id : Rollup_id.t ;
-        content : P.t ;
+        content : content ;
       }
 
       let aux_explicit_encoding : explicit Data_encoding.t = Data_encoding.(
         conv
           (fun { counter ; rollup_id ; content } -> (counter , rollup_id , content))
           (fun (counter , rollup_id , content) -> { counter ; rollup_id ; content })
-        @@ tup3 Replay_counter.encoding Rollup_id.encoding P.encoding
+        @@ tup3 Replay_counter.encoding Rollup_id.encoding content_encoding
       )
 
       let explicit_to_bytes : explicit -> bytes = Data_encoding.Binary.to_bytes_exn aux_explicit_encoding
 
-      let to_explicit ~counter ~rollup_id : t -> explicit = fun content ->
-        { counter ; rollup_id ; content }
+      module MakeMakeExplicit(M : ROLLUP_SIGNER_STORAGE) = struct
+        module MakeExplicit = P.InfraOperation.MakeMakeExplicit(M)
+        
+        let main ~counter ~rollup_id : t -> explicit = fun content ->
+          let content = MakeExplicit.main content in
+          { counter ; rollup_id ; content }
+      end
 
       type signed = {
         signer : Signature.public_key ;
@@ -210,7 +278,7 @@ module Batcher = struct
     module Parameter = struct
 
       type t = {
-        content : (signer * Operation.t) list ;
+        content : (signer * InfraOperation.t) list ;
         aggregated_signature : Signature.signature ;
       }
 
@@ -220,12 +288,12 @@ module Batcher = struct
             (fun { content = c ; aggregated_signature = a } -> (c , a))
             (fun (c , a) -> { content = c ; aggregated_signature = a })
           @@ tup2
-            (list (tup2 Signature.public_key_encoding Operation.encoding))
+            (list (tup2 Signature.public_key_encoding InfraOperation.encoding))
             Signature.signature_encoding
         )
 
       type explicit = {
-        content : (signer * Operation.t) list ;
+        content : (signer * InfraOperation.t) list ;
         rollup_id : Rollup.Rollup_id.t ;
         aggregated_signature : Signature.signature ;
       }
@@ -236,12 +304,12 @@ module Batcher = struct
             (fun { content = c ; rollup_id = r ; aggregated_signature = a } -> (c , r , a))
             (fun (c , r , a) -> { content = c ; rollup_id = r ; aggregated_signature = a })
           @@ tup3
-            (list (tup2 Signature.public_key_encoding Operation.encoding))
+            (list (tup2 Signature.public_key_encoding InfraOperation.encoding))
             Rollup.Rollup_id.encoding
             Signature.signature_encoding
         )
 
-      let to_explicit ~rollup_id : t -> explicit = fun { content ; aggregated_signature } ->
+      let make_explicit ~rollup_id : t -> explicit = fun { content ; aggregated_signature } ->
         { content ; rollup_id ; aggregated_signature }
 
     end
@@ -268,6 +336,31 @@ module Batcher = struct
         let set_counter signer counter =
           let key = Replay_counter.to_key signer in
           M.set key (Replay_counter.to_value counter)
+
+        module Signer : ROLLUP_SIGNER_STORAGE = struct
+          open Signer_storage
+
+          let to_id : signer -> signer_id = fun signer ->
+            let key = signer_to_key signer in
+            if M.mem key
+            then id_of_value (M.get key)
+            else (
+              let counter =
+                if M.mem counter_key
+                then counter_of_value (M.get counter_key)
+                else 0
+              in
+              let next_counter = counter + 1 in
+              M.set counter_key (counter_to_value next_counter) ;
+              M.set key (id_to_value counter) ;
+              counter
+            )
+
+          let of_id : signer_id -> signer = fun id ->
+            let key = id_to_key id in
+            signer_of_value @@ M.get key
+        end
+          
       end
       
       module PureView = struct
@@ -283,29 +376,36 @@ module Batcher = struct
           let value = with_state f t in
           (value , M.get_full ())
 
-        let get_counter = with_state @@ fun () -> StatefulView.get_counter
+        let get_counter s = with_state @@ fun () -> StatefulView.get_counter s
         let set_counter s k v = (do_state @@ fun () -> StatefulView.set_counter k v) s
+
+        module Signer = struct
+          let to_id signer = with_state @@ fun () -> StatefulView.Signer.to_id signer
+          let of_id id = with_state @@ fun () -> StatefulView.Signer.of_id id
+        end
       end
 
       module Stateful = struct
-        module Aux = P.Transition(M)
+        module Aux = P.InfraTransition(M)
+        module MakeExplicit = InfraOperation.MakeMakeExplicit(StatefulView.Signer)
 
-        let single_operation : (signer * Operation.content) -> unit = fun (signer , content) ->
-          Aux.main ~source:signer ~parameter:content
 
-        let get_explicit_operation ~rollup_id : signer * Operation.t -> Operation.explicit =
+        let get_explicit_operation ~rollup_id : signer * InfraOperation.t -> InfraOperation.explicit =
           fun (signer , content) ->
           let stored_counter = StatefulView.get_counter signer in
           let counter = Z.succ stored_counter in
           StatefulView.set_counter signer counter ;
-          Operation.{ counter ; rollup_id ; content }        
+          MakeExplicit.main ~counter ~rollup_id content
 
+        let single_operation : (signer * InfraOperation.explicit) -> unit = fun (signer , content) ->
+          Aux.main ~source:signer ~parameter:content.content
+        
         let check_signatures ~explicit_operations ~aggregated_signature =
           let open Rollup.Signature in
           let identified_hashes =
-            let aux : (signer * Operation.explicit) -> (public_key * hash) =
+            let aux : (signer * InfraOperation.explicit) -> (public_key * hash) =
               fun (signer , op) ->
-                (signer , do_hash (Message (Operation.explicit_to_bytes op)))
+                (signer , do_hash (Message (InfraOperation.explicit_to_bytes op)))
             in
             List.map aux explicit_operations
           in
@@ -320,24 +420,26 @@ module Batcher = struct
           in
           check_signatures ~explicit_operations ~aggregated_signature ;
           (* Perform Operations *)
-          List.iter single_operation ops
+          List.iter single_operation explicit_operations
 
         let init () = Aux.init ()
 
-        let main_incremental ~rollup_id : Operation.signed -> unit =
+        let main_incremental ~rollup_id : InfraOperation.signed -> unit =
           fun { signer ; content ; signature } ->
-          let raw_content =
+          let counter =
             let counter = StatefulView.get_counter signer in
             let counter = Z.succ counter in
-            let content = Operation.to_explicit ~rollup_id ~counter content in
             StatefulView.set_counter signer counter ;
-            Operation.explicit_to_bytes content
+            counter
+          in
+          let explicit = MakeExplicit.main ~rollup_id ~counter content in
+          let raw_content =
+            InfraOperation.explicit_to_bytes explicit
           in
           let hash = Signature.do_hash (Message raw_content) in
           (if not (Signature.check_signature signer hash signature)
-           then raise Invalid_signature) ; (* TODO: Add error *)
-          let operation = content in
-          single_operation (signer , operation) ;
+           then raise Invalid_signature) ;
+          single_operation (signer , explicit) ;
 
       end
     end
@@ -357,16 +459,21 @@ module Batcher = struct
         S.get_full ()
 
       let incremental_transition ~rollup_id
-        : M.t -> Operation.signed -> M.t =
+        : M.t -> InfraOperation.signed -> M.t =
         fun s x ->
         S.set_full s ;
         T.main_incremental ~rollup_id x ;
         S.get_full ()
         
-      let get_root : M.t -> _ = fun s ->
+      let get_root : M.t -> root = fun s ->
         S.set_full s ;
         Root (S.get_hash ())
 
+      let operation_make_explicit ~rollup_id : M.t -> signer -> InfraOperation.t -> InfraOperation.explicit =
+        fun s signer op ->
+        S.set_full s ;
+        T.get_explicit_operation ~rollup_id (signer , op)
+      
     end
     
     module Reject = struct
@@ -404,23 +511,42 @@ end
 module Counter_rollup = struct
 
   module Internal = struct
-    type t =
-      | Add of Z.t
 
-    let encoding : t Data_encoding.t =
-      Data_encoding.(
-        conv
-          (function Add x -> x) (fun x -> Add x)
-        @@ z
-      )
+    module InfraOperation = struct
+    
+      type t =
+        | Add of Z.t
+                   
+      let encoding : t Data_encoding.t =
+        Data_encoding.(
+          conv
+            (function Add x -> x) (fun x -> Add x)
+          @@ z
+        )
 
-    let z_encode = fun z -> Bytes.of_string (Z.to_string z)
-    let z_decode = fun bytes -> Z.of_string (Bytes.to_string bytes)
+      type explicit = t
+      let explicit_encoding = encoding
+      
+      module MakeMakeExplicit(M : Batcher.ROLLUP_SIGNER_STORAGE) = struct
+        let main x = x
+      end
 
-    let single_key = NS.key_of_bytes Bytes.empty
+      
+    end
 
-    module Transition = functor(M : ROLLUP_STORAGE) -> struct
+    module Counter_storage = struct
+
+      let z_encode = fun z -> Bytes.of_string (Z.to_string z)
+      let z_decode = fun bytes -> Z.of_string (Bytes.to_string bytes)
+          
+      let single_key = NS.key_of_bytes Bytes.empty
+    end
+
+    module InfraTransition = functor(M : ROLLUP_STORAGE) -> struct
+      open InfraOperation
+      
       module StatefulView = struct
+        open Counter_storage
         let get () = z_decode @@ M.get single_key
         let set n = M.set single_key @@ z_encode n
       end
@@ -432,6 +558,7 @@ module Counter_rollup = struct
       open StatefulView
 
       let init () : unit =
+        let open Counter_storage in
         M.set_full M.empty ;
         M.set single_key (z_encode Z.zero)
       
@@ -442,29 +569,30 @@ module Counter_rollup = struct
             let counter = get () in
             set (Z.add counter z)
           )
+
     end
   end
 
   module AuxBatched = Batcher.Make(Internal)
 
-  module IntraOperation = AuxBatched.Operation
+  module InfraOperation = AuxBatched.InfraOperation
   module Parameter = AuxBatched.Parameter
   
   module Regular = struct
     include AuxBatched.Regular
-    module Aux = Internal.Transition(S)
+    module Aux = Internal.InfraTransition(S)
     module View = Aux.PureView
   end
 
   module Reject = struct
     include AuxBatched.Reject
-    module Aux = Internal.Transition(S)
+    module Aux = Internal.InfraTransition(S)
     module View = Aux.PureView
   end
 
   module Replay = struct
     include AuxBatched.Replay
-    module Aux = Internal.Transition(S)
+    module Aux = Internal.InfraTransition(S)
     module View = Aux.PureView
   end
       
@@ -561,7 +689,7 @@ let main (ctxt : Alpha_context.t) ~(source : Contract.t) (content : Rollup.opera
           in
           let* () =
             try (
-              let parameter = Counter_rollup.Parameter.to_explicit ~rollup_id parameter in
+              let parameter = Counter_rollup.Parameter.make_explicit ~rollup_id parameter in
               let Hash after_hash' = Replay.transition ~hash parameter state_trace in
               if Compare.Bytes.(after_hash = after_hash')
               then fail (Rollup_invalid_rejection Rollup_valid)
