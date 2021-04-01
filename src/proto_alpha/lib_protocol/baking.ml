@@ -280,14 +280,13 @@ let endorsement_rights ctxt level =
   fold_right_s
     (fun slot acc ->
       Roll.endorsement_rights_owner ctxt level ~slot
-      >|=? fun pk ->
-      let pkh = Signature.Public_key.hash pk in
+      >|=? fun pkh ->
       let right =
         match Signature.Public_key_hash.Map.find_opt pkh acc with
         | None ->
-            (pk, [slot], false)
-        | Some (pk, slots, used) ->
-            (pk, slot :: slots, used)
+            ([slot], false)
+        | Some (slots, used) ->
+            (slot :: slots, used)
       in
       Signature.Public_key_hash.Map.add pkh right acc)
     (0 --> (Constants.endorsers_per_block ctxt - 1))
@@ -300,14 +299,12 @@ let check_endorsement_rights ctxt chain_id ~slot
     || Compare.Int.(slot >= Constants.endorsers_per_block ctxt)
   then fail (Invalid_endorsement_slot slot)
   else
-    (* 這裡主要是用 original pk 然後轉 pkh 在使用
-       而不是去讀去 manager key as its original pk *)
     let current_level = Level.current ctxt in
     let (Single (Endorsement {level; _})) = op.protocol_data.contents in
     Roll.endorsement_rights_owner ctxt (Level.from_raw ctxt level) ~slot
+    >>=? fun pkh ->
+    Roll.delegate_pubkey ctxt pkh
     >>=? fun pk ->
-    let pkh = Signature.Public_key.hash pk in
-    (* 因此到這裡取得的是錯的 *)
     match Operation.check_signature pk chain_id op with
     | Error _ ->
         fail Unexpected_endorsement
@@ -319,7 +316,7 @@ let check_endorsement_rights ctxt chain_id ~slot
         match Signature.Public_key_hash.Map.find_opt pkh endorsements with
         | None ->
             fail Unexpected_endorsement (* unexpected *)
-        | Some (_pk, slots, v) ->
+        | Some (slots, v) ->
             error_unless
               Compare.Int.(slot = List.hd slots)
               (Unexpected_endorsement_slot slot)
@@ -329,12 +326,10 @@ let select_delegate delegate delegate_list max_priority =
   let rec loop acc l n =
     if Compare.Int.(n >= max_priority) then return (List.rev acc)
     else
-      let (LCons (pk, t)) = l in
+      let (LCons (pkh, t)) = l in
       let acc =
         if
-          Signature.Public_key_hash.equal
-            delegate
-            (Signature.Public_key.hash pk)
+          Signature.Public_key_hash.equal delegate pkh
         then n :: acc
         else acc
       in

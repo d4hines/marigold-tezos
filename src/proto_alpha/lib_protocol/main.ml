@@ -170,7 +170,6 @@ let begin_construction ~chain_id ~predecessor_context:ctxt
         proto_header.contents
       >|=? fun (ctxt, protocol_data, baker, block_delay) ->
       let mode =
-        let baker = Signature.Public_key.hash baker in
         Full_construction {predecessor; baker; protocol_data; block_delay}
       in
       (mode, ctxt) )

@@ -400,8 +400,7 @@ module Baking_rights = struct
     let rec loop l acc priority =
       if Compare.Int.(priority > max_prio) then return (List.rev acc)
       else
-        let (Misc.LCons (pk, next)) = l in
-        let delegate = Signature.Public_key.hash pk in
+        let (Misc.LCons (delegate, next)) = l in
         ( match pred_timestamp with
         | None ->
             ok_none
@@ -427,12 +426,12 @@ module Baking_rights = struct
       | _ :: _ -> (
           if Compare.Int.(priority > max_prio) then return (List.rev acc)
           else
-            let (Misc.LCons (pk, next)) = l in
+            let (Misc.LCons (pkh, next)) = l in
             next ()
             >>=? fun l ->
             match
               List.partition
-                (fun (pk', _) -> Signature.Public_key.equal pk pk')
+                (fun (_, pkh') -> Signature.Public_key_hash.equal pkh pkh')
                 delegates
             with
             | ([], _) ->
@@ -588,7 +587,7 @@ module Endorsing_rights = struct
     Baking.endorsement_rights ctxt level
     >|=? fun rights ->
     Signature.Public_key_hash.Map.fold
-      (fun delegate (_, slots, _) acc ->
+      (fun delegate (slots, _) acc ->
         {level = level.level; delegate; slots; estimated_time} :: acc)
       rights
       []

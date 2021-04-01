@@ -107,7 +107,7 @@ val begin_full_construction :
   t ->
   Time.t ->
   Block_header.contents ->
-  (t * Block_header.contents * public_key * Period.t, error trace) result Lwt.t
+  (t * Block_header.contents * public_key_hash * Period.t, error trace) result Lwt.t
 
 val begin_application :
   t ->

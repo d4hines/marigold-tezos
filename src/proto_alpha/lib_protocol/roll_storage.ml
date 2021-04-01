@@ -175,8 +175,6 @@ module Random = struct
       seed
       [Bytes.of_string ("level " ^ use ^ ":"); int32_to_bytes position]
 
-  (* 這裡要回傳 pkh 而不是 pk
-     之後才可以用 pkh 去取得 master pkh*)
   let owner c kind (level : Level_repr.t) offset =
     let cycle = level.Level_repr.cycle in
     Seed_storage.for_cycle c cycle
@@ -290,7 +288,7 @@ module Delegate = struct
            limbo : roll -> limbo_head -> ... *)
         ok (roll, ctxt)
 
-  let create_roll_in_delegate ctxt delegate delegate_pk =
+  let create_roll_in_delegate ctxt delegate =
     consume_roll_change ctxt delegate
     >>=? fun ctxt ->
     (* beginning:
@@ -301,7 +299,7 @@ module Delegate = struct
     >>=? fun delegate_head ->
     get_limbo_roll ctxt
     >>=? fun (roll, ctxt) ->
-    Storage.Roll.Owner.init ctxt roll delegate_pk
+    Storage.Roll.Owner.init ctxt roll delegate
     >>=? fun ctxt ->
     Storage.Roll.Successor.find ctxt roll
     >>=? fun limbo_successor ->
@@ -359,14 +357,12 @@ module Delegate = struct
     >>?= fun change ->
     Storage.Roll.Delegate_change.update ctxt delegate change
     >>=? fun ctxt ->
-    delegate_pubkey ctxt delegate
-    >>=? fun delegate_pk ->
     let rec loop ctxt change =
       if Tez_repr.(change < tokens_per_roll) then return ctxt
       else
         Tez_repr.(change -? tokens_per_roll)
         >>?= fun change ->
-        create_roll_in_delegate ctxt delegate delegate_pk
+        create_roll_in_delegate ctxt delegate
         >>=? fun ctxt -> loop ctxt change
     in
     is_inactive ctxt delegate
@@ -482,14 +478,12 @@ module Delegate = struct
         ctxt
         (Contract_repr.implicit_contract delegate)
       >>= fun ctxt ->
-      delegate_pubkey ctxt delegate
-      >>=? fun delegate_pk ->
       let rec loop ctxt change =
         if Tez_repr.(change < tokens_per_roll) then return ctxt
         else
           Tez_repr.(change -? tokens_per_roll)
           >>?= fun change ->
-          create_roll_in_delegate ctxt delegate delegate_pk
+          create_roll_in_delegate ctxt delegate
           >>=? fun ctxt -> loop ctxt change
       in
       loop ctxt change

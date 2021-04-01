@@ -181,7 +181,7 @@ val internal_nonce_already_recorded : t -> int -> bool
     endorsing slots (in increasing order) for a given level. *)
 val allowed_endorsements :
   t ->
-  (Signature.Public_key.t * int list * bool) Signature.Public_key_hash.Map.t
+  (int list * bool) Signature.Public_key_hash.Map.t
 
 (** Keep track of the number of endorsements that are included in a block *)
 val included_endorsements : t -> int
@@ -190,7 +190,7 @@ val included_endorsements : t -> int
     called once. *)
 val init_endorsements :
   t ->
-  (Signature.Public_key.t * int list * bool) Signature.Public_key_hash.Map.t ->
+  (int list * bool) Signature.Public_key_hash.Map.t ->
   t
 
 (** Marks an endorsement in the map as used. *)

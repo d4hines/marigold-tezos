@@ -96,7 +96,10 @@ val snapshot_rolls : Raw_context.t -> Raw_context.t tzresult Lwt.t
 *)
 val fold :
   Raw_context.t ->
-  f:(Roll_repr.roll -> Signature.Public_key.t -> 'a -> 'a tzresult Lwt.t) ->
+  f:(Roll_repr.roll ->
+     Signature.Public_key_hash.t ->
+     'a ->
+     'a tzresult Lwt.t) ->
   'a ->
   'a tzresult Lwt.t
 
@@ -107,7 +110,7 @@ val baking_rights_owner :
   Raw_context.t ->
   Level_repr.t ->
   priority:int ->
-  Signature.Public_key.t tzresult Lwt.t
+  Signature.Public_key_hash.t tzresult Lwt.t
 
 (**
    May return a [No_roll_snapshot_for_cycle] error.
@@ -116,7 +119,7 @@ val endorsement_rights_owner :
   Raw_context.t ->
   Level_repr.t ->
   slot:int ->
-  Signature.Public_key.t tzresult Lwt.t
+  Signature.Public_key_hash.t tzresult Lwt.t
 
 module Delegate : sig
   val is_inactive :

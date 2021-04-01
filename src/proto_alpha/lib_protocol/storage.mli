@@ -52,7 +52,7 @@ module Roll : sig
     Indexed_data_snapshotable_storage
       with type key = Roll_repr.t
        and type snapshot = Cycle_repr.t * int
-       and type value = Signature.Public_key.t
+       and type value = Signature.Public_key_hash.t
        and type t := Raw_context.t
 
   val clear : Raw_context.t -> Raw_context.t Lwt.t

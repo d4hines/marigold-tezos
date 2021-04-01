@@ -1030,7 +1030,7 @@ module Roll = struct
          end))
          (Snapshoted_owner_index)
       (Make_index (Roll_repr.Index))
-      (Signature.Public_key)
+      (Signature.Public_key_hash)
 
   module Snapshot_for_cycle = Cycle.Roll_snapshot
   module Last_for_snapshot = Cycle.Last_roll

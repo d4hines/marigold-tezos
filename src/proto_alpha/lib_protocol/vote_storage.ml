@@ -103,7 +103,6 @@ let update_listings ctxt =
   >>= fun ctxt ->
   Roll_storage.fold ctxt (ctxt, 0l) ~f:(fun _roll delegate (ctxt, total) ->
       (* TODO use snapshots *)
-      let delegate = Signature.Public_key.hash delegate in
       Storage.Vote.Listings.find ctxt delegate
       >|=? Option.value ~default:0l
       >>=? fun count ->

@@ -62,7 +62,7 @@ val check_baking_rights :
   context ->
   Block_header.contents ->
   Time.t ->
-  (public_key * Period.t) tzresult Lwt.t
+  (public_key_hash * Period.t) tzresult Lwt.t
 
 (** For a given level computes who has the right to
     include an endorsement in the next block.
@@ -70,7 +70,7 @@ val check_baking_rights :
 val endorsement_rights :
   context ->
   Level.t ->
-  (public_key * int list * bool) Signature.Public_key_hash.Map.t tzresult Lwt.t
+  (int list * bool) Signature.Public_key_hash.Map.t tzresult Lwt.t
 
 (** Check that the operation was signed by a the delegate allowed to
    endorse at the given slot and at the level specified by the
@@ -93,7 +93,7 @@ val endorsing_reward : context -> block_priority:int -> int -> Tez.t tzresult
 
 (** [baking_priorities ctxt level] is the lazy list of contract's
     public key hashes that are allowed to bake for [level]. *)
-val baking_priorities : context -> Level.t -> public_key lazy_list
+val baking_priorities : context -> Level.t -> public_key_hash lazy_list
 
 (** [first_baking_priorities ctxt ?max_priority contract_hash level]
     is a list of priorities of max [?max_priority] elements, where the

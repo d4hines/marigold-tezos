@@ -1392,24 +1392,28 @@ let apply_contents_list (type kind) ctxt chain_id mode pred_block baker
         level
         ~priority:bh1.protocol_data.contents.priority
       >>=? fun delegate1 ->
-      Baking.check_signature bh1 chain_id delegate1
+      Roll.delegate_pubkey ctxt delegate1
+      >>=? fun delegate1_pk ->
+      Baking.check_signature bh1 chain_id delegate1_pk
       >>=? fun () ->
       Roll.baking_rights_owner
         ctxt
         level
         ~priority:bh2.protocol_data.contents.priority
       >>=? fun delegate2 ->
-      Baking.check_signature bh2 chain_id delegate2
+      Roll.delegate_pubkey ctxt delegate2
+      >>=? fun delegate2_pk ->
+      Baking.check_signature bh2 chain_id delegate2_pk
       >>=? fun () ->
       fail_unless
-        (Signature.Public_key.equal delegate1 delegate2)
+        (Signature.Public_key.equal delegate1_pk delegate2_pk)
         (Inconsistent_double_baking_evidence
            {
-             delegate1 = Signature.Public_key.hash delegate1;
-             delegate2 = Signature.Public_key.hash delegate2;
+             delegate1;
+             delegate2;
            })
       >>=? fun () ->
-      let delegate = Signature.Public_key.hash delegate1 in
+      let delegate = delegate1 in
       Delegate.has_frozen_balance ctxt delegate level.cycle
       >>=? fun valid ->
       fail_unless valid Unrequired_double_baking_evidence
@@ -1579,7 +1583,9 @@ let begin_application ctxt chain_id block_header pred_timestamp =
     ctxt
     block_header.protocol_data.contents
     pred_timestamp
-  >>=? fun (delegate_pk, block_delay) ->
+  >>=? fun (delegate_pkh, block_delay) ->
+  Roll.delegate_pubkey ctxt delegate_pkh
+  >>=? fun delegate_pk ->
   Baking.check_signature block_header chain_id delegate_pk
   >>=? fun () ->
   let has_commitment =

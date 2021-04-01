@@ -1588,10 +1588,10 @@ module Roll : sig
   val cycle_end : context -> Cycle.t -> context tzresult Lwt.t
 
   val baking_rights_owner :
-    context -> Level.t -> priority:int -> public_key tzresult Lwt.t
+    context -> Level.t -> priority:int -> public_key_hash tzresult Lwt.t
 
   val endorsement_rights_owner :
-    context -> Level.t -> slot:int -> public_key tzresult Lwt.t
+    context -> Level.t -> slot:int -> public_key_hash tzresult Lwt.t
 
   val delegate_pubkey : context -> public_key_hash -> public_key tzresult Lwt.t
 
@@ -1653,11 +1653,11 @@ val record_endorsement : context -> Signature.Public_key_hash.t -> context
 
 val allowed_endorsements :
   context ->
-  (Signature.Public_key.t * int list * bool) Signature.Public_key_hash.Map.t
+  (int list * bool) Signature.Public_key_hash.Map.t
 
 val init_endorsements :
   context ->
-  (Signature.Public_key.t * int list * bool) Signature.Public_key_hash.Map.t ->
+  (int list * bool) Signature.Public_key_hash.Map.t ->
   context
 
 val included_endorsements : context -> int

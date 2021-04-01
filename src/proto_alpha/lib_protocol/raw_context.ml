@@ -89,7 +89,7 @@ type back = {
   deposits : Tez_repr.t Signature.Public_key_hash.Map.t;
   included_endorsements : int;
   allowed_endorsements :
-    (Signature.Public_key.t * int list * bool) Signature.Public_key_hash.Map.t;
+    (int list * bool) Signature.Public_key_hash.Map.t;
   fees : Tez_repr.t;
   rewards : Tez_repr.t;
   storage_space_to_pay : Z.t option;
@@ -219,9 +219,9 @@ let record_endorsement ctxt k =
   with
   | None ->
       assert false
-  | Some (_, _, true) ->
+  | Some (_, true) ->
       assert false (* right already used *)
-  | Some (d, s, false) ->
+  | Some (s, false) ->
       let ctxt =
         update_included_endorsements
           ctxt
@@ -231,7 +231,7 @@ let record_endorsement ctxt k =
         ctxt
         (Signature.Public_key_hash.Map.add
            k
-           (d, s, true)
+           (s, true)
            (allowed_endorsements ctxt))
 
 let init_endorsements ctxt allowed_endorsements' =
