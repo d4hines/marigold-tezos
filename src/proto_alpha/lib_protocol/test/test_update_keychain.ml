@@ -223,38 +223,38 @@ module Test_Operation = struct
 
   (** Apply a single endorsement from the slot 0 endorser. *)
   let test_simple_endorsement_with_keychain () =
-    Context.init 5
-    >>=? fun (b, accounts) ->
-    let src_contract = WithExceptions.Option.get ~loc:__LOC__ @@
-      List.nth accounts 0 in
-    Context.Contract.manager (B b) src_contract
-    >>=? fun src ->
-    let ({c_pk; s_pk; _ } as ba) =
-      new_key_chain src.pkh Consensus_key in
-    Op.update_keychain (B b) src_contract (Some c_pk) (Some s_pk)
+    Context.init 2
+    >>=? fun (b, account) ->
+    let acc1 = WithExceptions.Option.get ~loc:__LOC__ @@ List.nth account 0 in
+    Context.Contract.pkh acc1
+    >>=? fun pkh1 ->
+    let ({c_pk; s_pk; _ } as ba1) =
+      new_key_chain pkh1 Consensus_key in
+    Op.update_keychain (B b) acc1 (Some c_pk) (Some s_pk)
+    >>=? fun op_ba ->
+    Block.bake b ~operation:op_ba
+    >>=? fun b ->
+    let acc2 = WithExceptions.Option.get ~loc:__LOC__ @@ List.nth account 1 in
+    Context.Contract.pkh acc2
+    >>=? fun pkh2 ->
+    let ({c_pk; s_pk; _ } as ba2) =
+      new_key_chain pkh2 Consensus_key in
+    Op.update_keychain (B b) acc2 (Some c_pk) (Some s_pk)
     >>=? fun op_ba ->
     Block.bake b ~operation:op_ba
     >>=? fun b ->
     Context.get_endorser (B b)
     >>=? fun (delegate, slots) ->
-    let kcs = if Signature.Public_key_hash.equal delegate ba.ba_pkh then
-      Block.Keychain_list.empty
-    else
-      Block.Keychain_list.add ba.ba_pkh ba Block.Keychain_list.empty
-    in
-    Incremental.begin_construction b
-    >>=? fun i ->
-    let ctxt = Incremental.alpha_ctxt i in
-    Keychain.find ctxt delegate
-    >>= wrap >>=? fun o ->
-    let sk' =
-      (match o with
-      | Some _ ->  Some (kc_sign ba)
-      | None -> None)
+    let kcs = Block.Keychain_list.add ba1.ba_pkh ba1 Block.Keychain_list.empty in
+    let kcs = Block.Keychain_list.add ba2.ba_pkh ba2 kcs in
+    let ba = Block.Keychain_list.find delegate kcs in
+    let ba = match ba with
+    | Some ba -> ba
+    | None -> Stdlib.failwith "pkh not found"
     in
     Op.endorsement_with_slot
       ~delegate:(delegate, slots)
-      ?sk:sk'
+      ?sk:(Some (ba.c_sk))
       (B b)
       ()
     >>=? fun op ->
