@@ -201,20 +201,20 @@ module Test_Operation = struct
     checkMasterKey b pkh (Some pkA)
     >>=? fun () ->
     (* move cycle to 1 *)
-    bake_until_cycle_end ~policy b
+    bake_until_cycle_end ~policy ~kcs b
     >>=? fun b ->
     (* check: the master of pkh == pkA (<> pkB) *)
     checkMasterKey b pkh (Some pkA)
     >>=? fun () ->
     (* move cycle to n-1 *)
     let delta = master_key_delay_cycles - 2 in
-    bake_until_n_cycle_end ~policy delta b
+    bake_until_n_cycle_end ~policy ~kcs delta b
     >>=? fun b ->
     (* check: the master of pkh == pkA (<> pkB) *)
     checkMasterKey b pkh (Some pkA)
     >>=? fun () ->
     (* move cycle to n *)
-    bake_until_cycle_end ~policy b
+    bake_until_cycle_end ~policy ~kcs b
     >>=? fun b ->
     (* check: the master of pkh == pkB *)
     checkMasterKey b pkh (Some pkB)
