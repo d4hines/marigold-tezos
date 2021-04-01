@@ -129,7 +129,7 @@ let begin_partial_application ~chain_id ~ancestor_context:ctxt
   >|=? fun (ctxt, baker, block_delay) ->
   let mode =
     Partial_application
-      {block_header; baker = Signature.Public_key.hash baker; block_delay}
+      {block_header; baker; block_delay}
   in
   {mode; chain_id; ctxt; op_count = 0; migration_balance_updates}
 
@@ -145,7 +145,7 @@ let begin_application ~chain_id ~predecessor_context:ctxt
   >|=? fun (ctxt, baker, block_delay) ->
   let mode =
     Application
-      {block_header; baker = Signature.Public_key.hash baker; block_delay}
+      {block_header; baker; block_delay}
   in
   {mode; chain_id; ctxt; op_count = 0; migration_balance_updates}
 

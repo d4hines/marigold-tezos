@@ -129,17 +129,35 @@ val bake :
   t tzresult Lwt.t
 
 (** Bakes [n] blocks. *)
-val bake_n : ?policy:baker_policy -> int -> t -> block tzresult Lwt.t
+val bake_n :
+  ?policy:baker_policy ->
+  ?kcs:Account.Update_keychain.t Keychain_list.t ->
+  int ->
+  t ->
+  block tzresult Lwt.t
 
 val current_cycle : t -> Cycle.t tzresult Lwt.t
 
 (** Given a block [b] at level [l] bakes enough blocks to complete a cycle,
     that is [blocks_per_cycle - (l % blocks_per_cycle)]. *)
-val bake_until_cycle_end : ?policy:baker_policy -> t -> t tzresult Lwt.t
+val bake_until_cycle_end :
+  ?policy:baker_policy ->
+  ?kcs:Account.Update_keychain.t Keychain_list.t ->
+  t ->
+  t tzresult Lwt.t
 
 (** Bakes enough blocks to end [n] cycles. *)
 val bake_until_n_cycle_end :
-  ?policy:baker_policy -> int -> t -> t tzresult Lwt.t
+  ?policy:baker_policy ->
+  ?kcs:Account.Update_keychain.t Keychain_list.t ->
+  int ->
+  t ->
+  t tzresult Lwt.t
 
 (** Bakes enough blocks to reach the cycle. *)
-val bake_until_cycle : ?policy:baker_policy -> Cycle.t -> t -> t tzresult Lwt.t
+val bake_until_cycle :
+  ?policy:baker_policy ->
+  ?kcs:Account.Update_keychain.t Keychain_list.t ->
+  Cycle.t ->
+  t ->
+  t tzresult Lwt.t

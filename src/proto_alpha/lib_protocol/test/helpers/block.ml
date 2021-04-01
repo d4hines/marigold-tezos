@@ -396,7 +396,8 @@ let apply header ?(operations = []) pred =
     operations
   >>=? fun vstate ->
   Main.finalize_block vstate
-  >|=? fun (validation, _result) -> validation.context)
+  >|=? fun (validation, _result) ->
+  validation.context)
   >|= Environment.wrap_tzresult
   >|=? fun context ->
   let hash = Block_header.hash header in
@@ -416,26 +417,27 @@ let bake ?policy ?timestamp ?operation ?operations ?kcs pred =
   in
   Forge.forge_header ?timestamp ?policy ?operations pred
   >>=? fun header ->
-  Forge.sign_header ?kcs header >>=? fun header -> apply header ?operations pred
+  Forge.sign_header ?kcs header >>=? fun header ->
+  apply header ?operations pred
 
 (********** Cycles ****************)
 
 (* This function is duplicated from Context to avoid a cyclic dependency *)
 let get_constants b = Alpha_services.Constants.all rpc_ctxt b
 
-let bake_n ?policy n b =
-  List.fold_left_es (fun b _ -> bake ?policy b) b (1 -- n)
+let bake_n ?policy ?kcs n b =
+  List.fold_left_es (fun b _ -> bake ?policy b ?kcs) b (1 -- n)
 
-let bake_until_cycle_end ?policy b =
+let bake_until_cycle_end ?policy ?kcs b =
   get_constants b
   >>=? fun Constants.{parametric = {blocks_per_cycle; _}; _} ->
   let current_level = b.header.shell.level in
   let current_level = Int32.rem current_level blocks_per_cycle in
   let delta = Int32.sub blocks_per_cycle current_level in
-  bake_n ?policy (Int32.to_int delta) b
+  bake_n ?policy ?kcs (Int32.to_int delta) b
 
-let bake_until_n_cycle_end ?policy n b =
-  List.fold_left_es (fun b _ -> bake_until_cycle_end ?policy b) b (1 -- n)
+let bake_until_n_cycle_end ?policy ?kcs n b  =
+  List.fold_left_es (fun b _ -> bake_until_cycle_end ?policy ?kcs b) b (1 -- n)
 
 let current_cycle b =
   get_constants b
@@ -445,11 +447,11 @@ let current_cycle b =
   let current_cycle = Cycle.add Cycle.root (Int32.to_int current_cycle) in
   return current_cycle
 
-let bake_until_cycle ?policy cycle (b : t) =
+let bake_until_cycle ?policy ?kcs cycle (b : t) =
   let rec loop (b : t) =
     current_cycle b
     >>=? fun current_cycle ->
     if Cycle.equal cycle current_cycle then return b
-    else bake_until_cycle_end ?policy b >>=? fun b -> loop b
+    else bake_until_cycle_end ?policy ?kcs b >>=? fun b -> loop b
   in
   loop b
