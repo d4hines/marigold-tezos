@@ -242,9 +242,19 @@ module Test_Operation = struct
     else
       Block.Keychain_list.add ba.ba_pkh ba Block.Keychain_list.empty
     in
+    Incremental.begin_construction b
+    >>=? fun i ->
+    let ctxt = Incremental.alpha_ctxt i in
+    Keychain.find ctxt delegate
+    >>= wrap >>=? fun o ->
+    let sk' =
+      (match o with
+      | Some _ ->  Some (kc_sign ba)
+      | None -> None)
+    in
     Op.endorsement_with_slot
       ~delegate:(delegate, slots)
-      ~sk:(kc_sign ba)
+      ?sk:sk'
       (B b)
       ()
     >>=? fun op ->
@@ -253,11 +263,9 @@ module Test_Operation = struct
     let policy = Block.Excluding [delegate] in
     Block.get_next_baker ~policy b
     >>=? fun (_, priority, _) ->
-    let () = Format.fprintf Format.std_formatter "---%s\n" __LOC__ in
     (* problemic bake *)
     Block.bake ~policy ~operations:[Operation.pack op] b ~kcs
     >>=? fun b2 ->
-    let () = Format.fprintf Format.std_formatter "---%s\n" __LOC__ in
     Test_endorsement.assert_endorser_balance_consistency
       ~loc:__LOC__
       (B b2)
