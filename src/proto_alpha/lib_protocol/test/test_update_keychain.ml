@@ -263,29 +263,29 @@ module Test_Operation = struct
      >>=? fun src ->
      let ({c_pk; s_pk; _ } as ba) = new_key_chain src.pkh Consensus_key in
      Op.update_keychain (B b) contract (Some c_pk) (Some s_pk)
-     >>=? fun op_ba ->
-     Block.bake b ~operation:op_ba
+     >>=? fun op ->
+     Block.bake b ~operation:op
      >>=? fun b ->
      let kcs = Block.Keychain_list.add ba.ba_pkh ba Block.Keychain_list.empty in
-     let delegate_contract = WithExceptions.Option.get ~loc:__LOC__ @@ List.nth bootstrap_contracts 2 in
-     Context.Contract.manager (B b) delegate_contract
-     >>=? fun d_src ->
+     (*let delegate_contract = WithExceptions.Option.get ~loc:__LOC__ @@ List.nth bootstrap_contracts 2 in*)
+     let d_src = Account.new_account () in
+     let delegate_contract = Contract.implicit_contract d_src.pkh in
      let d_ba = new_key_chain d_src.pkh Consensus_key in
-     Op.update_keychain (B b) delegate_contract (Some d_ba.c_pk) (Some d_ba.s_pk)
-     >>=? fun op_ba ->
-     Block.bake b ~operation:op_ba ~kcs
+     Op.transaction (B b) bootstrap delegate_contract (Tez.of_int 10)
+     >>=? fun op ->
+     Block.bake b ~operation:op ~kcs
      >>=? fun b ->
+     Op.revelation (B b) d_src.pk
+     >>=? fun op ->
+     Block.bake b ~operation:op ~kcs
+     >>=? fun b ->
+     Op.update_keychain (B b) delegate_contract (Some d_ba.c_pk) (Some d_ba.s_pk)
+     >>=? fun op ->
      Incremental.begin_construction b
      >>=? fun i ->
-     let contract = Alpha_context.Contract.implicit_contract src.pkh in
-     let delegate_contract =
-       Alpha_context.Contract.implicit_contract d_src.pkh
-     in
-     Op.transaction (I i) bootstrap contract (Tez.of_int 10)
-     >>=? fun op ->
      Incremental.add_operation i op
      >>=? fun i ->
-     Op.transaction (I i) bootstrap delegate_contract (Tez.of_int 10)
+     Op.transaction (I i) bootstrap contract (Tez.of_int 10)
      >>=? fun op ->
      Incremental.add_operation i op
      >>=? fun i ->
@@ -293,7 +293,7 @@ module Test_Operation = struct
      >>=? fun op ->
      Incremental.add_operation i op
      >>=? fun i ->
-     Op.delegation (I i) contract (Some d_src.pkh)
+     Op.delegation (I i) contract (Some d_src.pkh) ~sk:ba.c_sk ~kc:ba
      >>=? fun op ->
      Incremental.add_operation i op
      >>=? fun i ->
