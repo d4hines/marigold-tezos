@@ -381,7 +381,7 @@ module Test_Operation = struct
      Block.bake b ~operation:op_ba
      >>=? fun b ->
      let kcs = Block.Keychain_list.add ba.ba_pkh ba Block.Keychain_list.empty in
-     Test_double_endorsement.block_fork b
+     Test_double_endorsement.block_fork ~kcs b
      >>=? fun (blk_a, blk_b) ->
      Context.get_endorser (B blk_a)
      >>=? fun (delegate, slots) ->

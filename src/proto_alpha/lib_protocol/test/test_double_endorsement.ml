@@ -57,12 +57,12 @@ let get_first_different_bakers ctxt =
 let get_first_different_endorsers ctxt =
   Context.get_endorsers ctxt >|=? fun endorsers -> get_hd_hd endorsers
 
-let block_fork b =
+let block_fork ?kcs b =
   get_first_different_bakers (B b)
   >>=? fun (baker_1, baker_2) ->
-  Block.bake ~policy:(By_account baker_1) b
+  Block.bake ~policy:(By_account baker_1) b ?kcs
   >>=? fun blk_a ->
-  Block.bake ~policy:(By_account baker_2) b >|=? fun blk_b -> (blk_a, blk_b)
+  Block.bake ~policy:(By_account baker_2) b ?kcs >|=? fun blk_b -> (blk_a, blk_b)
 
 (****************************************************************)
 (*                        Tests                                 *)
