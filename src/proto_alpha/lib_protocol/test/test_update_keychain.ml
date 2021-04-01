@@ -235,9 +235,13 @@ module Test_Operation = struct
     >>=? fun op_ba ->
     Block.bake b ~operation:op_ba
     >>=? fun b ->
-    let kcs = Block.Keychain_list.add ba.ba_pkh ba Block.Keychain_list.empty in
     Context.get_endorser (B b)
     >>=? fun (delegate, slots) ->
+    let kcs = if Signature.Public_key_hash.equal delegate ba.ba_pkh then
+      Block.Keychain_list.empty
+    else
+      Block.Keychain_list.add ba.ba_pkh ba Block.Keychain_list.empty
+    in
     Op.endorsement_with_slot
       ~delegate:(delegate, slots)
       ~sk:(kc_sign ba)
@@ -253,7 +257,7 @@ module Test_Operation = struct
     (* problemic bake *)
     Block.bake ~policy ~operations:[Operation.pack op] b ~kcs
     >>=? fun b2 ->
-    let () = Format.fprintf Format.std_formatter "---%s\n" __LOC__  in
+    let () = Format.fprintf Format.std_formatter "---%s\n" __LOC__ in
     Test_endorsement.assert_endorser_balance_consistency
       ~loc:__LOC__
       (B b2)

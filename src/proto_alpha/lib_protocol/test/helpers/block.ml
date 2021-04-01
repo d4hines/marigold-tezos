@@ -181,8 +181,11 @@ module Forge = struct
       match kcs with
       | Some kcs' ->
          (match Keychain_list.find baker kcs' with
-         | Some kc -> Account.Update_keychain.(kc.c_sk)
-         | None -> delegate.sk)
+         | Some kc ->
+           let () = Format.fprintf Format.std_formatter "---%s\n" __LOC__ in
+           Account.Update_keychain.(kc.c_sk)
+         | None ->
+           delegate.sk)
       | None -> delegate.sk
     in
     let signature =
