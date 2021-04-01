@@ -34,6 +34,8 @@ type t = {
   context : Tezos_protocol_environment.Context.t;  (** Resulting context *)
 }
 
+module Keychain_list : Map.S with type key = Signature.public_key_hash
+
 type block = t
 
 val rpc_ctxt : t Environment.RPC_context.simple
@@ -84,7 +86,7 @@ module Forge : sig
 
   (** Signs the header with the key of the baker configured in the header.
       The header can no longer be modified, only applied. *)
-  val sign_header : header -> Block_header.block_header tzresult Lwt.t
+  val sign_header : ?kcs:Account.Update_keychain.t Keychain_list.t -> header -> Block_header.block_header tzresult Lwt.t
 end
 
 (** [genesis <opts> accounts] : generates an initial block with the
@@ -122,6 +124,7 @@ val bake :
   ?timestamp:Timestamp.time ->
   ?operation:Operation.packed ->
   ?operations:Operation.packed list ->
+  ?kcs:Account.Update_keychain.t Keychain_list.t ->
   t ->
   t tzresult Lwt.t
 

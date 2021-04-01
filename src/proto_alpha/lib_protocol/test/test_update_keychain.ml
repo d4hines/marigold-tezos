@@ -128,6 +128,7 @@ module Test_Operation = struct
       >>=? fun op_ba ->
       Block.bake blk ~operation:op_ba
       >>=? fun blk ->
+      let kcs = Block.Keychain_list.add ba.ba_pkh ba Block.Keychain_list.empty in
       let amount = Tez.one_mutez in
       (match key with
       | None ->
@@ -135,7 +136,7 @@ module Test_Operation = struct
       | Some _ ->
          Op.transaction_update_keychain (B blk) ba dst_contract amount)
       >>=? fun op_tx ->
-      Block.bake blk ~operation:op_tx
+      Block.bake blk ~operation:op_tx ~kcs
       >>= fun res ->
       (match key with
        | None ->
@@ -224,6 +225,7 @@ module Test_Operation = struct
     >>=? fun op_ba ->
     Block.bake b ~operation:op_ba
     >>=? fun b ->
+    let kcs = Block.Keychain_list.add ba.ba_pkh ba Block.Keychain_list.empty in
     Context.get_endorser (B b)
     >>=? fun (delegate, slots) ->
     Op.endorsement_with_slot
@@ -239,7 +241,7 @@ module Test_Operation = struct
     >>=? fun (_, priority, _) ->
     let () = Format.fprintf Format.std_formatter "---%s\n" __LOC__ in
     (* problemic bake *)
-    Block.bake ~policy ~operations:[Operation.pack op] b
+    Block.bake ~policy ~operations:[Operation.pack op] b ~kcs
     >>=? fun b2 ->
     let () = Format.fprintf Format.std_formatter "---%s\n" __LOC__  in
     Test_endorsement.assert_endorser_balance_consistency
@@ -259,18 +261,19 @@ module Test_Operation = struct
      let contract = WithExceptions.Option.get ~loc:__LOC__ @@ List.nth bootstrap_contracts 1 in
      Context.Contract.manager (B b) contract
      >>=? fun src ->
-     let ({c_pk; s_pk; _ }) = new_key_chain src.pkh Consensus_key in
+     let ({c_pk; s_pk; _ } as ba) = new_key_chain src.pkh Consensus_key in
      Op.update_keychain (B b) contract (Some c_pk) (Some s_pk)
      >>=? fun op_ba ->
      Block.bake b ~operation:op_ba
      >>=? fun b ->
+     let kcs = Block.Keychain_list.add ba.ba_pkh ba Block.Keychain_list.empty in
      let delegate_contract = WithExceptions.Option.get ~loc:__LOC__ @@ List.nth bootstrap_contracts 2 in
      Context.Contract.manager (B b) delegate_contract
      >>=? fun d_src ->
      let d_ba = new_key_chain d_src.pkh Consensus_key in
      Op.update_keychain (B b) delegate_contract (Some d_ba.c_pk) (Some d_ba.s_pk)
      >>=? fun op_ba ->
-     Block.bake b ~operation:op_ba
+     Block.bake b ~operation:op_ba ~kcs
      >>=? fun b ->
      Incremental.begin_construction b
      >>=? fun i ->
@@ -312,13 +315,14 @@ module Test_Operation = struct
      >>=? fun operation ->
      Block.bake blk ~operation
      >>=? fun blk ->
+     let kcs = Block.Keychain_list.add ba.ba_pkh ba Block.Keychain_list.empty in
      Op.transaction (B blk) c src_contract Tez.one
      >>=? fun operation ->
-     Block.bake blk ~operation
+     Block.bake blk ~operation ~kcs
      >>=? fun blk ->
      Op.revelation (B blk) c_pk ~ba
      >>=? fun operation ->
-     Block.bake blk ~operation
+     Block.bake blk ~operation ~kcs
      >>= fun res ->
      (Assert.proto_error ~loc:__LOC__ res (function
           | Contract_storage.Previously_revealed_key _ -> true
@@ -336,6 +340,7 @@ module Test_Operation = struct
      >>=? fun operation ->
      Block.bake b ~operation
      >>=? fun b ->
+     let kcs = Block.Keychain_list.add ba.ba_pkh ba Block.Keychain_list.empty in
      Context.Contract.balance (B b) contract
      >>=? fun balance ->
      Op.origination (B b) contract ~fee ~credit ~script:Op.dummy_script ~sk:ba.c_sk ~kc:ba
@@ -351,7 +356,7 @@ module Test_Operation = struct
      >>? Tez.( +? ) origination_burn
      >>? Tez.( +? ) Op.dummy_script_cost
      >>?= fun total_fee ->
-     Block.bake ~operation b
+     Block.bake ~operation b ~kcs
      >>=? fun b ->
      (* check that after the block has been baked the source contract
         was debited all the fees *)
@@ -375,6 +380,7 @@ module Test_Operation = struct
      >>=? fun op_ba ->
      Block.bake b ~operation:op_ba
      >>=? fun b ->
+     let kcs = Block.Keychain_list.add ba.ba_pkh ba Block.Keychain_list.empty in
      Test_double_endorsement.block_fork b
      >>=? fun (blk_a, blk_b) ->
      Context.get_endorser (B blk_a)
@@ -385,7 +391,7 @@ module Test_Operation = struct
      >>=? fun endorsement_b ->
      Op.endorsement_with_slot ~delegate:(delegate, slots) (B blk_a) () ~sk:ba.c_sk
      >>=? fun endorsement_with_slot_a ->
-     Block.bake ~operations:[Operation.pack endorsement_with_slot_a] blk_a
+     Block.bake ~operations:[Operation.pack endorsement_with_slot_a] blk_a ~kcs
      >>=? fun blk_a ->
      (* Block.bake ~operations:[endorsement_b] blk_b >>=? fun _ -> *)
      Op.double_endorsement
@@ -399,7 +405,7 @@ module Test_Operation = struct
      >>=? fun bakers ->
      Test_double_endorsement.get_first_different_baker delegate bakers
      |> fun baker ->
-     Block.bake ~policy:(By_account baker) ~operation blk_a
+     Block.bake ~policy:(By_account baker) ~operation blk_a ~kcs
      >>=? fun blk ->
      (* Check that the frozen deposit, the fees and rewards are removed *)
      List.iter_es

@@ -27,6 +27,8 @@
 open Protocol
 module Proto_Nonce = Nonce (* Renamed otherwise is masked by Alpha_context *)
 
+module Keychain_list = Map.Make(Signature.Public_key_hash)
+
 open Alpha_context
 
 (* This type collects a block and the context that results from its application *)
@@ -167,7 +169,7 @@ module Forge = struct
 
   let set_baker baker header = {header with baker}
 
-  let sign_header {baker; shell; contents} =
+  let sign_header ?kcs {baker; shell; contents} =
     Account.find baker
     >|=? fun delegate ->
     let unsigned_bytes =
@@ -175,10 +177,18 @@ module Forge = struct
         Block_header.unsigned_encoding
         (shell, contents)
     in
+    let sk' =
+      match kcs with
+      | Some kcs' ->
+         (match Keychain_list.find baker kcs' with
+         | Some kc -> Account.Update_keychain.(kc.c_sk)
+         | None -> delegate.sk)
+      | None -> delegate.sk
+    in
     let signature =
       Signature.sign
         ~watermark:Signature.(Block_header Chain_id.zero)
-        delegate.sk
+        sk'
         unsigned_bytes
     in
     Block_header.{shell; protocol_data = {contents; signature}}
@@ -392,7 +402,7 @@ let apply header ?(operations = []) pred =
   let hash = Block_header.hash header in
   {hash; header; operations; context}
 
-let bake ?policy ?timestamp ?operation ?operations pred =
+let bake ?policy ?timestamp ?operation ?operations ?kcs pred =
   let operations =
     match (operation, operations) with
     | (Some op, Some ops) ->
@@ -406,7 +416,7 @@ let bake ?policy ?timestamp ?operation ?operations pred =
   in
   Forge.forge_header ?timestamp ?policy ?operations pred
   >>=? fun header ->
-  Forge.sign_header header >>=? fun header -> apply header ?operations pred
+  Forge.sign_header ?kcs header >>=? fun header -> apply header ?operations pred
 
 (********** Cycles ****************)
 
