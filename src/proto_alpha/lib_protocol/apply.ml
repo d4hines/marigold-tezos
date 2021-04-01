@@ -1599,7 +1599,7 @@ let begin_application ctxt chain_id block_header pred_timestamp =
   endorsement_rights_of_pred_level ctxt
   >|=? fun rights ->
   let ctxt = init_endorsements ctxt rights in
-  (ctxt, delegate_pk, block_delay)
+  (ctxt, delegate_pkh, block_delay)
 
 let check_minimum_endorsements ctxt protocol_data block_delay
     included_endorsements =

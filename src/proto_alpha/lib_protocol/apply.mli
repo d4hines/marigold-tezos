@@ -114,7 +114,7 @@ val begin_application :
   Chain_id.t ->
   Block_header.t ->
   Time.t ->
-  (t * public_key * Period.t, error trace) result Lwt.t
+  (t * public_key_hash * Period.t, error trace) result Lwt.t
 
 val apply_operation :
   t ->

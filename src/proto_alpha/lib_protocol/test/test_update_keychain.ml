@@ -167,8 +167,16 @@ module Test_Operation = struct
     let acc = WithExceptions.Option.get ~loc:__LOC__ @@ List.nth cs 0 in
     Context.Contract.pkh acc
     >>=? fun pkh ->
+    (*
     let (_pkhA, pkA, skA) = Signature.generate_key () in
     let (_pkhB, pkB, _skB) = Signature.generate_key () in
+    *)
+    let kcA = new_key_chain pkh Consensus_key in
+    let pkA = kcA.c_pk in
+    let skA = kcA.c_sk in
+    let kcB = new_key_chain pkh Consensus_key in
+    let pkB = kcB.c_pk in
+    let _skB = kcB.c_sk in
     let master_key_delay_cycles =
       (Constants.parametric ctx).master_key_delay_cycles in
     (* check: there is no master key for pkh *)
@@ -182,10 +190,12 @@ module Test_Operation = struct
     (* check: the master of pkh == pkA *)
     checkMasterKey b_init pkh (Some pkA)
     >>=? fun () ->
+    let kcs =
+      Block.Keychain_list.add kcA.ba_pkh kcA Block.Keychain_list.empty in
     (* ask for update master key *)
     Op.update_keychain (B b_init) ~sk:skA acc (Some pkB) None
     >>=? fun operation ->
-    bake b_init ~operation
+    bake b_init ~operation ~kcs
     >>=? fun b ->
     (* check: the master of pkh == pkA (<> pkB) *)
     checkMasterKey b pkh (Some pkA)
