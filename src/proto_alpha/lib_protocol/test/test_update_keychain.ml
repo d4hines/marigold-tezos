@@ -263,20 +263,28 @@ module Test_Operation = struct
       initial_balance
 
    let test_registered_self_delegate_key_init_delegation () =
-     Context.init 5
+     Context.init 1
      >>=? fun (b, bootstrap_contracts) ->
      let bootstrap =
        WithExceptions.Option.get ~loc:__LOC__ @@ List.hd bootstrap_contracts
      in
-     let contract = WithExceptions.Option.get ~loc:__LOC__ @@ List.nth bootstrap_contracts 1 in
-     Context.Contract.manager (B b) contract
-     >>=? fun src ->
+     let src = Account.new_account () in
+     let contract = Contract.implicit_contract src.pkh in
      let ({c_pk; s_pk; _ } as ba) = new_key_chain src.pkh Consensus_key in
-     Op.update_keychain (B b) contract (Some c_pk) (Some s_pk)
+     Op.transaction (B b) bootstrap contract (Tez.of_int 10)
      >>=? fun op ->
      Block.bake b ~operation:op
      >>=? fun b ->
      let kcs = Block.Keychain_list.add ba.ba_pkh ba Block.Keychain_list.empty in
+     Op.revelation (B b) src.pk
+     >>=? fun op ->
+     Block.bake b ~operation:op ~kcs
+     >>=? fun b ->
+     Op.update_keychain (B b) contract (Some c_pk) (Some s_pk)
+     >>=? fun op ->
+     Block.bake b ~operation:op
+     >>=? fun b ->
+     let kcs = Block.Keychain_list.add ba.ba_pkh ba kcs in
      (*let delegate_contract = WithExceptions.Option.get ~loc:__LOC__ @@ List.nth bootstrap_contracts 2 in*)
      let d_src = Account.new_account () in
      let delegate_contract = Contract.implicit_contract d_src.pkh in
