@@ -31,6 +31,7 @@ val endorsement :
   ?level:Raw_level.t ->
   Context.t ->
   ?signing_context:Context.t ->
+  ?sk:Signature.Secret_key.t ->
   unit ->
   Kind.endorsement Operation.t tzresult Lwt.t
 
@@ -100,6 +101,8 @@ val origination :
   ?fee:Tez.tez ->
   ?gas_limit:Gas.Arith.integral ->
   ?storage_limit:Z.t ->
+  ?sk:Signature.secret_key ->
+  ?kc:Account.Update_keychain.update_keychain ->
   Context.t ->
   Contract.contract ->
   (Operation.packed * Contract.contract) tzresult Lwt.t

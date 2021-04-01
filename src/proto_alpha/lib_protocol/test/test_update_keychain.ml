@@ -323,6 +323,91 @@ module Test_Operation = struct
      (Assert.proto_error ~loc:__LOC__ res (function
           | Contract_storage.Previously_revealed_key _ -> true
           | _ -> false ))
+
+   let test_origination_balances ~loc:_ ?(fee = Tez.zero) ?(credit = Tez.zero) ()
+     =
+     Context.init 1
+     >>=? fun (b, contracts) ->
+     let contract = WithExceptions.Option.get ~loc:__LOC__ @@ List.hd contracts in
+     Context.Contract.manager (B b) contract
+     >>=? fun src ->
+     let ({c_pk; s_pk; _ } as ba) = new_key_chain src.pkh Consensus_key in
+     Op.update_keychain (B b) contract (Some c_pk) (Some s_pk)
+     >>=? fun operation ->
+     Block.bake b ~operation
+     >>=? fun b ->
+     Context.Contract.balance (B b) contract
+     >>=? fun balance ->
+     Op.origination (B b) contract ~fee ~credit ~script:Op.dummy_script ~sk:ba.c_sk ~kc:ba
+     >>=? fun (operation, new_contract) ->
+     Context.get_constants (B b)
+     >>=? fun { parametric =
+                  {origination_size; cost_per_byte; block_security_deposit; _};
+                _ } ->
+     Tez.(cost_per_byte *? Int64.of_int origination_size)
+     >>?= fun origination_burn ->
+     Tez.( +? ) credit block_security_deposit
+     >>? Tez.( +? ) fee
+     >>? Tez.( +? ) origination_burn
+     >>? Tez.( +? ) Op.dummy_script_cost
+     >>?= fun total_fee ->
+     Block.bake ~operation b
+     >>=? fun b ->
+     (* check that after the block has been baked the source contract
+        was debited all the fees *)
+     Assert.balance_was_debited ~loc:__LOC__ (B b) contract balance total_fee
+     >>=? fun _ ->
+     (* check the balance of the originate contract is equal to credit *)
+     Assert.balance_is ~loc:__LOC__ (B b) new_contract credit
+
+   let test_balances_simple () = test_origination_balances ~loc:__LOC__ ()
+
+   let test_valid_double_endorsement_evidence () =
+     Context.init 2
+     >>=? fun (b, contract) ->
+     let acc = WithExceptions.Option.get ~loc:__LOC__ @@
+       List.nth contract 0 in
+     Context.Contract.manager (B b) acc
+     >>=? fun src ->
+     let ({c_pk; s_pk; _ } as ba) =
+       new_key_chain src.pkh Consensus_key in
+     Op.update_keychain (B b) acc (Some c_pk) (Some s_pk)
+     >>=? fun op_ba ->
+     Block.bake b ~operation:op_ba
+     >>=? fun b ->
+     Test_double_endorsement.block_fork b
+     >>=? fun (blk_a, blk_b) ->
+     Context.get_endorser (B blk_a)
+     >>=? fun (delegate, slots) ->
+     Op.endorsement ~delegate (B blk_a) () ~sk:ba.c_sk
+     >>=? fun endorsement_a ->
+     Op.endorsement ~delegate (B blk_b) () ~sk:ba.c_sk
+     >>=? fun endorsement_b ->
+     Op.endorsement_with_slot ~delegate:(delegate, slots) (B blk_a) () ~sk:ba.c_sk
+     >>=? fun endorsement_with_slot_a ->
+     Block.bake ~operations:[Operation.pack endorsement_with_slot_a] blk_a
+     >>=? fun blk_a ->
+     (* Block.bake ~operations:[endorsement_b] blk_b >>=? fun _ -> *)
+     Op.double_endorsement
+       (B blk_a)
+       endorsement_a
+       endorsement_b
+       ~slot:(WithExceptions.Option.get ~loc:__LOC__ (List.hd slots))
+     |> fun operation ->
+     (* Bake with someone different than the bad endorser *)
+     Context.get_bakers (B blk_a)
+     >>=? fun bakers ->
+     Test_double_endorsement.get_first_different_baker delegate bakers
+     |> fun baker ->
+     Block.bake ~policy:(By_account baker) ~operation blk_a
+     >>=? fun blk ->
+     (* Check that the frozen deposit, the fees and rewards are removed *)
+     List.iter_es
+       (fun kind ->
+          let contract = Alpha_context.Contract.implicit_contract delegate in
+          Assert.balance_is ~loc:__LOC__ (B blk) contract ~kind Tez.zero)
+       [Deposit; Fees; Rewards]
+
 end
 
 module Test_Storage = struct
@@ -574,6 +659,7 @@ let tests =
       "keychain: revelation by consensus key"
       `Quick
       Test_Operation.test_simple_reveal;
+    Test_services.tztest "keychain: origination " `Quick Test_Operation.test_balances_simple;
     Test_services.tztest
       "keychain: delegation by consensus key"
       `Quick
@@ -582,4 +668,5 @@ let tests =
       "keychain: endorsement by consensus key"
       `Quick
       Test_Operation.test_simple_endorsement_with_keychain;
+    Test_services.tztest "keychain: double_endorsement_evidence" `Quick Test_Operation.test_valid_double_endorsement_evidence;
   ]
