@@ -298,7 +298,7 @@ define BENCH_DATA_2
     {
       "name": "bench_2_test_1",
       "metrics": {
-        "time": 0.01,
+        "time": 0.02,
         "ops_per_sec": 50.0,
         "mbs_per_sec": 3.0
       }
