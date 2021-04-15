@@ -320,4 +320,4 @@ export BENCH_DATA_1
 export BENCH_DATA_2
 .PHONY: bench
 bench:
-	@echo "$$BENCH_DATA_1"
+	@echo "$$BENCH_DATA_2"
