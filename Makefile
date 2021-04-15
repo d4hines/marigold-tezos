@@ -300,7 +300,7 @@ define BENCH_DATA_2
       "metrics": {
         "time": 0.02,
         "ops_per_sec": 9999.0,
-        "mbs_per_sec": 3.0
+        "mbs_per_sec": 39.0
       }
     },
     {
