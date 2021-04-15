@@ -315,7 +315,7 @@ define BENCH_DATA_2
 }
 endef
 
-# hello
+# hello world
 export BENCH_DATA_1
 export BENCH_DATA_2
 .PHONY: bench
