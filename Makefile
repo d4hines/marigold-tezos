@@ -266,3 +266,58 @@ clean: coverage-clean
 	@-${MAKE} -C docs clean
 	@-${MAKE} -C tests_python clean
 	@-rm -f docs/api/tezos-{baker,endorser,accuser}-alpha.html docs/api/tezos-{admin-,}client.html docs/api/tezos-signer.html
+
+define BENCH_DATA_1
+{
+  "config": {  },
+  "results": [
+    {
+      "name": "bench_1_test_1",
+      "metrics": {
+        "time": 4.02,
+        "ops_per_sec": 690.0,
+        "mbs_per_sec": 199.0
+      }
+    },
+    {
+      "name": "bench_1_test_2",
+      "metrics": {
+        "time": 10.04,
+        "ops_per_sec": 1455.0,
+        "mbs_per_sec": 17.0
+      }
+    }
+  ]
+}
+endef
+
+define BENCH_DATA_2
+{
+  "config": {  },
+  "results": [
+    {
+      "name": "bench_2_test_1",
+      "metrics": {
+        "time": 0.02,
+        "ops_per_sec": 9999.0,
+        "mbs_per_sec": 39.0
+      }
+    },
+    {
+      "name": "bench_2_test_2",
+      "metrics": {
+        "time": 0.9,
+        "ops_per_sec": 7.01,
+        "mbs_per_sec": 23.0
+      }
+    }
+  ]
+}
+endef
+
+# hello world
+export BENCH_DATA_1
+export BENCH_DATA_2
+.PHONY: bench
+bench:
+	@echo "$$BENCH_DATA_2"
