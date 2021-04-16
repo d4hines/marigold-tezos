@@ -306,7 +306,7 @@ define BENCH_DATA_2
     {
       "name": "bench_2_test_2",
       "metrics": {
-        "time": 0.9999,
+        "time": 0.9,
         "ops_per_sec": 7.01,
         "mbs_per_sec": 23.0
       }
@@ -320,4 +320,4 @@ export BENCH_DATA_1
 export BENCH_DATA_2
 .PHONY: bench
 bench:
-	@echo "$$BENCH_DATA_1"
+	@echo "$$BENCH_DATA_2"
